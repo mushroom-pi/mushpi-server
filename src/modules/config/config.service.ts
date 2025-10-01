@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import {
   DocsConfig,
   EnvironmentVariables,
+  SQLiteConfig,
   SecurityConfig,
   ServerConfig,
   ServiceConfig,
@@ -80,6 +81,13 @@ export class CustomConfigService {
       useAuth:
         !!this.configService.get('DOCS_USERNAME') &&
         !!this.configService.get('DOCS_PASSWORD'),
+    };
+  }
+
+  get sqlite(): SQLiteConfig {
+    return {
+      database: this.configService.get('SQLITE_PATH'),
+      logging: this.configService.get('SQLITE_LOG'),
     };
   }
 

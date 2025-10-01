@@ -13,6 +13,6 @@ export type LogLevels =
 /**
  * Names of databases and other external dependencies here
  */
-export type Databases = 'mongoMock';
+export type Databases = 'sqlite';
 
 export type Services = 'serviceMock';

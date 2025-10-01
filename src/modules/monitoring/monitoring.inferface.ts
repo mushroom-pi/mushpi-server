@@ -26,7 +26,6 @@ export interface ServerStatus {
 }
 
 export interface DatabaseStatus {
-  connected: boolean;
   read: boolean;
   write: boolean;
 }

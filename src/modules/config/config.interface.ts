@@ -15,6 +15,8 @@ export interface EnvironmentVariables {
   MAX_EVENT_LOOP_DELAY: number;
   MAX_REQUESTS?: number;
   MAX_REQUESTS_TIME?: number;
+  SQLITE_PATH: string;
+  SQLITE_LOG: boolean;
 }
 
 export interface ServerConfig {
@@ -56,4 +58,9 @@ export interface ServiceConfig {
   host?: string;
   port?: string;
   secretKey?: string;
+}
+
+export interface SQLiteConfig {
+  database: string;
+  logging: boolean;
 }

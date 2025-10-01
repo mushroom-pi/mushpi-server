@@ -60,6 +60,39 @@ describe('AppController (e2e)', () => {
         );
       });
     });
+
+    describe('database health (sqlite)', () => {
+      it('should include sqlite database status when requested', async () => {
+        const res = await request(app.getHttpServer())
+          .get('/health')
+          .query({ databases: 'sqlite', services: 'none', server: 'false' })
+          .expect(200);
+
+        expect(res.body).toHaveProperty('databases');
+        expect(res.body.databases).toHaveProperty('sqlite');
+
+        const sqlite = res.body.databases.sqlite;
+
+        // Typical shape: { read, write }
+        expect(typeof sqlite.read).toBe('boolean');
+        expect(typeof sqlite.write).toBe('boolean');
+
+        // With :memory: + synchronize:true, both should be true
+        expect(sqlite.read).toBe(true);
+        expect(sqlite.write).toBe(true);
+      });
+
+      it('should include server + sqlite when both requested', async () => {
+        const res = await request(app.getHttpServer())
+          .get('/health')
+          .query({ server: 'true', databases: 'sqlite', services: 'none' })
+          .expect(200);
+
+        expect(res.body).toHaveProperty('server');
+        expect(res.body).toHaveProperty('databases');
+        expect(res.body.databases).toHaveProperty('sqlite');
+      });
+    });
   });
 
   describe('GET /metrics', () => {

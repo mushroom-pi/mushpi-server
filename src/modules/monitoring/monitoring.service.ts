@@ -9,6 +9,7 @@ import {
   services as configServices,
 } from 'src/modules/config/config.constants';
 import { CustomConfigService } from 'src/modules/config/config.service';
+import { SQLiteHealthService } from 'src/modules/sqlite-health/sqlite-health.service';
 
 import {
   DatabaseStatus,
@@ -23,7 +24,10 @@ export class MonitoringService {
   private readonly logger = new Logger(MonitoringService.name);
   private readonly promRegister = new client.Registry();
   private readonly promMetrics = client.collectDefaultMetrics;
-  constructor(private readonly configService: CustomConfigService) {
+  constructor(
+    private readonly configService: CustomConfigService,
+    private readonly sqliteHealthService: SQLiteHealthService,
+  ) {
     this.promMetrics({ register: this.promRegister });
   }
 
@@ -62,12 +66,8 @@ export class MonitoringService {
     this.logger.log(`Checking ${name} Database status`);
 
     switch (name) {
-      case 'mockDb':
-        return {
-          connected: true,
-          read: true,
-          write: true,
-        };
+      case 'sqlite':
+        return await this.sqliteHealthService.checkSQLiteDbStatus();
 
       default:
         break;

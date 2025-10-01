@@ -81,4 +81,6 @@ export const validationSchema = Joi.object({
   MAX_EVENT_LOOP_DELAY: Joi.number().default(100),
   MAX_REQUESTS: Joi.number(),
   MAX_REQUESTS_TIME: Joi.number(),
+  SQLITE_PATH: Joi.string().default('data/app.sqlite'),
+  SQLITE_LOG: Joi.boolean().truthy('true').falsy('false').default(false),
 });

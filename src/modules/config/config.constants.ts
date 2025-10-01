@@ -27,6 +27,6 @@ export const logLevels: LogLevels[] = [
 /**
  * Names of databases and other external dependencies here
  */
-export const databases: Databases[] = ['mongoMock'];
+export const databases: Databases[] = ['sqlite'];
 
 export const services: Services[] = ['serviceMock'];

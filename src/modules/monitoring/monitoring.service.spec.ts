@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { version } from 'package.json';
 
 import { CustomConfigService } from 'src/modules/config/config.service';
+import { SQLiteHealthService } from 'src/modules/sqlite-health/sqlite-health.service';
 
 import { HealthCheckInput, HealthCheckResponse } from './monitoring.inferface';
 import { MonitoringService } from './monitoring.service';
@@ -16,6 +17,10 @@ jest.mock('os', () => ({
 describe('MonitoringService', () => {
   let service: MonitoringService;
 
+  const sqliteHealthMock = {
+    checkSQLiteDbStatus: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -26,10 +31,16 @@ describe('MonitoringService', () => {
             server: { nodeEnv: process.env.NODE_ENV },
           },
         },
+        {
+          provide: SQLiteHealthService,
+          useValue: sqliteHealthMock,
+        },
       ],
     }).compile();
 
     service = module.get<MonitoringService>(MonitoringService);
+
+    jest.clearAllMocks();
   });
 
   it('should be defined', () => {
@@ -104,21 +115,34 @@ describe('MonitoringService', () => {
     });
   });
 
-  describe('checkDatabaseStatus', () => {
-    it('should return MongoDB status when name is "mockDb"', async () => {
-      const mockStatus = {
-        connected: true,
+  describe('checkDatabaseStatus("sqlite")', () => {
+    it('should return connected/read/write from SQLiteHealthService (all ok)', async () => {
+      sqliteHealthMock.checkSQLiteDbStatus.mockResolvedValue({
         read: true,
         write: true,
-      };
+      });
 
-      const status = await service['checkDatabaseStatus']('mockDb');
-      expect(status).toEqual(mockStatus);
+      const res = await (service as any)['checkDatabaseStatus']('sqlite');
+
+      expect(res).toEqual({
+        read: true,
+        write: true,
+      });
+      expect(sqliteHealthMock.checkSQLiteDbStatus).toHaveBeenCalledTimes(1);
     });
 
-    it('should return undefined for unsupported database names', async () => {
-      const status = await service['checkDatabaseStatus']('unsupported-db');
-      expect(status).toBeUndefined();
+    it('should return connected:false if either read or write fails', async () => {
+      sqliteHealthMock.checkSQLiteDbStatus.mockResolvedValue({
+        read: true,
+        write: false,
+      });
+
+      const res = await (service as any)['checkDatabaseStatus']('sqlite');
+
+      expect(res).toEqual({
+        read: true,
+        write: false,
+      });
     });
   });
 

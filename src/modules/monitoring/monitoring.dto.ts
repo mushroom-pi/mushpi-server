@@ -148,9 +148,34 @@ class ServicesDto {
   serviceMock?: ServiceMockDto;
 }
 
+class DatabaseMockDto {
+  @ApiProperty({
+    type: Boolean,
+    description: 'Check that the provided credentials have read privileges',
+  })
+  read: boolean;
+
+  @ApiProperty({
+    type: Boolean,
+    description: 'Check that the provided credentials have write privileges',
+  })
+  write: boolean;
+}
+
+class DatabasesDto {
+  @ApiProperty({ type: DatabaseMockDto })
+  'sqlite'?: DatabaseMockDto;
+}
+
 export class HealthCheckResponseDto {
   @ApiProperty({ type: ServerDto, required: false })
   server?: ServerDto;
+
+  @ApiProperty({
+    type: DatabaseMockDto,
+    description: 'Check any database that the microservice needs to operate',
+  })
+  databases?: DatabasesDto;
 
   @ApiProperty({ type: ServicesDto, required: false })
   services?: ServicesDto;
