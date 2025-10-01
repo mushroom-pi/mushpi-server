@@ -1,0 +1,5 @@
+yarn audit:prod
+yarn build
+yarn knip:ci
+yarn test
+yarn test:e2e

@@ -1,0 +1,21 @@
+{
+  "recommendations": [
+    "bierner.markdown-mermaid",
+    "bierner.markdown-emoji",
+    "bierner.markdown-checkbox",
+    "yzhang.markdown-all-in-one",
+    "GitHub.vscode-github-actions",
+    "ms-vscode.vscode-typescript-next",
+    "mikestead.dotenv",
+    "dbaeumer.vscode-eslint",
+    "expresssnippets.vscode-express-snippets",
+    "orta.vscode-jest",
+    "robole.markdown-snippets",
+    "christian-kohler.npm-intellisense",
+    "esbenp.prettier-vscode",
+    "hbenl.vscode-test-explorer",
+    "ashinzekene.nestjs",
+    "andys8.jest-snippets",
+    "gamunu.vscode-yarn"
+  ]
+}

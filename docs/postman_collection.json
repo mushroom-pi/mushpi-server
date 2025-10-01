@@ -1,0 +1,124 @@
+{
+	"info": {
+		"_postman_id": "785d2d05-77fb-475a-8778-033473b636ff",
+		"name": "be-template",
+		"description": "Reuse and expand for new microservices",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "monitoring",
+			"item": [
+				{
+					"name": "PING",
+					"id": "0fbd9df3-ef02-41b9-801e-5567580cb791",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{url}}/ping"
+					},
+					"response": []
+				},
+				{
+					"name": "Health",
+					"id": "ea4a757d-05ea-4fd4-a3a9-9b08672bb181",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/health?server=true&databases=all&services=all",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"health"
+							],
+							"query": [
+								{
+									"key": "server",
+									"value": "true",
+									"type": "text"
+								},
+								{
+									"key": "databases",
+									"value": "all",
+									"type": "text"
+								},
+								{
+									"key": "services",
+									"value": "all",
+									"type": "text"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Metrics",
+					"id": "c62da8fb-8636-4635-bab1-cdc56f37140d",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{url}}/metrics"
+					},
+					"response": []
+				},
+				{
+					"name": "Documentation",
+					"id": "77993398-8977-4ccd-941a-20dc5e205f6b",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{url}}/contract"
+					},
+					"response": []
+				}
+			],
+			"id": "2a2efa49-6b32-42d2-97cd-3fea1ca670de"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"id": "dca2cd0b-484f-4346-a419-47cb6de6eb29",
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"id": "82a863a3-194e-4f5d-b36c-cc6f91352f77",
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "url",
+			"value": "http://{{HOST}}:{{PORT_TEMPLATE_MONGO}}",
+			"type": "string"
+		}
+	]
+}

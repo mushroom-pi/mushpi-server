@@ -1,0 +1,49 @@
+name: Bump version based on branch using Central Workflow
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - dev
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump-version:
+    if: github.event.pull_request.merged == true && contains(github.event.pull_request.title, 'no-versioning') == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 22
+
+      - name: Bump version
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action Worker"
+
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_REF="${{ github.event.pull_request.head.ref }}"
+
+          # Determine version bump based on base branch
+          if [[ "${PR_REF}" == *"feat/"* ]]; then
+            yarn version --minor -m "${PR_TITLE}"
+          elif [[ "${PR_REF}" == *"task/"* ]]; then
+            yarn version --patch -m "${PR_TITLE}"
+          fi
+
+      # REMEMBER: For this to work, the WORKER_GH_TOKEN has to have permission to WRITE on the dev branch, even if it is protected on Github. If we don't asign these permissions, the workflow won't work.
+      - name: Push tags
+        env:
+          WORKER_GH_TOKEN: ${{ secrets.WORKER_GH_TOKEN }}
+        run: |
+          # Push changes using the worker account
+          git remote set-url origin https://x-access-token:${WORKER_GH_TOKEN}@github.com/${{ github.repository }}
+          git push --follow-tags

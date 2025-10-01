@@ -1,0 +1,16 @@
+yarn format
+yarn lint
+
+# Check if config.schema.ts changed
+if git diff --cached --name-only | grep -q 'src/modules/config/config.schema.ts'; then
+  echo "🔄 Config schema changed - regenerating ENVIRONMENT.md"
+  
+  # Run documentation generator (assuming it's in docs/env-vars.generator.ts)
+  yarn docs:env
+  
+  # Add the generated file to commit
+  git add docs/ENVIRONMENT.md
+  echo "✅ Updated ENVIRONMENT.md added to commit"
+else
+  echo "⏩ No changes to config schema - skipping documentation update"
+fi

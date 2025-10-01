@@ -1,0 +1,137 @@
+import { Injectable, Logger } from '@nestjs/common';
+
+import * as os from 'os';
+import { version } from 'package.json';
+import client from 'prom-client';
+
+import {
+  databases as configDb,
+  services as configServices,
+} from 'src/modules/config/config.constants';
+import { CustomConfigService } from 'src/modules/config/config.service';
+
+import {
+  DatabaseStatus,
+  HealthCheckInput,
+  HealthCheckResponse,
+  ServerStatus,
+  ServiceStatus,
+} from './monitoring.inferface';
+
+@Injectable()
+export class MonitoringService {
+  private readonly logger = new Logger(MonitoringService.name);
+  private readonly promRegister = new client.Registry();
+  private readonly promMetrics = client.collectDefaultMetrics;
+  constructor(private readonly configService: CustomConfigService) {
+    this.promMetrics({ register: this.promRegister });
+  }
+
+  private toMB(n: number): number {
+    return parseFloat((n / 1024 / 1024).toFixed(2));
+  }
+
+  private checkServerStatus(): ServerStatus {
+    const loadAverage = os.loadavg().map((avg) => parseFloat(avg.toFixed(2)));
+    const memoryUsage = process.memoryUsage();
+    Object.keys(memoryUsage).forEach(
+      (k) => (memoryUsage[k] = this.toMB(memoryUsage[k])),
+    );
+    const upTimeSeconds = parseFloat(process.uptime().toFixed(2));
+
+    return {
+      healthy: true,
+      environment: this.configService.server.nodeEnv,
+      appVersion: version,
+      nodeVersion: process.version,
+      loadAverage,
+      memoryUsageInMB: memoryUsage,
+      upTime: {
+        seconds: upTimeSeconds,
+        minutes: Math.round((100 * upTimeSeconds) / 60) / 100,
+        hours: Math.round((100 * upTimeSeconds) / (60 * 60)) / 100,
+        days: Math.round((100 * upTimeSeconds) / (60 * 60 * 24)) / 100,
+      },
+    };
+  }
+
+  /**
+   * Your Database health checks will be used HERE
+   */
+  private async checkDatabaseStatus(name: string): Promise<DatabaseStatus> {
+    this.logger.log(`Checking ${name} Database status`);
+
+    switch (name) {
+      case 'mockDb':
+        return {
+          connected: true,
+          read: true,
+          write: true,
+        };
+
+      default:
+        break;
+    }
+  }
+
+  /**
+   * Your Services health checks will be used HERE
+   */
+  private async checkServiceStatus(name: string): Promise<ServiceStatus> {
+    this.logger.log(`Checking ${name} Service status`);
+
+    switch (name) {
+      case 'mockService':
+        return {
+          hasKey: true,
+          available: true,
+        };
+
+      default:
+        break;
+    }
+  }
+
+  private makeList(names: string, originalList: string[]): string[] {
+    if (names && names === 'none') return [];
+    if (names && names !== 'all') {
+      return names.split(',').map((name) => name.trim());
+    }
+    return originalList;
+  }
+
+  ping(): string {
+    return 'pong';
+  }
+
+  async health({
+    server,
+    databases,
+    services,
+  }: HealthCheckInput): Promise<HealthCheckResponse> {
+    const healthCheck: HealthCheckResponse = {};
+
+    if (server !== 'false') {
+      healthCheck.server = this.checkServerStatus();
+    }
+
+    const dbList = this.makeList(databases, configDb);
+    for (const dbName of dbList) {
+      if (!healthCheck.databases) healthCheck.databases = {};
+      healthCheck.databases[dbName] = await this.checkDatabaseStatus(dbName);
+    }
+
+    const serviceList = this.makeList(services, configServices);
+    for (const serviceName of serviceList) {
+      if (!healthCheck.services) healthCheck.services = {};
+      healthCheck.services[serviceName] =
+        await this.checkServiceStatus(serviceName);
+    }
+
+    return healthCheck;
+  }
+
+  async metrics() {
+    return await this.promRegister.metrics();
+  }
+}

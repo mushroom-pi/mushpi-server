@@ -1,0 +1,9 @@
+node_modules
+dist
+.git
+.vscode
+.husky
+Dockerfile
+.dockerignore
+.eslintrc.js
+.prettierrc
