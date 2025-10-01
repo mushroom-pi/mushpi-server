@@ -1,7 +1,7 @@
 {
-  "name": "nestjs-template",
-  "version": "0.4.0",
-  "description": "Complete Nest.js REST API generator template",
+  "name": "mushpi-server",
+  "version": "0.1.0",
+  "description": "A backend for the Mushroom Pi project",
   "author": "amda-phd",
   "private": true,
   "license": "UNLICENSED",
