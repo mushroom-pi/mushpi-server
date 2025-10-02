@@ -6,5 +6,5 @@ export class Health {
   id!: number;
 
   @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
-  createdAt!: string;
+  created_at!: string;
 }

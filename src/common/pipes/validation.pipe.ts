@@ -4,6 +4,7 @@ import { Logger } from '@nestjs/common';
 export const validationPipe = new ValidationPipe({
   whitelist: true,
   transform: true,
+  transformOptions: { enableImplicitConversion: true },
   forbidNonWhitelisted: true,
   exceptionFactory: (errors) => {
     const logger = new Logger('ValidationPipe');

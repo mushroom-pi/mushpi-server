@@ -11,6 +11,7 @@ import { ProtectEventLoopMiddleware } from 'src/common/middleware/protect-event-
 import { CustomConfigModule } from './config/config.module';
 import { CustomConfigService } from './config/config.service';
 import { MonitoringModule } from './monitoring/monitoring.module';
+import { PicoUnitsModule } from './pico-units/pico-units.module';
 import { PinoLoggerModule } from './pino-logger.module';
 import { SQLiteModule } from './sqlite/sqlite.module';
 import { SwaggerModule } from './swagger/swagger.module';
@@ -32,6 +33,7 @@ import { SwaggerModule } from './swagger/swagger.module';
       ],
     }),
     SQLiteModule,
+    PicoUnitsModule,
   ],
   providers: [
     {

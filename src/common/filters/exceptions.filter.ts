@@ -8,6 +8,8 @@ import {
 } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
 
+import { EntityNotFoundError, QueryFailedError, TypeORMError } from 'typeorm';
+
 import { CustomConfigService } from 'src/modules/config/config.service';
 
 import { ExceptionResponseBody } from './exceptions.interface';
@@ -24,6 +26,43 @@ export class ExceptionsFilter implements ExceptionFilter {
   private handleHttpError(exception: HttpException) {
     const responseBody = exception.getResponse() as ExceptionResponseBody;
     const httpStatus = exception.getStatus();
+
+    return { httpStatus, responseBody };
+  }
+
+  private handleTypeOrmError(exception: TypeORMError) {
+    let httpStatus = HttpStatus.NOT_ACCEPTABLE;
+
+    let message = exception.message;
+
+    // Sanitize noisy QueryFailedError messages if needed
+    if (exception instanceof QueryFailedError) {
+      // Many drivers expose a "code" and "errno" on (exception as any).driverError
+      const driverErr: any = (exception as any).driverError ?? {};
+      const code = driverErr.code ?? driverErr.errno ?? driverErr.name;
+
+      // Optional: friendlier messages for common cases
+      if (
+        typeof driverErr.message === 'string' &&
+        /unique constraint/i.test(driverErr.message)
+      ) {
+        message = 'Unique constraint violated';
+        httpStatus = HttpStatus.CONFLICT;
+      } else if (code === 'SQLITE_CONSTRAINT') {
+        message = 'Constraint violation';
+      } else if (code === 'SQLITE_BUSY') {
+        message = 'Database is locked';
+      }
+    } else if (exception instanceof EntityNotFoundError) {
+      message = 'Entity not found';
+    }
+
+    const responseBody: ExceptionResponseBody = {
+      statusCode: httpStatus,
+      error: 'TypeORM error',
+      message,
+      emitter: 'database',
+    };
 
     return { httpStatus, responseBody };
   }
@@ -61,6 +100,8 @@ export class ExceptionsFilter implements ExceptionFilter {
      */
     if (exception instanceof HttpException) {
       ({ responseBody, httpStatus } = this.handleHttpError(exception));
+    } else if (exception instanceof TypeORMError) {
+      ({ responseBody, httpStatus } = this.handleTypeOrmError(exception));
     } else {
       ({ responseBody, httpStatus } = this.handleUnknownError(exception));
     }
