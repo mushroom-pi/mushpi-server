@@ -1,6 +1,5 @@
 import { applyDecorators } from '@nestjs/common';
 import {
-  ApiBadRequestResponse,
   ApiNotAcceptableResponse,
   ApiNotFoundResponse,
   ApiParam,
@@ -15,10 +14,6 @@ export function ApiPicoUnit() {
       required: true,
       description: 'Pico unit ID',
       schema: { type: 'integer', minimum: 1, example: 42 },
-    }),
-    ApiBadRequestResponse({
-      description: 'Invalid pico unit id',
-      type: ErrorDto,
     }),
     ApiNotFoundResponse({
       description: 'PicoUnit not found',

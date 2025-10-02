@@ -1,5 +1,8 @@
-import { UnauthorizedException } from '@nestjs/common';
-import { HttpAdapterHost, NestFactory } from '@nestjs/core';
+import {
+  ClassSerializerInterceptor,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { HttpAdapterHost, NestFactory, Reflector } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 
 import basicAuth from 'express-basic-auth';
@@ -55,6 +58,7 @@ async function bootstrap() {
   app.useLogger(app.get(Logger));
   app.useGlobalFilters(new ExceptionsFilter(httpAdapterHost, configService));
   app.useGlobalPipes(validationPipe);
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
   await app.listen(configService.server.port);
 }

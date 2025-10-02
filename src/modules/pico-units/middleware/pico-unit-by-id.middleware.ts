@@ -1,8 +1,8 @@
 import {
-  BadRequestException,
   Injectable,
   NestMiddleware,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 
 import { NextFunction, Request, Response } from 'express';
@@ -25,7 +25,7 @@ export class PicoUnitByIdMiddleware implements NestMiddleware {
     const id = Number(raw);
 
     if (!raw || !Number.isFinite(id) || id <= 0) {
-      return next(new BadRequestException('Invalid pico unit id'));
+      return next(new UnprocessableEntityException('Invalid pico unit id'));
     }
 
     try {

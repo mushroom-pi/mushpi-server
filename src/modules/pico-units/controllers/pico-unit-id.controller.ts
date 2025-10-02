@@ -6,6 +6,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 
+import { ApiAxiosErrorResponses } from 'src/common/decorators/axios-errors.decorator';
 import { ApiEmptyOkResponse } from 'src/common/decorators/empty-ok-response.decorator';
 
 import { ApiPicoUnit } from '../docs/api-pico-unit.decorator';
@@ -40,8 +41,20 @@ export class PicoUnitIdController {
   @ApiOperation({ summary: 'Delete a Pico Unit' })
   @ApiPicoUnit()
   @ApiEmptyOkResponse({ description: 'Deleted' })
-  async remove(@Param('picoUnitId') id: string) {
-    await this.svc.removeById(Number(id));
-    return { ok: true };
+  remove(@Param('picoUnitId') id: string) {
+    return this.svc.removeById(Number(id));
+  }
+
+  @ApiTags('proxy')
+  @Get('ping')
+  @ApiOperation({
+    summary: 'Ping the Pico Unit',
+    description:
+      "Send GET request to the unit's most basic life-check endpoint",
+  })
+  @ApiOkResponse({ example: 'pong' })
+  @ApiAxiosErrorResponses()
+  ping(@GetPicoUnit() unit: PicoUnit) {
+    return this.svc.ping(unit);
   }
 }

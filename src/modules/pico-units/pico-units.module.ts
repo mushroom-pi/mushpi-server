@@ -21,7 +21,11 @@ import { PicoUnitsService } from './pico-units.service';
 export class PicoUnitsModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(PicoUnitByIdMiddleware).forRoutes({
-      path: 'pico-units/{*picoUnitId}',
+      path: 'pico-units/:picoUnitId',
+      method: RequestMethod.ALL,
+    });
+    consumer.apply(PicoUnitByIdMiddleware).forRoutes({
+      path: 'pico-units/:picoUnitId/*path',
       method: RequestMethod.ALL,
     });
   }

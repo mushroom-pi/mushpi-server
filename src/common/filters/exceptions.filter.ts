@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
 
+import { AxiosError } from 'axios';
 import { EntityNotFoundError, QueryFailedError, TypeORMError } from 'typeorm';
 
 import { CustomConfigService } from 'src/modules/config/config.service';
@@ -67,6 +68,39 @@ export class ExceptionsFilter implements ExceptionFilter {
     return { httpStatus, responseBody };
   }
 
+  private handleAxiosError(exception: AxiosError) {
+    let httpStatus: HttpStatus;
+    let responseBody: ExceptionResponseBody;
+
+    if (exception.response) {
+      httpStatus = HttpStatus.EXPECTATION_FAILED;
+      responseBody = {
+        statusCode: httpStatus,
+        error: 'Expectation failed',
+        message: 'A service returned an error response',
+        emitter: 'External microservice',
+      };
+    } else if (exception.request) {
+      httpStatus = HttpStatus.BAD_GATEWAY;
+      responseBody = {
+        statusCode: httpStatus,
+        error: 'Bad Gateway',
+        message: 'A request was made but no response was received',
+        emitter: 'External microservice',
+      };
+    } else {
+      httpStatus = HttpStatus.FAILED_DEPENDENCY;
+      responseBody = {
+        statusCode: httpStatus,
+        error: 'Failed Dependency',
+        message: 'Axios produced an error',
+        emitter: 'Axios',
+      };
+    }
+
+    return { responseBody, httpStatus };
+  }
+
   private handleUnknownError(exception: unknown) {
     const httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
     const responseBody = {
@@ -102,6 +136,8 @@ export class ExceptionsFilter implements ExceptionFilter {
       ({ responseBody, httpStatus } = this.handleHttpError(exception));
     } else if (exception instanceof TypeORMError) {
       ({ responseBody, httpStatus } = this.handleTypeOrmError(exception));
+    } else if (exception.isAxiosError) {
+      ({ responseBody, httpStatus } = this.handleAxiosError(exception));
     } else {
       ({ responseBody, httpStatus } = this.handleUnknownError(exception));
     }

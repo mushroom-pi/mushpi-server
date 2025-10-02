@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import axios from 'axios';
+import axiosRetry from 'axios-retry';
 import { ILike, Repository } from 'typeorm';
 
 import {
@@ -14,7 +16,9 @@ import { PicoUnit } from './pico-unit.entity';
 export class PicoUnitsService {
   constructor(
     @InjectRepository(PicoUnit) private picoUnitRepo: Repository<PicoUnit>,
-  ) {}
+  ) {
+    axiosRetry(axios, { retryDelay: axiosRetry.exponentialDelay });
+  }
 
   async upsert({ handle, host, port }: UpsertPicoUnitDto): Promise<PicoUnit> {
     // Set the fields you want to (re)apply on conflict
@@ -76,5 +80,16 @@ export class PicoUnitsService {
   async removeById(id: number): Promise<void> {
     await this.picoUnitRepo.delete(id);
     return;
+  }
+
+  async touch(unit: PicoUnit): Promise<PicoUnit> {
+    unit.last_seen = new Date();
+    return this.picoUnitRepo.save(unit);
+  }
+
+  async ping(unit: PicoUnit): Promise<string> {
+    await axios.get(`${unit.address}/ping`, { timeout: 5000 });
+    await this.touch(unit);
+    return 'pong';
   }
 }

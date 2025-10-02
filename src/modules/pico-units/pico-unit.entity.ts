@@ -1,3 +1,4 @@
+import { Expose } from 'class-transformer';
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('pico_unit')
@@ -29,4 +30,9 @@ export class PicoUnit {
 
   @Column({ type: 'datetime', nullable: true })
   last_seen?: Date;
+
+  @Expose()
+  get address(): string {
+    return `${this.host.includes('http://') ? '' : 'http://'}${this.host}:${this.port}`;
+  }
 }

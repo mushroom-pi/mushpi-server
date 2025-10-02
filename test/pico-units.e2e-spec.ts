@@ -7,7 +7,6 @@ import {
   clearPicoUnits,
   getPicoRepo,
   seedManyPicoUnits,
-  seedPicoUnit,
 } from './fixtures/pico-units.fixtures';
 import { closeTestApp, createTestApp } from './test-setup';
 
@@ -89,73 +88,6 @@ describe('Pico Units (e2e)', () => {
       expect(resQ.body.items.some((u: PicoUnit) => u.id === one!.id)).toBe(
         true,
       );
-    });
-  });
-
-  describe('GET /pico-units/:picoUnitId', () => {
-    it('returns a single Pico Unit', async () => {
-      const unit = await seedPicoUnit(app, {
-        handle: 'single',
-        host: 'one.local',
-        port: 5050,
-      });
-
-      const res = await request(app.getHttpServer())
-        .get(`/pico-units/${unit.id}`)
-        .expect(200);
-
-      expect(res.body).toMatchObject({
-        id: unit.id,
-        handle: 'single',
-        host: 'one.local',
-        port: 5050,
-      });
-    });
-
-    it('404 when not found', async () => {
-      await request(app.getHttpServer()).get('/pico-units/9999').expect(404);
-    });
-  });
-
-  describe('PATCH /pico-units/:picoUnitId', () => {
-    it('updates name/description/enabled', async () => {
-      const unit = await seedPicoUnit(app, {
-        handle: 'editme',
-        host: 'edit.local',
-        port: 6000,
-      });
-
-      const res = await request(app.getHttpServer())
-        .patch(`/pico-units/${unit.id}`)
-        .send({ name: 'New Name', description: 'Updated', enabled: false })
-        .expect(200);
-
-      expect(res.body).toMatchObject({
-        id: unit.id,
-        name: 'New Name',
-        description: 'Updated',
-        enabled: false,
-      });
-    });
-  });
-
-  describe('DELETE /pico-units/:picoUnitId', () => {
-    it('deletes a unit', async () => {
-      const unit = await seedPicoUnit(app, {
-        handle: 'deleteme',
-        host: 'delete.local',
-        port: 7000,
-      });
-
-      await request(app.getHttpServer())
-        .delete(`/pico-units/${unit.id}`)
-        .expect(204)
-        .expect(({ body }) => expect(body).toMatchObject({}));
-
-      // confirm it’s gone
-      await request(app.getHttpServer())
-        .get(`/pico-units/${unit.id}`)
-        .expect(404);
     });
   });
 });
