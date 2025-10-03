@@ -1,8 +1,14 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiOkResponse,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 
 import { ApiPicoUnit } from 'src/common/decorators/docs/api-pico-unit.decorator';
 import { GetPicoUnit } from 'src/common/decorators/get-pico-unit.decorator';
+import { ErrorDto } from 'src/common/dto/error.dto';
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
 
 import { ListReadingsQueryDto, ReadingsListResponseDto } from '../readings.dto';
@@ -39,6 +45,12 @@ export class PicoUnitIdReadingsController {
       'Connect with the Pico Unit, exctract a current reading from it and, if successful, save it to the database',
   })
   @ApiOkResponse({ type: Readings })
+  @ApiResponse({
+    description:
+      'The system is alrady polling and saving content from a different unit',
+    status: 423,
+    type: ErrorDto,
+  })
   poll(@GetPicoUnit() unit: PicoUnit) {
     return this.svc.pollReadingsFromUnit(unit);
   }

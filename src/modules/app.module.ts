@@ -1,5 +1,6 @@
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 
 import { DataSource } from 'typeorm';
@@ -11,6 +12,7 @@ import { ProtectEventLoopMiddleware } from 'src/common/middleware/protect-event-
 
 import { CustomConfigModule } from './config/config.module';
 import { CustomConfigService } from './config/config.service';
+import { CronModule } from './cron/cron.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
 import { PicoUnitsModule } from './pico-units/pico-units.module';
 import { PinoLoggerModule } from './pino-logger.module';
@@ -37,6 +39,8 @@ import { SwaggerModule } from './swagger/swagger.module';
     SQLiteModule,
     PicoUnitsModule,
     ReadingsModule,
+    ScheduleModule.forRoot(),
+    CronModule,
   ],
   providers: [
     {

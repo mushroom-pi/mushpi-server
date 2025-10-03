@@ -73,6 +73,12 @@ export class PicoUnitsService {
     };
   }
 
+  async listEnabled(): Promise<PicoUnit[]> {
+    return this.picoUnitRepo.find({
+      where: { enabled: true },
+    });
+  }
+
   async update(unit: PicoUnit, dto: UpdatePicoUnitDto): Promise<PicoUnit> {
     Object.assign(unit, dto);
     return await this.picoUnitRepo.save(unit);

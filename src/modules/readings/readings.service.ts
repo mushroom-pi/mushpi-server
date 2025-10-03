@@ -1,10 +1,15 @@
-import { Injectable, PreconditionFailedException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  PreconditionFailedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import { Repository } from 'typeorm';
 
+import { LockedException } from 'src/common/exceptions/locked.exception';
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
 import { PicoUnitsService } from 'src/modules/pico-units/pico-units.service';
 
@@ -17,6 +22,9 @@ import { Readings } from './readings.entity';
 
 @Injectable()
 export class ReadingsService {
+  private readonly logger = new Logger(ReadingsService.name);
+  private isPolling: boolean = false;
+
   constructor(
     @InjectRepository(Readings) private readingsRepo: Repository<Readings>,
     private readonly picoUnitsService: PicoUnitsService,
@@ -70,11 +78,48 @@ export class ReadingsService {
   }
 
   async pollReadingsFromUnit(unit: PicoUnit) {
-    const { response, durationMs } = await this.fetchAndValidateReading(
-      `${unit.address}/?force=1`,
-    );
-    await this.picoUnitsService.touch(unit);
-    return await this.createFromDeviceResponse(unit, response, durationMs);
+    if (this.isPolling)
+      throw LockedException({
+        description: 'The system is already polling records from a Pico Unit',
+      });
+
+    try {
+      this.isPolling = true;
+      this.logger.log(`Polling data from pico unit ${unit.id}`);
+      const { response, durationMs } = await this.fetchAndValidateReading(
+        `${unit.address}/?force=1`,
+      );
+      await this.picoUnitsService.touch(unit);
+      const reading = await this.createFromDeviceResponse(
+        unit,
+        response,
+        durationMs,
+      );
+
+      return reading;
+    } catch (e) {
+      throw e;
+    } finally {
+      // Whatever happens, remember that isPolling has to be left as false
+      this.isPolling = false;
+    }
+  }
+
+  async pollReadingsFromAllEnabled(): Promise<void> {
+    const picoUnits = await this.picoUnitsService.listEnabled();
+
+    for (const picoUnit of picoUnits) {
+      try {
+        await this.pollReadingsFromUnit(picoUnit);
+      } catch (error) {
+        // We don't want conflicts while writting in the database
+        this.logger.error(
+          `Polling for Pico Unit ${picoUnit.id} couldn't be completed due to: ${JSON.stringify(error)}`,
+        );
+      }
+    }
+
+    return;
   }
 
   async listForUnit(
