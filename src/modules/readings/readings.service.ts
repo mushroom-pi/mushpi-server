@@ -9,14 +9,14 @@ import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import { Repository } from 'typeorm';
 
+import {
+  DeviceResponseDto,
+  validateDeviceResponse,
+} from 'src/common/dto/pico-unit-response.dto';
 import { LockedException } from 'src/common/exceptions/locked.exception';
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
 import { PicoUnitsService } from 'src/modules/pico-units/pico-units.service';
 
-import {
-  DeviceResponseDto,
-  validateDeviceResponse,
-} from './pico-unit-response.dto';
 import { ReadingsListResponseDto } from './readings.dto';
 import { Readings } from './readings.entity';
 
@@ -144,5 +144,12 @@ export class ReadingsService {
       total,
       pages: Math.ceil(total / take) || 0,
     };
+  }
+
+  async latestForUnit(pico_unit_id: number): Promise<Readings | null> {
+    return this.readingsRepo.findOne({
+      where: { pico_unit_id },
+      order: { ts: 'DESC' },
+    });
   }
 }

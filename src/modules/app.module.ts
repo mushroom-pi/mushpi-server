@@ -12,6 +12,7 @@ import { ProtectEventLoopMiddleware } from 'src/common/middleware/protect-event-
 
 import { CustomConfigModule } from './config/config.module';
 import { CustomConfigService } from './config/config.service';
+import { ControlModule } from './control/control.module';
 import { CronModule } from './cron/cron.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
 import { PicoUnitsModule } from './pico-units/pico-units.module';
@@ -41,6 +42,7 @@ import { SwaggerModule } from './swagger/swagger.module';
     ReadingsModule,
     ScheduleModule.forRoot(),
     CronModule,
+    ControlModule,
   ],
   providers: [
     {

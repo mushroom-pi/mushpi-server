@@ -7,6 +7,7 @@ import {
 } from '@nestjs/swagger';
 
 import { ApiPicoUnit } from 'src/common/decorators/docs/api-pico-unit.decorator';
+import { OnlyEnabledPicoUnits } from 'src/common/decorators/docs/only-enabled-pico-unit.decorator';
 import { GetPicoUnit } from 'src/common/decorators/get-pico-unit.decorator';
 import { ErrorDto } from 'src/common/dto/error.dto';
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
@@ -38,6 +39,7 @@ export class PicoUnitIdReadingsController {
   }
 
   @ApiTags('proxy')
+  @OnlyEnabledPicoUnits()
   @Get('poll')
   @ApiOperation({
     summary: 'Exctract live reading',

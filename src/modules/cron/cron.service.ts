@@ -11,7 +11,7 @@ export class CronService {
     this.logger.log('cron!');
   }
 
-  @Cron(CronExpression.EVERY_MINUTE)
+  @Cron(CronExpression.EVERY_10_MINUTES)
   handleReadings() {
     this.logger.log('Polling readings from pico units');
     this.readingsService.pollReadingsFromAllEnabled();
