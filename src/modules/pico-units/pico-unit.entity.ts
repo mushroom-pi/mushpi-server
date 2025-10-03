@@ -1,5 +1,13 @@
 import { Expose } from 'class-transformer';
-import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  Index,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
+
+import { Readings } from '../readings/readings.entity';
 
 @Entity('pico_unit')
 @Index(['host', 'port'], { unique: true })
@@ -35,4 +43,7 @@ export class PicoUnit {
   get address(): string {
     return `${this.host.includes('http://') ? '' : 'http://'}${this.host}:${this.port}`;
   }
+
+  @OneToMany(() => Readings, (r) => r.pico_unit)
+  readings?: Readings[];
 }

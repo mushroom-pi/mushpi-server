@@ -21,14 +21,15 @@ export class PicoUnitsService {
   }
 
   async upsert({ handle, host, port }: UpsertPicoUnitDto): Promise<PicoUnit> {
-    // Set the fields you want to (re)apply on conflict
-    await this.picoUnitRepo.upsert(
-      { handle, host, port, last_seen: new Date() }, // partial entity
-      { conflictPaths: ['host', 'port'], skipUpdateIfNoValuesChanged: true },
-    );
-
-    // Fetch the current row after upsert
-    return this.picoUnitRepo.findOneOrFail({ where: { host, port } });
+    let unit = await this.picoUnitRepo.findOne({ where: { host, port } });
+    if (!unit) {
+      unit = new PicoUnit();
+      unit.handle = handle;
+      unit.host = host;
+      unit.port = port;
+    }
+    unit.last_seen = new Date();
+    return await this.picoUnitRepo.save(unit);
   }
 
   async getByIdOrThrow(id: number): Promise<PicoUnit> {

@@ -1,4 +1,3 @@
-// test/fixtures/pico-units.fixtures.ts
 import { INestApplication } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 

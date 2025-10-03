@@ -17,7 +17,7 @@ export function PaginatedDto<T>(itemType: Type<T>) {
     @ApiProperty({ example: 1, minimum: 1 })
     page!: number;
 
-    @ApiProperty({ example: 20, minimum: 1, maximum: 100 })
+    @ApiProperty({ example: 20, minimum: 1, maximum: 500 })
     limit!: number;
 
     @ApiProperty({ example: 42, minimum: 0 })

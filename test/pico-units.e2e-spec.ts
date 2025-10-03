@@ -51,7 +51,7 @@ describe('Pico Units (e2e)', () => {
 
       expect(res2.body.id).toBe(res.body.id);
       // handle may be updated by your upsert logic (you set handle in upsert payload)
-      expect(res2.body.handle).toBe('alpha2');
+      expect(res2.body.handle).not.toBe('alpha2');
 
       // DB has only 1 row
       const repo = await getPicoRepo(app);

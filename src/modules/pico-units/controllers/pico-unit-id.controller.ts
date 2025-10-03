@@ -6,11 +6,11 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 
-import { ApiAxiosErrorResponses } from 'src/common/decorators/axios-errors.decorator';
-import { ApiEmptyOkResponse } from 'src/common/decorators/empty-ok-response.decorator';
+import { ApiPicoUnit } from 'src/common/decorators/docs/api-pico-unit.decorator';
+import { ApiAxiosErrorResponses } from 'src/common/decorators/docs/axios-errors.decorator';
+import { ApiEmptyOkResponse } from 'src/common/decorators/docs/empty-ok-response.decorator';
+import { GetPicoUnit } from 'src/common/decorators/get-pico-unit.decorator';
 
-import { ApiPicoUnit } from '../docs/api-pico-unit.decorator';
-import { GetPicoUnit } from '../get-pico-unit.decorator';
 import { UpdatePicoUnitDto } from '../pico-unit.dto';
 import { PicoUnit } from '../pico-unit.entity';
 import { PicoUnitsService } from '../pico-units.service';

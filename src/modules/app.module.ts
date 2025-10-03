@@ -6,6 +6,7 @@ import { DataSource } from 'typeorm';
 
 import { TooManyRequestsGuard } from 'src/common/guards/too-many-requests.guard';
 import { AppSecretBearerMiddleware } from 'src/common/middleware/app-secret-bearer.middleware';
+import { PicoUnitByIdMiddleware } from 'src/common/middleware/pico-unit-by-id.middleware';
 import { ProtectEventLoopMiddleware } from 'src/common/middleware/protect-event-loop.middleware';
 
 import { CustomConfigModule } from './config/config.module';
@@ -13,6 +14,7 @@ import { CustomConfigService } from './config/config.service';
 import { MonitoringModule } from './monitoring/monitoring.module';
 import { PicoUnitsModule } from './pico-units/pico-units.module';
 import { PinoLoggerModule } from './pino-logger.module';
+import { ReadingsModule } from './readings/readings.module';
 import { SQLiteModule } from './sqlite/sqlite.module';
 import { SwaggerModule } from './swagger/swagger.module';
 
@@ -34,6 +36,7 @@ import { SwaggerModule } from './swagger/swagger.module';
     }),
     SQLiteModule,
     PicoUnitsModule,
+    ReadingsModule,
   ],
   providers: [
     {
@@ -52,5 +55,13 @@ export class AppModule {
     consumer
       .apply(AppSecretBearerMiddleware)
       .forRoutes({ path: '{*splat}', method: RequestMethod.ALL });
+    consumer.apply(PicoUnitByIdMiddleware).forRoutes({
+      path: 'pico-units/:picoUnitId',
+      method: RequestMethod.ALL,
+    });
+    consumer.apply(PicoUnitByIdMiddleware).forRoutes({
+      path: 'pico-units/:picoUnitId/*path',
+      method: RequestMethod.ALL,
+    });
   }
 }

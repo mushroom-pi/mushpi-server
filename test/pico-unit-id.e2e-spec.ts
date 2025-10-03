@@ -126,6 +126,7 @@ describe('Pico Units (e2e)', () => {
       );
       expect(mockedAxios.get).toHaveBeenCalledWith(
         `http://${unit.host}:${unit.port}/ping`.replace(/([^:])\/\//, '$1/'),
+        { timeout: 5000 },
       ); // not strict, just ensures call
     });
 

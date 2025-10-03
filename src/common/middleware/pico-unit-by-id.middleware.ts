@@ -7,12 +7,12 @@ import {
 
 import { NextFunction, Request, Response } from 'express';
 
-import { PicoUnitsService } from '../pico-units.service';
+import { PicoUnitsService } from 'src/modules/pico-units/pico-units.service';
 
 // augment Express Request type so TS knows about req.picoUnit
 declare module 'express-serve-static-core' {
   interface Request {
-    picoUnit?: import('../pico-unit.entity').PicoUnit;
+    picoUnit?: import('src/modules/pico-units/pico-unit.entity').PicoUnit;
   }
 }
 

@@ -1,7 +1,7 @@
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 import { ApiBadGatewayResponse, ApiResponse } from '@nestjs/swagger';
 
-import { ErrorDto } from '../dto/error.dto';
+import { ErrorDto } from 'src/common/dto/error.dto';
 
 export function ApiAxiosErrorResponses() {
   return applyDecorators(
