@@ -7,7 +7,7 @@ import {
 
 import { NextFunction, Request, Response } from 'express';
 
-import { PicoUnitsService } from 'src/modules/pico-units/pico-units.service';
+import { ReadingsService } from 'src/modules/readings/readings.service';
 
 // augment Express Request type so TS knows about req.picoUnit
 declare module 'express-serve-static-core' {
@@ -18,7 +18,7 @@ declare module 'express-serve-static-core' {
 
 @Injectable()
 export class PicoUnitByIdMiddleware implements NestMiddleware {
-  constructor(private readonly picoUnits: PicoUnitsService) {}
+  constructor(private readonly readings: ReadingsService) {}
 
   async use(req: Request, _res: Response, next: NextFunction) {
     const raw = (req.params as Record<string, string | undefined>)?.picoUnitId;
@@ -29,7 +29,7 @@ export class PicoUnitByIdMiddleware implements NestMiddleware {
     }
 
     try {
-      const unit = await this.picoUnits.getByIdOrThrow(id);
+      const unit = await this.readings.getPicoUnitWithLatestReadingById(id);
       req.picoUnit = unit;
       return next();
     } catch {

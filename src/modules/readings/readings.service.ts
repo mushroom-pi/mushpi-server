@@ -152,4 +152,14 @@ export class ReadingsService {
       order: { ts: 'DESC' },
     });
   }
+
+  async getPicoUnitWithLatestReadingById(
+    pico_unit_id: number,
+  ): Promise<PicoUnit> {
+    const unit = await this.picoUnitsService.getByIdOrThrow(pico_unit_id);
+    const latest = await this.latestForUnit(pico_unit_id);
+
+    (unit as any).latest_reading = latest ?? undefined;
+    return unit;
+  }
 }

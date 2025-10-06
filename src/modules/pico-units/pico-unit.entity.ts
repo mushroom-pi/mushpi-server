@@ -46,4 +46,6 @@ export class PicoUnit {
 
   @OneToMany(() => Readings, (r) => r.pico_unit)
   readings?: Readings[];
+
+  latest_reading?: Readings;
 }

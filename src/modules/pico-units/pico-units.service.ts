@@ -37,6 +37,7 @@ export class PicoUnitsService {
     if (!unit) {
       throw new NotFoundException(`PicoUnit ${id} not found`);
     }
+
     return unit;
   }
 

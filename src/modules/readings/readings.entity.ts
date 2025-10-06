@@ -9,6 +9,7 @@ import {
 
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
 
+@Index('idx_readings_unit_ts', ['pico_unit_id', 'ts'])
 @Entity('readings')
 export class Readings {
   @PrimaryGeneratedColumn()

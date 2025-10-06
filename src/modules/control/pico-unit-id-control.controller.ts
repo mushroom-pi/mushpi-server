@@ -1,16 +1,11 @@
 import { Body, Controller, Put } from '@nestjs/common';
-import {
-  ApiConflictResponse,
-  ApiOkResponse,
-  ApiOperation,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { ApiPicoUnit } from 'src/common/decorators/docs/api-pico-unit.decorator';
 import { ApiAxiosErrorResponses } from 'src/common/decorators/docs/axios-errors.decorator';
+import { OnlyEnabledPicoUnitsWithControlLoop } from 'src/common/decorators/docs/only-enabled-pico-unit-with-control-loop.decorator';
 import { OnlyEnabledPicoUnits } from 'src/common/decorators/docs/only-enabled-pico-unit.decorator';
 import { GetPicoUnit } from 'src/common/decorators/get-pico-unit.decorator';
-import { ErrorDto } from 'src/common/dto/error.dto';
 import {
   DevicesDto,
   OutputsDto,
@@ -30,11 +25,11 @@ import { ControlService } from './control.service';
 @Controller('pico-units/:picoUnitId/control')
 @ApiPicoUnit()
 @ApiAxiosErrorResponses()
-@OnlyEnabledPicoUnits()
 export class PicoUnitIdControlController {
   constructor(private readonly svc: ControlService) {}
 
   @Put('setpoints')
+  @OnlyEnabledPicoUnits()
   @ApiOperation({
     summary: 'Change temperature and/or humidity targets',
     description:
@@ -46,6 +41,7 @@ export class PicoUnitIdControlController {
   }
 
   @Put('setup')
+  @OnlyEnabledPicoUnits()
   @ApiOperation({
     summary: 'Change connections setup',
     description:
@@ -57,22 +53,19 @@ export class PicoUnitIdControlController {
   }
 
   @Put('outputs')
+  @OnlyEnabledPicoUnitsWithControlLoop()
   @ApiOperation({
     summary: 'Turn devices on and/or off',
     description:
       "Change the status of the Pico Unit's devices. This endpoint will only have an effect if the control loop is deactivated.",
   })
   @ApiOkResponse({ type: OutputsDto })
-  @ApiConflictResponse({
-    description:
-      "This endpoint cannot be used as long as the Pico Unit's control loop is activated",
-    type: ErrorDto,
-  })
   outputs(@GetPicoUnit() unit: PicoUnit, @Body() body: ChangeOutputsDto) {
     return this.svc.outputs(unit, body);
   }
 
   @Put('loop')
+  @OnlyEnabledPicoUnits()
   @ApiOperation({
     summary: 'Turn control loop on or off',
     description:
