@@ -24,6 +24,12 @@ export async function seedPicoUnit(
     host: '127.0.0.1',
     port: 5000,
     enabled: true,
+    micropython_version: 'v1.26.0 on 2025-08-09 (GNU 14.2.0 MinSizeRel)',
+    software_version: '0.1.1',
+    board: 'Raspberry Pi Pico 2 W with RP2350',
+    board_cpu_freq_mhz: 150,
+    board_total_fs_byte: 457152,
+    board_total_mem_byte: 2621440,
     ...data,
   });
   return repo.save(entity);

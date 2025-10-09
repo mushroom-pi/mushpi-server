@@ -30,7 +30,13 @@ describe('Pico Units (e2e)', () => {
     it('creates a new pico unit (201) and sets last_seen', async () => {
       const res = await request(app.getHttpServer())
         .post('/pico-units')
-        .send({ handle: 'alpha', host: 'rpi.local', port: 5001 })
+        .send({
+          handle: 'alpha',
+          host: 'rpi.local',
+          port: 5001,
+          software_version: '0.1.0',
+          micropython_version: 'v1.26.0 on 2025-08-09 (GNU 14.2.0 MinSizeRel)',
+        })
         .expect(201);
 
       expect(res.body).toMatchObject({
@@ -39,6 +45,8 @@ describe('Pico Units (e2e)', () => {
         host: 'rpi.local',
         port: 5001,
         enabled: true,
+        software_version: '0.1.0',
+        micropython_version: 'v1.26.0 on 2025-08-09 (GNU 14.2.0 MinSizeRel)',
       });
       // last_seen should be set by service
       expect(new Date(res.body.last_seen).toString()).not.toBe('Invalid Date');
@@ -46,12 +54,19 @@ describe('Pico Units (e2e)', () => {
       // re-upsert same host:port returns the same row (id unchanged)
       const res2 = await request(app.getHttpServer())
         .post('/pico-units')
-        .send({ handle: 'alpha2', host: 'rpi.local', port: 5001 })
+        .send({
+          handle: 'alpha2',
+          host: 'rpi.local',
+          port: 5001,
+          software_version: '0.2.0',
+        })
         .expect(201);
 
       expect(res2.body.id).toBe(res.body.id);
-      // handle may be updated by your upsert logic (you set handle in upsert payload)
-      expect(res2.body.handle).not.toBe('alpha2');
+      expect(res2.body.handle).not.toBe(res.body.handle);
+      expect(res2.body.software_version).not.toBe(res.body.software_version);
+      expect(res2.body.micropython_version).toBe(res.body.micropython_version);
+      expect(res2.body.board).toBe(res.body.board);
 
       // DB has only 1 row
       const repo = await getPicoRepo(app);

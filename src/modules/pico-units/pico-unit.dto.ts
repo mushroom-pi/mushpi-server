@@ -1,10 +1,10 @@
 import {
   ApiExtraModels,
   ApiProperty,
-  OmitType,
-  PartialType,
+  ApiPropertyOptional,
 } from '@nestjs/swagger';
 
+import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsInt,
@@ -21,6 +21,7 @@ import { PicoUnit } from './pico-unit.entity';
 
 export class UpsertPicoUnitDto {
   @ApiProperty({
+    type: String,
     example: 'unit-01',
     description:
       'Name for the unit as it is stated in its own software. Should not be changed.',
@@ -43,6 +44,7 @@ export class UpsertPicoUnitDto {
   host!: string;
 
   @ApiProperty({
+    type: Number,
     example: 5000,
     minimum: 1,
     maximum: 65535,
@@ -53,6 +55,71 @@ export class UpsertPicoUnitDto {
   @Max(65535)
   port!: number;
 
+  @ApiPropertyOptional({
+    type: String,
+    minLength: 1,
+    maxLength: 255,
+    description: 'Version tag for the Micropython executed by the unit',
+    examples: ['v1.26.0 on 2025-08-09 (GNU 14.2.0 MinSizeRel)', '1.26.0.'],
+  })
+  @IsString()
+  @IsOptional()
+  @Length(1, 255)
+  micropython_version?: string;
+
+  @ApiPropertyOptional({
+    type: String,
+    minLength: 1,
+    maxLength: 255,
+    description: 'Version tag for the custom software executed by the unit',
+    examples: ['0.1.0'],
+  })
+  @IsString()
+  @IsOptional()
+  @Length(1, 255)
+  software_version?: string;
+
+  @ApiPropertyOptional({
+    type: String,
+    minLength: 1,
+    maxLength: 255,
+    description: "Name of the unit's board",
+    examples: ['Raspberry Pi Pico 2 W with RP2350'],
+  })
+  @IsString()
+  @IsOptional()
+  @Length(1, 255)
+  board?: string;
+
+  @ApiPropertyOptional({
+    type: Number,
+    description: "Size of the unit's memory in bytes",
+  })
+  @Type(() => Number)
+  @IsInt()
+  @IsOptional()
+  board_total_mem_byte?: number;
+
+  @ApiPropertyOptional({
+    type: Number,
+    description: "Size of the unit's file system in bytes",
+  })
+  @Type(() => Number)
+  @IsInt()
+  @IsOptional()
+  board_total_fs_byte?: number;
+
+  @ApiPropertyOptional({
+    type: Number,
+    description: 'CPU Frequency in MHz',
+  })
+  @Type(() => Number)
+  @IsInt()
+  @IsOptional()
+  board_cpu_freq_mhz?: number;
+}
+
+export class UpdatePicoUnitDto {
   @ApiProperty({
     type: String,
     minLength: 0,
@@ -84,10 +151,6 @@ export class UpsertPicoUnitDto {
   @IsBoolean()
   enabled?: boolean;
 }
-
-export class UpdatePicoUnitDto extends PartialType(
-  OmitType(UpsertPicoUnitDto, ['host', 'port', 'handle'] as const),
-) {}
 
 export class ListPicoUnitsQueryDto {
   @ApiProperty({ required: false, minimum: 1, default: 1 })

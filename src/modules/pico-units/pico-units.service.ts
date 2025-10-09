@@ -20,14 +20,38 @@ export class PicoUnitsService {
     axiosRetry(axios, { retryDelay: axiosRetry.exponentialDelay });
   }
 
-  async upsert({ handle, host, port }: UpsertPicoUnitDto): Promise<PicoUnit> {
-    let unit = await this.picoUnitRepo.findOne({ where: { host, port } });
+  async upsert(unitDto: UpsertPicoUnitDto): Promise<PicoUnit> {
+    const {
+      host,
+      port,
+      handle,
+      micropython_version,
+      software_version,
+      board,
+      board_cpu_freq_mhz,
+      board_total_fs_byte,
+      board_total_mem_byte,
+    } = unitDto;
+    let unit: Partial<PicoUnit> = await this.picoUnitRepo.findOne({
+      where: { host, port },
+    });
+
     if (!unit) {
-      unit = new PicoUnit();
-      unit.handle = handle;
-      unit.host = host;
-      unit.port = port;
+      unit = {
+        handle,
+        host,
+        port,
+        micropython_version: micropython_version ?? null,
+        software_version: software_version ?? null,
+        board: board ?? null,
+        board_cpu_freq_mhz: board_cpu_freq_mhz ?? 0,
+        board_total_fs_byte: board_total_fs_byte ?? 0,
+        board_total_mem_byte: board_total_mem_byte ?? 0,
+      };
+    } else {
+      Object.assign(unit, unitDto);
     }
+
     unit.last_seen = new Date();
     return await this.picoUnitRepo.save(unit);
   }
