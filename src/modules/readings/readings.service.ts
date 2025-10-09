@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   Logger,
   PreconditionFailedException,
@@ -7,17 +8,18 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
-import { Repository } from 'typeorm';
+import { Between, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 
 import {
   DeviceResponseDto,
   validateDeviceResponse,
 } from 'src/common/dto/pico-unit-response.dto';
 import { LockedException } from 'src/common/exceptions/locked.exception';
+import { BatchesService } from 'src/modules/batches/batches.service';
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
 import { PicoUnitsService } from 'src/modules/pico-units/pico-units.service';
 
-import { ReadingsListResponseDto } from './readings.dto';
+import { ListReadingsQueryDto, ReadingsListResponseDto } from './readings.dto';
 import { Readings } from './readings.entity';
 
 @Injectable()
@@ -28,6 +30,7 @@ export class ReadingsService {
   constructor(
     @InjectRepository(Readings) private readingsRepo: Repository<Readings>,
     private readonly picoUnitsService: PicoUnitsService,
+    private readonly batchesService: BatchesService,
   ) {
     axiosRetry(axios, { retryDelay: axiosRetry.exponentialDelay });
   }
@@ -124,14 +127,40 @@ export class ReadingsService {
 
   async listForUnit(
     pico_unit_id: number,
-    page = 1,
-    limit = 100,
+    query: ListReadingsQueryDto,
   ): Promise<ReadingsListResponseDto> {
-    const take = Math.min(limit, 500); // safety cap
+    const { start: startIso, end: endIso, page } = query;
+    const take = Math.min(query.limit, 500); // safety cap
     const skip = (Math.max(page, 1) - 1) * take;
 
+    // parse dates if provided
+    const start = startIso ? new Date(startIso) : undefined;
+    const end = endIso ? new Date(endIso) : undefined;
+
+    // validate parsed dates
+    if (startIso && Number.isNaN(start!.getTime())) {
+      throw new BadRequestException('Invalid start date');
+    }
+    if (endIso && Number.isNaN(end!.getTime())) {
+      throw new BadRequestException('Invalid end date');
+    }
+    if (start && end && start.getTime() > end.getTime()) {
+      throw new BadRequestException('start must be <= end');
+    }
+
+    // build where clause
+    const where: any = { pico_unit_id };
+
+    if (start && end) {
+      where.ts = Between(start, end);
+    } else if (start) {
+      where.ts = MoreThanOrEqual(start);
+    } else if (end) {
+      where.ts = LessThanOrEqual(end);
+    }
+
     const [items, total] = await this.readingsRepo.findAndCount({
-      where: { pico_unit_id },
+      where,
       order: { ts: 'ASC' }, // chronological: oldest first
       take,
       skip,
@@ -144,6 +173,62 @@ export class ReadingsService {
       total,
       pages: Math.ceil(total / take) || 0,
     };
+  }
+
+  async listForBatch(
+    batchId: number,
+    query: ListReadingsQueryDto,
+  ): Promise<ReadingsListResponseDto> {
+    const batch = await this.batchesService.getByIdOrThrow(batchId);
+
+    // baseline window from batch
+    const batchStartMs = batch.start_at?.getTime() ?? 0;
+    // if finish_at is null, treat upper bound as "now"
+    const batchFinishMs = batch.finish_at
+      ? batch.finish_at.getTime()
+      : Date.now();
+
+    // helper to parse and validate ISO date string -> ms
+    const parseIsoToMs = (iso?: string | undefined): number | undefined => {
+      if (!iso) return undefined;
+      const ms = Date.parse(iso);
+      if (Number.isNaN(ms)) {
+        throw new BadRequestException(`Invalid date format: ${iso}`);
+      }
+      return ms;
+    };
+
+    const requestedStartMs = parseIsoToMs(query.start);
+    const requestedEndMs = parseIsoToMs(query.end);
+
+    // if neither start nor end provided -> use batch window
+    let effectiveStartMs = requestedStartMs ?? batchStartMs;
+    let effectiveEndMs = requestedEndMs ?? batchFinishMs;
+
+    // clamp to batch window
+    if (effectiveStartMs < batchStartMs) effectiveStartMs = batchStartMs;
+    if (effectiveEndMs > batchFinishMs) effectiveEndMs = batchFinishMs;
+
+    if (
+      effectiveStartMs &&
+      effectiveEndMs &&
+      effectiveStartMs > effectiveEndMs
+    ) {
+      throw new BadRequestException(
+        'start must be <= end and both must be within the batch time limits',
+      );
+    }
+
+    // call listForUnit with the effective window as ISO strings (controller/service expects ISO)
+    const delegatedQuery: ListReadingsQueryDto = {
+      // keep page/limit/potential other fields
+      page: query.page,
+      limit: query.limit,
+      start: new Date(effectiveStartMs).toISOString(),
+      end: new Date(effectiveEndMs).toISOString(),
+    } as ListReadingsQueryDto;
+
+    return this.listForUnit(batch.pico_unit_id, delegatedQuery);
   }
 
   async latestForUnit(pico_unit_id: number): Promise<Readings | null> {

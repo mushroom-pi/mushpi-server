@@ -1,5 +1,6 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiOkResponse,
   ApiOperation,
   ApiResponse,
@@ -22,22 +23,6 @@ import { ReadingsService } from '../readings.service';
 export class PicoUnitIdReadingsController {
   constructor(private readonly svc: ReadingsService) {}
 
-  @Get()
-  @ApiOperation({
-    summary: 'List readings for a pico unit',
-    description:
-      'Extracts requested readings from the database (without calling the Pico Unit) and displays them chronologically.',
-  })
-  @ApiOkResponse({ type: ReadingsListResponseDto })
-  async listForUnit(
-    @GetPicoUnit() unit: PicoUnit,
-    @Query() query: ListReadingsQueryDto,
-  ) {
-    const page = query.page ?? 1;
-    const limit = query.limit ?? 100;
-    return this.svc.listForUnit(unit.id, page, limit);
-  }
-
   @ApiTags('proxy')
   @OnlyEnabledPicoUnits()
   @Get('poll')
@@ -55,5 +40,23 @@ export class PicoUnitIdReadingsController {
   })
   poll(@GetPicoUnit() unit: PicoUnit) {
     return this.svc.pollReadingsFromUnit(unit);
+  }
+
+  @Get()
+  @ApiOperation({
+    summary: 'List readings for a pico unit',
+    description:
+      'Extracts requested readings from the database (without calling the Pico Unit) and displays them chronologically. Results can be framed by time.',
+  })
+  @ApiOkResponse({ type: ReadingsListResponseDto })
+  @ApiBadRequestResponse({
+    description: 'Invalid requested time frame',
+    type: ErrorDto,
+  })
+  async listForUnit(
+    @GetPicoUnit() unit: PicoUnit,
+    @Query() query: ListReadingsQueryDto,
+  ) {
+    return this.svc.listForUnit(unit.id, query);
   }
 }
