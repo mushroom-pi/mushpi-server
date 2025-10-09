@@ -55,3 +55,8 @@ export async function seedManyPicoUnits(
   }
   return out;
 }
+
+export async function clearPicos(app: INestApplication) {
+  const repo = await getPicoRepo(app);
+  await repo.clear();
+}

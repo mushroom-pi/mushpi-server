@@ -61,7 +61,7 @@ export class Readings {
   time_to_response_ms!: number;
 
   // --- Relation to PicoUnit ---
-  @Index() // helpful for queries / joins
+  @Index()
   @ManyToOne(() => PicoUnit, (u) => u.readings ?? undefined, {
     nullable: false,
     onDelete: 'CASCADE',
@@ -69,6 +69,11 @@ export class Readings {
   @JoinColumn({ name: 'pico_unit_id' })
   pico_unit!: PicoUnit;
 
-  @Column({ name: 'pico_unit_id', type: 'integer' })
+  @Column({
+    name: 'pico_unit_id',
+    type: 'integer',
+    nullable: false,
+    update: false,
+  })
   pico_unit_id!: number;
 }

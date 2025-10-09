@@ -1,0 +1,62 @@
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import {
+  ApiCreatedResponse,
+  ApiNotAcceptableResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+
+import { ErrorDto } from 'src/common/dto/error.dto';
+
+import {
+  BatchListResponseDto,
+  CreateBatchDto,
+  ListBatchesQueryDto,
+} from '../batches.dto';
+import { Batch } from '../batches.entity';
+import { BatchesService } from '../batches.service';
+
+@ApiTags('batches')
+@Controller('batches')
+@ApiNotAcceptableResponse({
+  description: 'Database-related error',
+  type: ErrorDto,
+})
+export class BatchesController {
+  constructor(private readonly svc: BatchesService) {}
+
+  @Post()
+  @ApiOperation({
+    summary: 'Kick-off a new batch',
+    description:
+      'For a Pico Unit, establish a new growing or incubation process',
+  })
+  @ApiCreatedResponse({
+    description: 'New batch created',
+    type: Batch,
+  })
+  @ApiNotFoundResponse({
+    description:
+      "The provided pico_unit_id doesn't correspond to any existing and enabled Pico Unit",
+    type: ErrorDto,
+  })
+  create(@Body() createBatchDto: CreateBatchDto) {
+    return this.svc.create(createBatchDto);
+  }
+
+  @Get()
+  @ApiOperation({
+    summary: 'List batches (paginated)',
+    description:
+      'Retrieve all the batches stored in the database, with minimal filtering options',
+  })
+  @ApiOkResponse({
+    description: 'List with pagination',
+    type: BatchListResponseDto,
+  })
+  list(@Query() query: ListBatchesQueryDto) {
+    return this.svc.list(query);
+  }
+}

@@ -10,6 +10,7 @@ import { AppSecretBearerMiddleware } from 'src/common/middleware/app-secret-bear
 import { PicoUnitByIdMiddleware } from 'src/common/middleware/pico-unit-by-id.middleware';
 import { ProtectEventLoopMiddleware } from 'src/common/middleware/protect-event-loop.middleware';
 
+import { BatchesModule } from './batches/batches.module';
 import { CustomConfigModule } from './config/config.module';
 import { CustomConfigService } from './config/config.service';
 import { ControlModule } from './control/control.module';
@@ -43,6 +44,7 @@ import { SwaggerModule } from './swagger/swagger.module';
     ScheduleModule.forRoot(),
     CronModule,
     ControlModule,
+    BatchesModule,
   ],
   providers: [
     {

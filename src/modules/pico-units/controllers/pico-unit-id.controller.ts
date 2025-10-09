@@ -30,7 +30,6 @@ export class PicoUnitIdController {
 
   @Patch()
   @ApiOperation({ summary: 'Update a Pico Unit' })
-  @ApiPicoUnit()
   @ApiOkResponse({ type: PicoUnit })
   @ApiConflictResponse({ description: 'host:port already exists' })
   update(@GetPicoUnit() unit: PicoUnit, @Body() dto: UpdatePicoUnitDto) {
@@ -39,7 +38,6 @@ export class PicoUnitIdController {
 
   @Delete()
   @ApiOperation({ summary: 'Delete a Pico Unit' })
-  @ApiPicoUnit()
   @ApiEmptyOkResponse({ description: 'Deleted' })
   remove(@Param('picoUnitId') id: string) {
     return this.svc.removeById(Number(id));

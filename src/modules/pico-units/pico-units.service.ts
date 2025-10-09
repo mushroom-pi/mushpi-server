@@ -56,9 +56,12 @@ export class PicoUnitsService {
     return await this.picoUnitRepo.save(unit);
   }
 
-  async getByIdOrThrow(id: number): Promise<PicoUnit> {
+  async getByIdOrThrow(
+    id: number,
+    onlyEnabled: boolean = false,
+  ): Promise<PicoUnit> {
     const unit = await this.picoUnitRepo.findOne({ where: { id } });
-    if (!unit) {
+    if (!unit || (onlyEnabled && !unit.enabled)) {
       throw new NotFoundException(`PicoUnit ${id} not found`);
     }
 
