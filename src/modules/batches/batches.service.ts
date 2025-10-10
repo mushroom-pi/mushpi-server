@@ -83,6 +83,7 @@ export class BatchesService {
     const where: any[] = [];
     const base: any = {};
 
+    if (pico_unit_id) base.pico_unit_id = pico_unit_id;
     if (status) {
       if (status === 'in-progress') {
         where.push([
@@ -92,8 +93,9 @@ export class BatchesService {
       } else if (status === 'finished') {
         where.push([{ ...base, finish_at: LessThan(now) }]);
       }
+    } else {
+      where.push(base);
     }
-    if (pico_unit_id) where.forEach((query) => ({ ...query, pico_unit_id }));
 
     const [items, total] = await this.batchRepo.findAndCount({
       where,
