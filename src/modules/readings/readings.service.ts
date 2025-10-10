@@ -92,7 +92,7 @@ export class ReadingsService {
       const { response, durationMs } = await this.fetchAndValidateReading(
         `${unit.address}/?force=1`,
       );
-      await this.picoUnitsService.touch(unit);
+      await this.picoUnitsService.touchAndResetFailedCalls(unit);
       const reading = await this.createFromDeviceResponse(
         unit,
         response,
@@ -101,6 +101,7 @@ export class ReadingsService {
 
       return reading;
     } catch (e) {
+      await this.picoUnitsService.addFailedCall(unit);
       throw e;
     } finally {
       // Whatever happens, remember that isPolling has to be left as false

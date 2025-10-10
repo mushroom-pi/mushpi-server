@@ -57,6 +57,9 @@ export class PicoUnit {
   @Column({ type: 'integer', nullable: true, default: 0 })
   board_cpu_freq_mhz?: number;
 
+  @Column({ type: 'integer', nullable: false, default: 0 })
+  failed_calls!: number;
+
   @Expose()
   get address(): string {
     return `${this.host.includes('http://') ? '' : 'http://'}${this.host}:${this.port}`;

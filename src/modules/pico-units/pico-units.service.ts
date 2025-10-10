@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
-import { ILike, Repository } from 'typeorm';
+import { ILike, MoreThan, Repository } from 'typeorm';
 
 import {
   ListPicoUnitsQueryDto,
@@ -11,6 +11,7 @@ import {
   UpsertPicoUnitDto,
 } from './pico-unit.dto';
 import { PicoUnit } from './pico-unit.entity';
+import { failsToUnhealthy } from './pico-units.constant';
 
 @Injectable()
 export class PicoUnitsService {
@@ -107,6 +108,13 @@ export class PicoUnitsService {
     });
   }
 
+  async listUnhealthy(): Promise<PicoUnit[]> {
+    return this.picoUnitRepo.find({
+      where: { enabled: true, failed_calls: MoreThan(failsToUnhealthy) },
+      order: { last_seen: 'DESC' },
+    });
+  }
+
   async update(unit: PicoUnit, dto: UpdatePicoUnitDto): Promise<PicoUnit> {
     Object.assign(unit, dto);
     return await this.picoUnitRepo.save(unit);
@@ -123,8 +131,24 @@ export class PicoUnitsService {
   }
 
   async ping(unit: PicoUnit): Promise<string> {
-    await axios.get(`${unit.address}/ping`, { timeout: 5000 });
-    await this.touch(unit);
-    return 'pong';
+    try {
+      await axios.get(`${unit.address}/ping`, { timeout: 5000 });
+      await this.touch(unit);
+      return 'pong';
+    } catch (error) {
+      await this.addFailedCall(unit);
+      throw error;
+    }
+  }
+
+  async addFailedCall(unit: PicoUnit): Promise<PicoUnit> {
+    unit.failed_calls++;
+    return this.picoUnitRepo.save(unit);
+  }
+
+  async touchAndResetFailedCalls(unit: PicoUnit): Promise<PicoUnit> {
+    unit.last_seen = new Date();
+    unit.failed_calls = 0;
+    return this.picoUnitRepo.save(unit);
   }
 }
