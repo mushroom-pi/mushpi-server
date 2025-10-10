@@ -16,4 +16,10 @@ export class CronService {
     this.logger.log('Polling readings from pico units');
     this.readingsService.pollReadingsFromAllEnabled();
   }
+
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  cleanReadings() {
+    this.logger.log('Cleaning readings table');
+    this.readingsService.deleteOlderThanMonths();
+  }
 }

@@ -248,4 +248,22 @@ export class ReadingsService {
     (unit as any).latest_reading = latest ?? undefined;
     return unit;
   }
+
+  async deleteOlderThanMonths(months = 6): Promise<number> {
+    if (months <= 0) {
+      throw new BadRequestException('months must be a positive integer');
+    }
+
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - months);
+
+    const res = await this.readingsRepo
+      .createQueryBuilder()
+      .delete()
+      .from(Readings)
+      .where('ts < :cutoff', { cutoff: cutoff.toISOString() })
+      .execute();
+
+    return res.affected ?? 0;
+  }
 }
