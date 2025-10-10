@@ -147,31 +147,40 @@ export class ReadingsService {
     return;
   }
 
-  async listForUnit(
-    pico_unit_id: number,
-    query: ListReadingsQueryDto,
-  ): Promise<ReadingsListResponseDto> {
-    const { start, end, page } = query;
-    const take = Math.min(query.limit, 500); // safety cap
-    const skip = (Math.max(page, 1) - 1) * take;
+  private validateTimeFrame(
+    startIso?: string,
+    endIso?: string,
+  ): { ts: FindOperator<Date>; start: Date; end: Date } {
+    // parse & validate dates
+    let start: Date | undefined;
+    let end: Date | undefined;
 
-    const { ts } = this.validateTimeFrame(start, end);
-    const where: any = { pico_unit_id, ts };
+    if (startIso) {
+      start = new Date(startIso);
+      if (Number.isNaN(start.getTime())) {
+        throw new BadRequestException('Invalid start date');
+      }
+    }
+    if (endIso) {
+      end = new Date(endIso);
+      if (Number.isNaN(end.getTime())) {
+        throw new BadRequestException('Invalid end date');
+      }
+    }
+    if (start && end && start.getTime() > end.getTime()) {
+      throw new BadRequestException('start must be <= end');
+    }
 
-    const [items, total] = await this.readingsRepo.findAndCount({
-      where,
-      order: { ts: 'ASC' }, // chronological: oldest first
-      take,
-      skip,
-    });
+    let ts: FindOperator<Date>;
+    if (start && end) {
+      ts = Between(start, end);
+    } else if (start) {
+      ts = MoreThanOrEqual(start);
+    } else if (end) {
+      ts = LessThanOrEqual(end);
+    }
 
-    return {
-      items,
-      page: Math.max(page, 1),
-      limit: take,
-      total,
-      pages: Math.ceil(total / take) || 0,
-    };
+    return { ts, start, end };
   }
 
   private validateTimeFrameForBatch(
@@ -219,6 +228,33 @@ export class ReadingsService {
     return {
       start: new Date(effectiveStartMs).toISOString(),
       end: new Date(effectiveEndMs).toISOString(),
+    };
+  }
+
+  async listForUnit(
+    pico_unit_id: number,
+    query: ListReadingsQueryDto,
+  ): Promise<ReadingsListResponseDto> {
+    const { start, end, page } = query;
+    const take = Math.min(query.limit, 500); // safety cap
+    const skip = (Math.max(page, 1) - 1) * take;
+
+    const { ts } = this.validateTimeFrame(start, end);
+    const where: any = { pico_unit_id, ts };
+
+    const [items, total] = await this.readingsRepo.findAndCount({
+      where,
+      order: { ts: 'ASC' }, // chronological: oldest first
+      take,
+      skip,
+    });
+
+    return {
+      items,
+      page: Math.max(page, 1),
+      limit: take,
+      total,
+      pages: Math.ceil(total / take) || 0,
     };
   }
 
@@ -279,43 +315,7 @@ export class ReadingsService {
     return res.affected ?? 0;
   }
 
-  private validateTimeFrame(
-    startIso?: string,
-    endIso?: string,
-  ): { ts: FindOperator<Date>; start: Date; end: Date } {
-    // parse & validate dates
-    let start: Date | undefined;
-    let end: Date | undefined;
-
-    if (startIso) {
-      start = new Date(startIso);
-      if (Number.isNaN(start.getTime())) {
-        throw new BadRequestException('Invalid start date');
-      }
-    }
-    if (endIso) {
-      end = new Date(endIso);
-      if (Number.isNaN(end.getTime())) {
-        throw new BadRequestException('Invalid end date');
-      }
-    }
-    if (start && end && start.getTime() > end.getTime()) {
-      throw new BadRequestException('start must be <= end');
-    }
-
-    let ts: FindOperator<Date>;
-    if (start && end) {
-      ts = Between(start, end);
-    } else if (start) {
-      ts = MoreThanOrEqual(start);
-    } else if (end) {
-      ts = LessThanOrEqual(end);
-    }
-
-    return { ts, start, end };
-  }
-
-  async exportReadingsToCsv(
+  private async exportReadingsToCsv(
     pico_unit_id: number,
     startIso?: string,
     endIso?: string,
