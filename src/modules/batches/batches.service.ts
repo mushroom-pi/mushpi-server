@@ -8,6 +8,7 @@ import { PicoUnitsService } from 'src/modules/pico-units/pico-units.service';
 import {
   CreateBatchDto,
   ListBatchesQueryDto,
+  ListPicoUnitBatchesQueryDto,
   UpdateBatchDto,
 } from './batches.dto';
 import { Batch } from './batches.entity';
@@ -66,6 +67,15 @@ export class BatchesService {
     });
   }
 
+  async currentForUnitOrThrow(picoUnitId: number): Promise<Batch> {
+    const batch = await this.currentForUnit(picoUnitId);
+    if (!batch)
+      throw new NotFoundException(
+        `Pico unit ${picoUnitId} doesn't have any current batch`,
+      );
+    return batch;
+  }
+
   async list(query: ListBatchesQueryDto) {
     const now = new Date();
     const { page = 1, limit = 20, status, pico_unit_id } = query;
@@ -83,7 +93,7 @@ export class BatchesService {
         where.push([{ ...base, finish_at: LessThan(now) }]);
       }
     }
-    if (pico_unit_id) where.push({ ...base, pico_unit_id });
+    if (pico_unit_id) where.forEach((query) => ({ ...query, pico_unit_id }));
 
     const [items, total] = await this.batchRepo.findAndCount({
       where,
@@ -99,5 +109,12 @@ export class BatchesService {
       total,
       pages: Math.ceil(total / limit),
     };
+  }
+
+  async listForPicoUnitId(
+    pico_unit_id: number,
+    query: ListPicoUnitBatchesQueryDto,
+  ) {
+    return this.list({ ...query, pico_unit_id });
   }
 }

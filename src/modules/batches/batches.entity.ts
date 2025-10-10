@@ -18,18 +18,6 @@ export class Batch {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Index()
-  @ManyToOne(() => PicoUnit, (u) => u.readings ?? undefined, {
-    nullable: false,
-    onDelete: 'CASCADE',
-  })
-  @JoinColumn({ name: 'pico_unit_id' })
-  pico_unit!: PicoUnit;
-
-  @Column({ name: 'pico_unit_id', type: 'integer', nullable: false })
-  @IsInt()
-  pico_unit_id!: number;
-
   @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   @IsOptional()
   @IsDate()
@@ -60,6 +48,18 @@ export class Batch {
   @IsOptional()
   @Length(0, 2000)
   notes!: string;
+
+  @Index()
+  @ManyToOne(() => PicoUnit, (u) => u.readings ?? undefined, {
+    nullable: false,
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'pico_unit_id' })
+  pico_unit!: PicoUnit;
+
+  @Column({ name: 'pico_unit_id', type: 'integer', nullable: false })
+  @IsInt()
+  pico_unit_id!: number;
 
   @Expose()
   get status(): BatchStatus {

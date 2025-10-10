@@ -8,12 +8,17 @@ import { Batch } from './batches.entity';
 import { BatchesService } from './batches.service';
 import { BatchIdController } from './controllers/batch-id.controller';
 import { BatchesController } from './controllers/batches.controller';
+import { PicoUnitIdBatchesController } from './controllers/pico-unit-id-batches.controller';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Batch]), PicoUnitsModule],
   providers: [BatchesService],
   exports: [BatchesService, TypeOrmModule.forFeature([Batch])],
-  controllers: [BatchesController, BatchIdController],
+  controllers: [
+    BatchesController,
+    BatchIdController,
+    PicoUnitIdBatchesController,
+  ],
 })
 export class BatchesModule {
   configure(consumer: MiddlewareConsumer) {

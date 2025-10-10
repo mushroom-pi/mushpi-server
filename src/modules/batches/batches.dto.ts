@@ -96,5 +96,9 @@ export class ListBatchesQueryDto {
   pico_unit_id?: number;
 }
 
+export class ListPicoUnitBatchesQueryDto extends OmitType(ListBatchesQueryDto, [
+  'pico_unit_id',
+] as const) {}
+
 @ApiExtraModels(Batch)
 export class BatchListResponseDto extends PaginatedDto(Batch) {}
