@@ -26,8 +26,13 @@ async function bootstrap() {
   const configService: CustomConfigService = app.get(CustomConfigService);
 
   // Security libraries
-  if (configService.docs.ui && configService.docs.makeDocs)
-    app.enableCors({ origin: configService.docs.ui });
+  /** CORS-settings */
+  const origin = [configService.security.clientUrl];
+  if (configService.docs.makeDocs && configService.docs.ui)
+    origin.push(configService.docs.ui);
+  app.enableCors({ origin, credentials: true });
+
+  /** General safeguards */
   toobusy.maxLag(configService.security.maxEventLoopDelay);
   app.use(hpp());
   app.use(helmet());

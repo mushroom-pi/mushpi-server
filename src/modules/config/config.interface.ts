@@ -6,6 +6,7 @@ export interface EnvironmentVariables {
   APP_HOST: string;
   APP_PORT?: number;
   APP_SECRET?: string;
+  CLIENT_URL: string;
   DOCS_ENDPOINT?: string;
   DOCS_UI_URL?: string;
   DOCS_USERNAME?: string;
@@ -33,6 +34,7 @@ export interface SecurityConfig {
   maxEventLoopDelay: EnvironmentVariables['MAX_EVENT_LOOP_DELAY'];
   maxRequests?: EnvironmentVariables['MAX_REQUESTS'];
   maxRequestsTime?: EnvironmentVariables['MAX_REQUESTS_TIME'];
+  clientUrl: EnvironmentVariables['CLIENT_URL'];
 }
 
 export interface DocsConfig {

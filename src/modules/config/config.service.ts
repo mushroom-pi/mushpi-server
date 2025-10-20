@@ -68,6 +68,7 @@ export class CustomConfigService {
       maxEventLoopDelay: this.configService.get('MAX_EVENT_LOOP_DELAY'),
       maxRequests: this.configService.get('MAX_REQUESTS'),
       maxRequestsTime: this.configService.get('MAX_REQUESTS_TIME'),
+      clientUrl: this.configService.get('CLIENT_URL'),
     };
   }
 
