@@ -57,10 +57,10 @@ export class ReadingsService {
   }
 
   async fetchAndValidateReading(url: string) {
-    const t0 = process.hrtime.bigint();
+    const t0 = new Date();
     const r = await axios.get(url, { timeout: 10000 });
-    const t1 = process.hrtime.bigint();
-    const durationMs = Number((t1 - t0) / 1000000n);
+    const t1 = new Date();
+    const durationMs = Number(t1.getTime() - t0.getTime());
     const { errors } = await validateDeviceResponse(r.data);
     if (errors.length) throw new PreconditionFailedException(errors);
 
