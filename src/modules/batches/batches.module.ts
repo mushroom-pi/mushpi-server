@@ -12,6 +12,7 @@ import { RecipesModule } from 'src/modules/recipes/recipes.module';
 
 import { Batch } from './batches.entity';
 import { BatchesService } from './batches.service';
+import { BatchIdRecipeController } from './controllers/batch-id-recipe.controller';
 import { BatchIdController } from './controllers/batch-id.controller';
 import { BatchesController } from './controllers/batches.controller';
 import { PicoUnitIdBatchesController } from './controllers/pico-unit-id-batches.controller';
@@ -27,6 +28,7 @@ import { PicoUnitIdBatchesController } from './controllers/pico-unit-id-batches.
   controllers: [
     BatchesController,
     BatchIdController,
+    BatchIdRecipeController,
     PicoUnitIdBatchesController,
   ],
 })

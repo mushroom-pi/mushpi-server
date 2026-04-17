@@ -1,4 +1,9 @@
-import { ApiExtraModels, ApiPropertyOptional, OmitType } from '@nestjs/swagger';
+import {
+  ApiExtraModels,
+  ApiProperty,
+  ApiPropertyOptional,
+  OmitType,
+} from '@nestjs/swagger';
 
 import {
   IsDateString,
@@ -24,7 +29,11 @@ import {
   PAGINATION_MIN_LIMIT,
   PAGINATION_MIN_PAGE,
 } from 'src/common/constants/pagination.constants';
-import { NOTES_MAX_LENGTH } from 'src/common/constants/validation.constants';
+import {
+  NAME_MAX_LENGTH,
+  NAME_MIN_LENGTH,
+  NOTES_MAX_LENGTH,
+} from 'src/common/constants/validation.constants';
 import { PaginatedDto } from 'src/common/dto/paginated-response.dto';
 
 import { batchStatuses } from './batches.constant';
@@ -151,3 +160,20 @@ export class ListPicoUnitBatchesQueryDto extends OmitType(ListBatchesQueryDto, [
 
 @ApiExtraModels(Batch)
 export class BatchListResponseDto extends PaginatedDto(Batch) {}
+
+export class CreateRecipeFromBatchDto {
+  @ApiProperty({
+    type: String,
+    minLength: NAME_MIN_LENGTH,
+    maxLength: NAME_MAX_LENGTH,
+  })
+  @IsString()
+  @Length(NAME_MIN_LENGTH, NAME_MAX_LENGTH)
+  name!: string;
+
+  @ApiPropertyOptional({ type: String, maxLength: NOTES_MAX_LENGTH })
+  @IsOptional()
+  @IsString()
+  @Length(0, NOTES_MAX_LENGTH)
+  notes?: string;
+}

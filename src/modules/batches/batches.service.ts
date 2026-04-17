@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { IsNull, LessThan, MoreThan, Repository } from 'typeorm';
@@ -8,6 +12,7 @@ import { RecipesService } from 'src/modules/recipes/recipes.service';
 
 import {
   CreateBatchDto,
+  CreateRecipeFromBatchDto,
   ListBatchesQueryDto,
   ListPicoUnitBatchesQueryDto,
   UpdateBatchDto,
@@ -134,5 +139,43 @@ export class BatchesService {
 
   async listForRecipeId(recipe_id: number, query: ListPicoUnitBatchesQueryDto) {
     return this.list({ ...query, recipe_id });
+  }
+
+  async createRecipeFromBatch(batch: Batch, dto: CreateRecipeFromBatchDto) {
+    if (batch.status !== 'finished') {
+      throw new UnprocessableEntityException(
+        'Only finished batches can be used to create a recipe',
+      );
+    }
+    if (batch.species == null) {
+      throw new UnprocessableEntityException(
+        'Batch must have a species to create a recipe',
+      );
+    }
+    if (batch.temperature_target == null) {
+      throw new UnprocessableEntityException(
+        'Batch must have a temperature_target to create a recipe',
+      );
+    }
+    if (batch.humidity_target == null) {
+      throw new UnprocessableEntityException(
+        'Batch must have a humidity_target to create a recipe',
+      );
+    }
+
+    const durationMs = batch.finish_at!.getTime() - batch.start_at.getTime();
+    const duration_days = Math.max(
+      1,
+      Math.ceil(durationMs / (1000 * 60 * 60 * 24)),
+    );
+
+    return this.recipesService.create({
+      name: dto.name,
+      species: batch.species,
+      temperature_target: batch.temperature_target,
+      humidity_target: batch.humidity_target,
+      duration_days,
+      notes: dto.notes,
+    });
   }
 }
