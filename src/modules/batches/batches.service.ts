@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, LessThan, MoreThan, Repository } from 'typeorm';
 
 import { PicoUnitsService } from 'src/modules/pico-units/pico-units.service';
+import { RecipesService } from 'src/modules/recipes/recipes.service';
 
 import {
   CreateBatchDto,
@@ -18,14 +19,24 @@ export class BatchesService {
   constructor(
     @InjectRepository(Batch) private batchRepo: Repository<Batch>,
     private readonly picoUnitsService: PicoUnitsService,
+    private readonly recipesService: RecipesService,
   ) {}
 
   async create(dto: CreateBatchDto): Promise<Batch> {
     await this.picoUnitsService.getByIdOrThrow(dto.pico_unit_id, true);
-    const batch = this.batchRepo.create({
-      ...dto,
-    } as unknown as Partial<Batch>);
 
+    const createData: Partial<Batch> = { ...dto } as unknown as Partial<Batch>;
+
+    if (dto.recipe_id != null) {
+      const recipe = await this.recipesService.findOne(dto.recipe_id);
+      if (dto.species == null) createData.species = recipe.species;
+      if (dto.temperature_target == null)
+        createData.temperature_target = recipe.temperature_target;
+      if (dto.humidity_target == null)
+        createData.humidity_target = recipe.humidity_target;
+    }
+
+    const batch = this.batchRepo.create(createData);
     return this.batchRepo.save(batch);
   }
 
@@ -78,12 +89,13 @@ export class BatchesService {
 
   async list(query: ListBatchesQueryDto) {
     const now = new Date();
-    const { page = 1, limit = 20, status, pico_unit_id } = query;
+    const { page = 1, limit = 20, status, pico_unit_id, recipe_id } = query;
 
     const where: any[] = [];
     const base: any = {};
 
     if (pico_unit_id) base.pico_unit_id = pico_unit_id;
+    if (recipe_id) base.recipe_id = recipe_id;
     if (status) {
       if (status === 'in-progress') {
         where.push([
@@ -118,5 +130,9 @@ export class BatchesService {
     query: ListPicoUnitBatchesQueryDto,
   ) {
     return this.list({ ...query, pico_unit_id });
+  }
+
+  async listForRecipeId(recipe_id: number, query: ListPicoUnitBatchesQueryDto) {
+    return this.list({ ...query, recipe_id });
   }
 }

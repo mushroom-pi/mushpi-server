@@ -1,8 +1,14 @@
-import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
+import {
+  MiddlewareConsumer,
+  Module,
+  RequestMethod,
+  forwardRef,
+} from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { BatchByIdMiddleware } from 'src/common/middleware/batch-by-id.middleware';
 import { PicoUnitsModule } from 'src/modules/pico-units/pico-units.module';
+import { RecipesModule } from 'src/modules/recipes/recipes.module';
 
 import { Batch } from './batches.entity';
 import { BatchesService } from './batches.service';
@@ -11,7 +17,11 @@ import { BatchesController } from './controllers/batches.controller';
 import { PicoUnitIdBatchesController } from './controllers/pico-unit-id-batches.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Batch]), PicoUnitsModule],
+  imports: [
+    TypeOrmModule.forFeature([Batch]),
+    PicoUnitsModule,
+    forwardRef(() => RecipesModule),
+  ],
   providers: [BatchesService],
   exports: [BatchesService, TypeOrmModule.forFeature([Batch])],
   controllers: [

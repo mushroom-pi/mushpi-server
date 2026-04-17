@@ -8,6 +8,7 @@ import {
   seedBatch,
 } from './fixtures/batches.fixtures';
 import { clearPicos, seedPicoUnit } from './fixtures/pico-units.fixtures';
+import { clearRecipes, seedRecipe } from './fixtures/recipes.fixtures';
 import { closeTestApp, createTestApp } from './test-setup';
 
 describe('BatchIdController (e2e)', () => {
@@ -24,6 +25,7 @@ describe('BatchIdController (e2e)', () => {
 
   beforeEach(async () => {
     await clearBatches(app);
+    await clearRecipes(app);
     await clearPicos(app);
   });
 
@@ -189,6 +191,41 @@ describe('BatchIdController (e2e)', () => {
       await request(app.getHttpServer())
         .delete('/batches/not-a-number')
         .expect(422);
+    });
+  });
+
+  // ─── recipe_id field ──────────────────────────────────────────────────────
+
+  describe('GET /batches/:id — recipe_id field', () => {
+    it('includes recipe_id in the response when the batch was created with one', async () => {
+      const pico = await seedPicoUnit(app, {
+        handle: 'bid-recipe-pico',
+        host: '127.0.0.1',
+        port: 7400,
+      });
+      const recipe = await seedRecipe(app, { name: 'bid-recipe' });
+      const batch = await seedBatch(app, pico.id, { recipe_id: recipe.id });
+
+      const res = await request(app.getHttpServer())
+        .get(`/batches/${batch.id}`)
+        .expect(200);
+
+      expect(res.body).toHaveProperty('recipe_id', recipe.id);
+    });
+
+    it('has recipe_id as null when the batch was created without one', async () => {
+      const pico = await seedPicoUnit(app, {
+        handle: 'bid-no-recipe-pico',
+        host: '127.0.0.1',
+        port: 7401,
+      });
+      const batch = await seedBatch(app, pico.id, {});
+
+      const res = await request(app.getHttpServer())
+        .get(`/batches/${batch.id}`)
+        .expect(200);
+
+      expect(res.body.recipe_id).toBeNull();
     });
   });
 });

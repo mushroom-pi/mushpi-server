@@ -9,7 +9,9 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
+import { NOTES_MAX_LENGTH } from 'src/common/constants/validation.constants';
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
+import { Recipe } from 'src/modules/recipes/recipes.entity';
 
 import { BatchStatus } from './batches.type';
 
@@ -46,7 +48,7 @@ export class Batch {
   @Column({ type: 'text', nullable: false, default: '' })
   @IsString()
   @IsOptional()
-  @Length(0, 2000)
+  @Length(0, NOTES_MAX_LENGTH)
   notes!: string;
 
   @Index()
@@ -60,6 +62,19 @@ export class Batch {
   @Column({ name: 'pico_unit_id', type: 'integer', nullable: false })
   @IsInt()
   pico_unit_id!: number;
+
+  @Index()
+  @ManyToOne(() => Recipe, (r) => r.batches ?? undefined, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'recipe_id' })
+  recipe?: Recipe | null;
+
+  @Column({ name: 'recipe_id', type: 'integer', nullable: true, default: null })
+  @IsInt()
+  @IsOptional()
+  recipe_id?: number | null;
 
   @Expose()
   get status(): BatchStatus {

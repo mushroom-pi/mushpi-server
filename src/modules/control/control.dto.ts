@@ -16,6 +16,10 @@ import {
   TEMPERATURE_MAX,
   TEMPERATURE_MIN,
 } from 'src/common/constants/climate.constants';
+import {
+  GPIO_PIN_MAX,
+  GPIO_PIN_MIN,
+} from 'src/common/constants/hardware.constants';
 
 export class ChangeSetPointsDto {
   @ApiPropertyOptional({
@@ -52,56 +56,56 @@ class ChangeDevicePinsDto {
     type: Number,
     description: 'Change the GPIO pin assigned to the DHT11 sensor',
     example: 4,
-    minimum: 0,
-    maximum: 28,
+    minimum: GPIO_PIN_MIN,
+    maximum: GPIO_PIN_MAX,
   })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
-  @Min(0)
-  @Max(28)
+  @Min(GPIO_PIN_MIN)
+  @Max(GPIO_PIN_MAX)
   dht?: number;
 
   @ApiPropertyOptional({
     type: Number,
     description: 'Change the GPIO pin assigned to the humidifier',
     example: 6,
-    minimum: 0,
-    maximum: 28,
+    minimum: GPIO_PIN_MIN,
+    maximum: GPIO_PIN_MAX,
   })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
-  @Min(0)
-  @Max(28)
+  @Min(GPIO_PIN_MIN)
+  @Max(GPIO_PIN_MAX)
   humidifier?: number;
 
   @ApiPropertyOptional({
     type: Number,
     description: 'Change the GPIO pin assigned to the fan',
     example: 7,
-    minimum: 0,
-    maximum: 28,
+    minimum: GPIO_PIN_MIN,
+    maximum: GPIO_PIN_MAX,
   })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
-  @Min(0)
-  @Max(28)
+  @Min(GPIO_PIN_MIN)
+  @Max(GPIO_PIN_MAX)
   fan?: number;
 
   @ApiPropertyOptional({
     type: Number,
     description: 'Change the GPIO pin assigned to the heater',
     example: 8,
-    minimum: 0,
-    maximum: 28,
+    minimum: GPIO_PIN_MIN,
+    maximum: GPIO_PIN_MAX,
   })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
-  @Min(0)
-  @Max(28)
+  @Min(GPIO_PIN_MIN)
+  @Max(GPIO_PIN_MAX)
   heater?: number;
 }
 

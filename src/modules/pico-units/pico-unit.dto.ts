@@ -15,6 +15,21 @@ import {
   Min,
 } from 'class-validator';
 
+import { PORT_MAX, PORT_MIN } from 'src/common/constants/hardware.constants';
+import {
+  PAGINATION_DEFAULT_LIMIT,
+  PAGINATION_DEFAULT_PAGE,
+  PAGINATION_MAX_LIMIT,
+  PAGINATION_MIN_LIMIT,
+  PAGINATION_MIN_PAGE,
+} from 'src/common/constants/pagination.constants';
+import {
+  HANDLE_MAX_LENGTH,
+  NAME_MAX_LENGTH,
+  NAME_MIN_LENGTH,
+  PICO_DESCRIPTION_MAX_LENGTH,
+  STANDARD_TEXT_MAX_LENGTH,
+} from 'src/common/constants/validation.constants';
 import { PaginatedDto } from 'src/common/dto/paginated-response.dto';
 
 import { PicoUnit } from './pico-unit.entity';
@@ -25,70 +40,70 @@ export class UpsertPicoUnitDto {
     example: 'unit-01',
     description:
       'Name for the unit as it is stated in its own software. Should not be changed.',
-    minLength: 1,
-    maxLength: 64,
+    minLength: NAME_MIN_LENGTH,
+    maxLength: HANDLE_MAX_LENGTH,
   })
   @IsString()
-  @Length(1, 64)
+  @Length(NAME_MIN_LENGTH, HANDLE_MAX_LENGTH)
   handle!: string;
 
   @ApiProperty({
     type: String,
-    minLength: 1,
-    maxLength: 255,
+    minLength: NAME_MIN_LENGTH,
+    maxLength: STANDARD_TEXT_MAX_LENGTH,
     description: 'IPv4/hostname where the Pico API is reachable.',
     examples: ['192.168.1.50', 'rpi3.local'],
   })
   @IsString()
-  @Length(1, 255)
+  @Length(NAME_MIN_LENGTH, STANDARD_TEXT_MAX_LENGTH)
   host!: string;
 
   @ApiProperty({
     type: Number,
     example: 5000,
-    minimum: 1,
-    maximum: 65535,
+    minimum: PORT_MIN,
+    maximum: PORT_MAX,
     description: 'Pico API port',
   })
   @IsInt()
-  @Min(1)
-  @Max(65535)
+  @Min(PORT_MIN)
+  @Max(PORT_MAX)
   port!: number;
 
   @ApiPropertyOptional({
     type: String,
-    minLength: 1,
-    maxLength: 255,
+    minLength: NAME_MIN_LENGTH,
+    maxLength: STANDARD_TEXT_MAX_LENGTH,
     description: 'Version tag for the Micropython executed by the unit',
     examples: ['v1.26.0 on 2025-08-09 (GNU 14.2.0 MinSizeRel)', '1.26.0.'],
   })
   @IsString()
   @IsOptional()
-  @Length(1, 255)
+  @Length(NAME_MIN_LENGTH, STANDARD_TEXT_MAX_LENGTH)
   micropython_version?: string;
 
   @ApiPropertyOptional({
     type: String,
-    minLength: 1,
-    maxLength: 255,
+    minLength: NAME_MIN_LENGTH,
+    maxLength: STANDARD_TEXT_MAX_LENGTH,
     description: 'Version tag for the custom software executed by the unit',
     examples: ['0.1.0'],
   })
   @IsString()
   @IsOptional()
-  @Length(1, 255)
+  @Length(NAME_MIN_LENGTH, STANDARD_TEXT_MAX_LENGTH)
   software_version?: string;
 
   @ApiPropertyOptional({
     type: String,
-    minLength: 1,
-    maxLength: 255,
+    minLength: NAME_MIN_LENGTH,
+    maxLength: STANDARD_TEXT_MAX_LENGTH,
     description: "Name of the unit's board",
     examples: ['Raspberry Pi Pico 2 W with RP2350'],
   })
   @IsString()
   @IsOptional()
-  @Length(1, 255)
+  @Length(NAME_MIN_LENGTH, STANDARD_TEXT_MAX_LENGTH)
   board?: string;
 
   @ApiPropertyOptional({
@@ -123,23 +138,24 @@ export class UpdatePicoUnitDto {
   @ApiProperty({
     type: String,
     minLength: 0,
-    maxLength: 128,
+    maxLength: NAME_MAX_LENGTH,
     description: 'Friendly name of the unit.',
     examples: ['Grow Tent A'],
     required: false,
   })
   @IsOptional()
   @IsString()
-  @Length(0, 128)
+  @Length(0, NAME_MAX_LENGTH)
   name?: string;
 
   @ApiProperty({
     required: false,
     description: 'Optional notes about this particular unit.',
+    maxLength: PICO_DESCRIPTION_MAX_LENGTH,
   })
   @IsOptional()
   @IsString()
-  @Length(0, 512)
+  @Length(0, PICO_DESCRIPTION_MAX_LENGTH)
   description?: string;
 
   @ApiProperty({
@@ -153,18 +169,27 @@ export class UpdatePicoUnitDto {
 }
 
 export class ListPicoUnitsQueryDto {
-  @ApiProperty({ required: false, minimum: 1, default: 1 })
+  @ApiProperty({
+    required: false,
+    minimum: PAGINATION_MIN_PAGE,
+    default: PAGINATION_DEFAULT_PAGE,
+  })
   @IsOptional()
   @IsInt()
-  @Min(1)
-  page?: number = 1;
+  @Min(PAGINATION_MIN_PAGE)
+  page?: number = PAGINATION_DEFAULT_PAGE;
 
-  @ApiProperty({ required: false, minimum: 1, maximum: 100, default: 20 })
+  @ApiProperty({
+    required: false,
+    minimum: PAGINATION_MIN_LIMIT,
+    maximum: PAGINATION_MAX_LIMIT,
+    default: PAGINATION_DEFAULT_LIMIT,
+  })
   @IsOptional()
   @IsInt()
-  @Min(1)
-  @Max(100)
-  limit?: number = 20;
+  @Min(PAGINATION_MIN_LIMIT)
+  @Max(PAGINATION_MAX_LIMIT)
+  limit?: number = PAGINATION_DEFAULT_LIMIT;
 
   @ApiProperty({ required: false, description: 'Filter by enabled' })
   @IsOptional()

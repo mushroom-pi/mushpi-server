@@ -14,6 +14,9 @@ import { CustomConfigService } from 'src/modules/config/config.service';
         type: 'better-sqlite3',
         autoLoadEntities: true,
         synchronize: !config.isProd,
+        prepareDatabase: (db: any) => {
+          db.pragma('foreign_keys = ON');
+        },
       }),
     }),
   ],

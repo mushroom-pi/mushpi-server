@@ -8,6 +8,13 @@ import {
 import { Type } from 'class-transformer';
 import { IsDateString, IsInt, IsOptional, Max, Min } from 'class-validator';
 
+import {
+  PAGINATION_DEFAULT_PAGE,
+  PAGINATION_MIN_LIMIT,
+  PAGINATION_MIN_PAGE,
+  READINGS_DEFAULT_LIMIT,
+  READINGS_MAX_LIMIT,
+} from 'src/common/constants/pagination.constants';
 import { PaginatedDto } from 'src/common/dto/paginated-response.dto';
 
 import { Readings } from './readings.entity';
@@ -38,26 +45,26 @@ export class ListReadingsQueryDto extends OptionalTimeLimitsQueryDto {
   @ApiPropertyOptional({
     description: 'Page number (1-based)',
     example: 1,
-    minimum: 1,
+    minimum: PAGINATION_MIN_PAGE,
   })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
-  @Min(1)
-  page?: number = 1;
+  @Min(PAGINATION_MIN_PAGE)
+  page?: number = PAGINATION_DEFAULT_PAGE;
 
   @ApiPropertyOptional({
-    description: 'Page size (max 500)',
-    example: 100,
-    minimum: 1,
-    maximum: 500,
+    description: `Page size (max ${READINGS_MAX_LIMIT})`,
+    example: READINGS_DEFAULT_LIMIT,
+    minimum: PAGINATION_MIN_LIMIT,
+    maximum: READINGS_MAX_LIMIT,
   })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
-  @Min(1)
-  @Max(500)
-  limit?: number = 100;
+  @Min(PAGINATION_MIN_LIMIT)
+  @Max(READINGS_MAX_LIMIT)
+  limit?: number = READINGS_DEFAULT_LIMIT;
 }
 
 @ApiExtraModels(Readings)

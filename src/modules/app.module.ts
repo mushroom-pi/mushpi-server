@@ -19,6 +19,7 @@ import { MonitoringModule } from './monitoring/monitoring.module';
 import { PicoUnitsModule } from './pico-units/pico-units.module';
 import { PinoLoggerModule } from './pino-logger.module';
 import { ReadingsModule } from './readings/readings.module';
+import { RecipesModule } from './recipes/recipes.module';
 import { SQLiteModule } from './sqlite/sqlite.module';
 import { SwaggerModule } from './swagger/swagger.module';
 
@@ -45,6 +46,7 @@ import { SwaggerModule } from './swagger/swagger.module';
     CronModule,
     ControlModule,
     BatchesModule,
+    RecipesModule,
   ],
   providers: [
     {

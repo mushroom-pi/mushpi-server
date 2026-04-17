@@ -8,6 +8,7 @@ import {
   seedBatch,
 } from './fixtures/batches.fixtures';
 import { clearPicos, seedPicoUnit } from './fixtures/pico-units.fixtures';
+import { clearRecipes, seedRecipe } from './fixtures/recipes.fixtures';
 import { closeTestApp, createTestApp } from './test-setup';
 
 describe('BatchesController (e2e)', () => {
@@ -25,6 +26,7 @@ describe('BatchesController (e2e)', () => {
   beforeEach(async () => {
     // clear DB state to keep tests isolated
     await clearBatches(app);
+    await clearRecipes(app);
     await clearPicos(app);
   });
 
@@ -171,6 +173,77 @@ describe('BatchesController (e2e)', () => {
       expect(notesA).toEqual(
         expect.arrayContaining(['finished', 'in-progress-null']),
       );
+    });
+  });
+
+  // ─── POST /batches with recipe_id ──────────────────────────────────────────
+
+  describe('POST /batches — recipe snapshot', () => {
+    it('copies species, temperature_target and humidity_target from the recipe when not explicitly provided', async () => {
+      const pico = await seedPicoUnit(app, {
+        handle: 'snap-pico',
+        host: '127.0.0.1',
+        port: 7300,
+      });
+      const recipe = await seedRecipe(app, {
+        name: 'snapshot-source',
+        species: 'lion mane',
+        temperature_target: 18,
+        humidity_target: 88,
+      });
+
+      const res = await request(app.getHttpServer())
+        .post('/batches')
+        .send({ pico_unit_id: pico.id, recipe_id: recipe.id })
+        .expect(201);
+
+      expect(res.body.recipe_id).toBe(recipe.id);
+      expect(res.body.species).toBe('lion mane');
+      expect(res.body.temperature_target).toBe(18);
+      expect(res.body.humidity_target).toBe(88);
+    });
+
+    it('uses explicitly provided fields and only copies unset ones from the recipe', async () => {
+      const pico = await seedPicoUnit(app, {
+        handle: 'snap-explicit-pico',
+        host: '127.0.0.1',
+        port: 7301,
+      });
+      const recipe = await seedRecipe(app, {
+        name: 'partial-snapshot-source',
+        species: 'oyster',
+        temperature_target: 22,
+        humidity_target: 80,
+      });
+
+      const res = await request(app.getHttpServer())
+        .post('/batches')
+        .send({
+          pico_unit_id: pico.id,
+          recipe_id: recipe.id,
+          species: 'my-custom-species', // explicit override
+          // temperature_target and humidity_target not provided → copied from recipe
+        })
+        .expect(201);
+
+      expect(res.body.species).toBe('my-custom-species');
+      expect(res.body.temperature_target).toBe(22); // from recipe
+      expect(res.body.humidity_target).toBe(80); // from recipe
+    });
+
+    it('returns 404 when recipe_id does not match any existing recipe', async () => {
+      const pico = await seedPicoUnit(app, {
+        handle: 'snap-missing-pico',
+        host: '127.0.0.1',
+        port: 7302,
+      });
+
+      const res = await request(app.getHttpServer())
+        .post('/batches')
+        .send({ pico_unit_id: pico.id, recipe_id: 999999 })
+        .expect(404);
+
+      expect(res.body).toHaveProperty('statusCode', 404);
     });
   });
 });
