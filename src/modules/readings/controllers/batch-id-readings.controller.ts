@@ -21,7 +21,7 @@ import {
 } from '../readings.dto';
 import { ReadingsService } from '../readings.service';
 
-@ApiTags('readings', 'batches')
+@ApiTags('readings')
 @Controller('batches/:batchId/readings')
 @ApiBatch()
 export class BatchIdReadingsController {

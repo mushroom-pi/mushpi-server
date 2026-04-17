@@ -10,33 +10,40 @@ import {
   ValidateNested,
 } from 'class-validator';
 
+import {
+  HUMIDITY_MAX,
+  HUMIDITY_MIN,
+  TEMPERATURE_MAX,
+  TEMPERATURE_MIN,
+} from 'src/common/constants/climate.constants';
+
 export class ChangeSetPointsDto {
   @ApiPropertyOptional({
     description:
       'The temperature in Celsius degrees that we want the Pico Unit to maintain',
     example: 27,
-    minimum: 0,
-    maximum: 50,
+    minimum: TEMPERATURE_MIN,
+    maximum: TEMPERATURE_MAX,
   })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
-  @Min(0)
-  @Max(50)
+  @Min(TEMPERATURE_MIN)
+  @Max(TEMPERATURE_MAX)
   temperature?: number;
 
   @ApiPropertyOptional({
     description:
       'The percentage of humidity that we want the Pico Unit to maintain',
     example: 60,
-    minimum: 20,
-    maximum: 90,
+    minimum: HUMIDITY_MIN,
+    maximum: HUMIDITY_MAX,
   })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
-  @Min(20)
-  @Max(90)
+  @Min(HUMIDITY_MIN)
+  @Max(HUMIDITY_MAX)
   humidity?: number;
 }
 

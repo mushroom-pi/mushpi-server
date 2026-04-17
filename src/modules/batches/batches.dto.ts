@@ -4,6 +4,7 @@ import {
   IsDateString,
   IsIn,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   Length,
@@ -12,6 +13,12 @@ import {
 } from 'class-validator';
 
 import { PaginatedDto } from 'src/common/dto/paginated-response.dto';
+import {
+  HUMIDITY_MAX,
+  HUMIDITY_MIN,
+  TEMPERATURE_MAX,
+  TEMPERATURE_MIN,
+} from 'src/common/constants/climate.constants';
 
 import { batchStatuses } from './batches.constant';
 import { Batch } from './batches.entity';
@@ -37,13 +44,25 @@ export class CreateBatchDto {
   @IsOptional()
   species?: string;
 
-  @ApiPropertyOptional()
-  @IsInt()
+  @ApiPropertyOptional({
+    type: Number,
+    minimum: TEMPERATURE_MIN,
+    maximum: TEMPERATURE_MAX,
+  })
+  @IsNumber()
+  @Min(TEMPERATURE_MIN)
+  @Max(TEMPERATURE_MAX)
   @IsOptional()
   temperature_target?: number;
 
-  @ApiPropertyOptional()
-  @IsInt()
+  @ApiPropertyOptional({
+    type: Number,
+    minimum: HUMIDITY_MIN,
+    maximum: HUMIDITY_MAX,
+  })
+  @IsNumber()
+  @Min(HUMIDITY_MIN)
+  @Max(HUMIDITY_MAX)
   @IsOptional()
   humidity_target?: number;
 
