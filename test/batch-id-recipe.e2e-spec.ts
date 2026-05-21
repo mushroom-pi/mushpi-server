@@ -2,10 +2,7 @@ import { INestApplication } from '@nestjs/common';
 
 import request from 'supertest';
 
-import {
-  clearBatches,
-  seedBatch,
-} from './fixtures/batches.fixtures';
+import { clearBatches, seedBatch } from './fixtures/batches.fixtures';
 import { clearPicos, seedPicoUnit } from './fixtures/pico-units.fixtures';
 import { clearRecipes, getRecipeRepo } from './fixtures/recipes.fixtures';
 import { closeTestApp, createTestApp } from './test-setup';
@@ -31,7 +28,11 @@ describe('BatchIdRecipeController (e2e)', () => {
   // Finished batch with all required fields → creates a recipe
   describe('POST /batches/:batchId/recipe — happy path', () => {
     it('creates a recipe with species and targets from the batch, duration_days from dates', async () => {
-      const pico = await seedPicoUnit(app, { handle: 'bir-pico', host: '127.0.0.1', port: 7500 });
+      const pico = await seedPicoUnit(app, {
+        handle: 'bir-pico',
+        host: '127.0.0.1',
+        port: 7500,
+      });
       const start = new Date('2024-01-01T00:00:00Z');
       const finish = new Date('2024-01-15T00:00:00Z'); // 14 days
       const batch = await seedBatch(app, pico.id, {
@@ -62,7 +63,11 @@ describe('BatchIdRecipeController (e2e)', () => {
     });
 
     it('accepts optional notes and includes them in the recipe', async () => {
-      const pico = await seedPicoUnit(app, { handle: 'bir-notes', host: '127.0.0.1', port: 7501 });
+      const pico = await seedPicoUnit(app, {
+        handle: 'bir-notes',
+        host: '127.0.0.1',
+        port: 7501,
+      });
       const batch = await seedBatch(app, pico.id, {
         species: 'shiitake',
         temperature_target: 18,
@@ -81,7 +86,11 @@ describe('BatchIdRecipeController (e2e)', () => {
     });
 
     it('rounds up partial days to the next whole day', async () => {
-      const pico = await seedPicoUnit(app, { handle: 'bir-round', host: '127.0.0.1', port: 7502 });
+      const pico = await seedPicoUnit(app, {
+        handle: 'bir-round',
+        host: '127.0.0.1',
+        port: 7502,
+      });
       const batch = await seedBatch(app, pico.id, {
         species: 'lion',
         temperature_target: 20,
@@ -102,7 +111,11 @@ describe('BatchIdRecipeController (e2e)', () => {
   // Validation errors
   describe('POST /batches/:batchId/recipe — validation errors', () => {
     it('returns 422 when the batch is not finished (no finish_at)', async () => {
-      const pico = await seedPicoUnit(app, { handle: 'bir-unfinished', host: '127.0.0.1', port: 7510 });
+      const pico = await seedPicoUnit(app, {
+        handle: 'bir-unfinished',
+        host: '127.0.0.1',
+        port: 7510,
+      });
       const batch = await seedBatch(app, pico.id, {
         species: 'oyster',
         temperature_target: 22,
@@ -118,7 +131,11 @@ describe('BatchIdRecipeController (e2e)', () => {
     });
 
     it('returns 422 when the batch is missing species', async () => {
-      const pico = await seedPicoUnit(app, { handle: 'bir-no-species', host: '127.0.0.1', port: 7511 });
+      const pico = await seedPicoUnit(app, {
+        handle: 'bir-no-species',
+        host: '127.0.0.1',
+        port: 7511,
+      });
       const batch = await seedBatch(app, pico.id, {
         temperature_target: 22,
         humidity_target: 80,
@@ -133,7 +150,11 @@ describe('BatchIdRecipeController (e2e)', () => {
     });
 
     it('returns 422 when the batch is missing temperature_target', async () => {
-      const pico = await seedPicoUnit(app, { handle: 'bir-no-temp', host: '127.0.0.1', port: 7512 });
+      const pico = await seedPicoUnit(app, {
+        handle: 'bir-no-temp',
+        host: '127.0.0.1',
+        port: 7512,
+      });
       const batch = await seedBatch(app, pico.id, {
         species: 'oyster',
         humidity_target: 80,
@@ -148,7 +169,11 @@ describe('BatchIdRecipeController (e2e)', () => {
     });
 
     it('returns 422 when the batch is missing humidity_target', async () => {
-      const pico = await seedPicoUnit(app, { handle: 'bir-no-humid', host: '127.0.0.1', port: 7513 });
+      const pico = await seedPicoUnit(app, {
+        handle: 'bir-no-humid',
+        host: '127.0.0.1',
+        port: 7513,
+      });
       const batch = await seedBatch(app, pico.id, {
         species: 'oyster',
         temperature_target: 22,
@@ -163,7 +188,11 @@ describe('BatchIdRecipeController (e2e)', () => {
     });
 
     it('returns 400 when name is missing from the body', async () => {
-      const pico = await seedPicoUnit(app, { handle: 'bir-no-name', host: '127.0.0.1', port: 7514 });
+      const pico = await seedPicoUnit(app, {
+        handle: 'bir-no-name',
+        host: '127.0.0.1',
+        port: 7514,
+      });
       const batch = await seedBatch(app, pico.id, {
         species: 'oyster',
         temperature_target: 22,
@@ -179,7 +208,11 @@ describe('BatchIdRecipeController (e2e)', () => {
     });
 
     it('returns 409 when a recipe with the same name already exists', async () => {
-      const pico = await seedPicoUnit(app, { handle: 'bir-dup', host: '127.0.0.1', port: 7515 });
+      const pico = await seedPicoUnit(app, {
+        handle: 'bir-dup',
+        host: '127.0.0.1',
+        port: 7515,
+      });
       const batch = await seedBatch(app, pico.id, {
         species: 'oyster',
         temperature_target: 22,

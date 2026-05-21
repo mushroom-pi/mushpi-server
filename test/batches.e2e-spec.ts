@@ -74,6 +74,67 @@ describe('BatchesController (e2e)', () => {
         .expect(404);
       expect(res.body).toHaveProperty('statusCode', 404);
     });
+
+    it('returns 409 when the pico unit already has an active batch (finish_at null)', async () => {
+      const pico = await seedPicoUnit(app, {
+        handle: 'conflict-null',
+        host: 'conflict.host',
+        port: 5300,
+      });
+
+      // seed an active batch (finish_at null = in-progress)
+      await seedBatch(app, pico.id, { finish_at: null });
+
+      const res = await request(app.getHttpServer())
+        .post('/batches')
+        .send({ pico_unit_id: pico.id, species: 'oyster' })
+        .expect(409);
+
+      expect(res.body).toHaveProperty('statusCode', 409);
+      expect(res.body.message).toMatch(/already has an active batch/);
+    });
+
+    it('returns 409 when the pico unit already has an active batch (finish_at in the future)', async () => {
+      const pico = await seedPicoUnit(app, {
+        handle: 'conflict-future',
+        host: 'conflict.host',
+        port: 5301,
+      });
+
+      // seed an active batch with finish_at in the future
+      await seedBatch(app, pico.id, {
+        finish_at: new Date(Date.now() + 10 * 60 * 1000),
+      });
+
+      const res = await request(app.getHttpServer())
+        .post('/batches')
+        .send({ pico_unit_id: pico.id, species: 'shiitake' })
+        .expect(409);
+
+      expect(res.body).toHaveProperty('statusCode', 409);
+      expect(res.body.message).toMatch(/already has an active batch/);
+    });
+
+    it('allows creating a new batch when the previous one is finished', async () => {
+      const pico = await seedPicoUnit(app, {
+        handle: 'conflict-finished',
+        host: 'conflict.host',
+        port: 5302,
+      });
+
+      // seed a finished batch (finish_at in the past)
+      await seedBatch(app, pico.id, {
+        finish_at: new Date(Date.now() - 1000),
+      });
+
+      const res = await request(app.getHttpServer())
+        .post('/batches')
+        .send({ pico_unit_id: pico.id, species: 'lion mane' })
+        .expect(201);
+
+      expect(res.body).toHaveProperty('id');
+      expect(res.body).toHaveProperty('pico_unit_id', pico.id);
+    });
   });
 
   describe('GET /batches (list)', () => {

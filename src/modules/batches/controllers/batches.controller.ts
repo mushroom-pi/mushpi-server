@@ -8,6 +8,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 
+import { ApiConflictErrorResponse } from 'src/common/decorators/docs/api-conflict-response.decorator';
 import { ErrorDto } from 'src/common/dto/error.dto';
 
 import {
@@ -41,6 +42,11 @@ export class BatchesController {
     description:
       "The provided pico_unit_id doesn't correspond to any existing and enabled Pico Unit",
     type: ErrorDto,
+  })
+  @ApiConflictErrorResponse({
+    description: 'The Pico Unit already has an active batch',
+    message:
+      'Pico unit 1 already has an active batch (id: 7). Finish it before starting a new one.',
   })
   create(@Body() createBatchDto: CreateBatchDto) {
     return this.svc.create(createBatchDto);

@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   Injectable,
   NotFoundException,
   UnprocessableEntityException,
@@ -29,6 +30,13 @@ export class BatchesService {
 
   async create(dto: CreateBatchDto): Promise<Batch> {
     await this.picoUnitsService.getByIdOrThrow(dto.pico_unit_id, true);
+
+    const activeBatch = await this.currentForUnit(dto.pico_unit_id);
+    if (activeBatch) {
+      throw new ConflictException(
+        `Pico unit ${dto.pico_unit_id} already has an active batch (id: ${activeBatch.id}). Finish it before starting a new one.`,
+      );
+    }
 
     const createData: Partial<Batch> = { ...dto } as unknown as Partial<Batch>;
 
