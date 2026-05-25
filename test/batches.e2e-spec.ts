@@ -44,6 +44,7 @@ describe('BatchesController (e2e)', () => {
         temperature_target: 25,
         humidity_target: 60,
         notes: 'Initial batch',
+        description: 'First test batch',
       };
 
       const res = await request(app.getHttpServer())

@@ -30,6 +30,7 @@ import {
   PAGINATION_MIN_PAGE,
 } from 'src/common/constants/pagination.constants';
 import {
+  DESCRIPTION_MAX_LENGTH,
   NAME_MAX_LENGTH,
   NAME_MIN_LENGTH,
   NOTES_MAX_LENGTH,
@@ -87,6 +88,12 @@ export class CreateBatchDto {
   @IsString()
   @Length(0, NOTES_MAX_LENGTH)
   notes?: string;
+
+  @ApiPropertyOptional({ maxLength: DESCRIPTION_MAX_LENGTH })
+  @IsOptional()
+  @IsString()
+  @Length(0, DESCRIPTION_MAX_LENGTH)
+  description?: string | null;
 
   @ApiPropertyOptional({
     type: Number,

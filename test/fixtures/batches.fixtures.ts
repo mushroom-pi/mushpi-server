@@ -25,6 +25,7 @@ export async function seedBatch(
     temperature_target: data.temperature_target ?? null,
     humidity_target: data.humidity_target ?? null,
     notes: data.notes ?? '',
+    description: data.description ?? null,
     recipe_id: data.recipe_id ?? null,
   } as Partial<Batch>);
   return repo.save(entity);

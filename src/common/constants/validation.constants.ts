@@ -18,3 +18,6 @@ export const HANDLE_MAX_LENGTH = 64;
 
 /** Max length for the Pico unit `description` (longer free-text than a name). */
 export const PICO_DESCRIPTION_MAX_LENGTH = 512;
+
+/** Max length for short description fields (e.g., batch description). */
+export const DESCRIPTION_MAX_LENGTH = 120;

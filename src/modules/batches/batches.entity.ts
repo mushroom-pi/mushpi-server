@@ -9,7 +9,10 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
-import { NOTES_MAX_LENGTH } from 'src/common/constants/validation.constants';
+import {
+  DESCRIPTION_MAX_LENGTH,
+  NOTES_MAX_LENGTH,
+} from 'src/common/constants/validation.constants';
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
 import { Recipe } from 'src/modules/recipes/recipes.entity';
 
@@ -50,6 +53,12 @@ export class Batch {
   @IsOptional()
   @Length(0, NOTES_MAX_LENGTH)
   notes!: string;
+
+  @Column({ type: 'text', nullable: true, default: null })
+  @IsString()
+  @IsOptional()
+  @Length(0, DESCRIPTION_MAX_LENGTH)
+  description?: string | null;
 
   @Index()
   @ManyToOne(() => PicoUnit, (u) => u.readings ?? undefined, {

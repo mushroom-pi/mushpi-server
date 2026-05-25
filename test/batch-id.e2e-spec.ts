@@ -93,6 +93,7 @@ describe('BatchIdController (e2e)', () => {
         species: 'shiitake',
         finish_at: newFinishAt,
         temperature_target: 27,
+        description: 'Updated description',
       };
 
       const res = await request(app.getHttpServer())
@@ -108,6 +109,7 @@ describe('BatchIdController (e2e)', () => {
         new Date(newFinishAt).toISOString(),
       );
       expect(res.body.temperature_target).toBe(27);
+      expect(res.body.description).toBe('Updated description');
 
       // persisted in DB
       const repo = await getBatchRepo(app);
