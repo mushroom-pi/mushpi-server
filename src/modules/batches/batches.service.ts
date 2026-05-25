@@ -100,7 +100,11 @@ export class BatchesService {
     return batch;
   }
 
-  async list(query: ListBatchesQueryDto) {
+  private async listInternal(
+    query: ListBatchesQueryDto,
+    options: { includePicoUnit?: boolean; includeRecipe?: boolean } = {},
+  ) {
+    const { includePicoUnit = false, includeRecipe = false } = options;
     const now = new Date();
     const { page = 1, limit = 20, status, pico_unit_id, recipe_id } = query;
 
@@ -124,11 +128,16 @@ export class BatchesService {
       where.push(base);
     }
 
+    const relations = [];
+    if (includePicoUnit) relations.push('pico_unit');
+    if (includeRecipe) relations.push('recipe');
+
     const [items, total] = await this.batchRepo.findAndCount({
       where,
       order: { id: 'ASC' },
       take: limit,
       skip: (page - 1) * limit,
+      relations,
     });
 
     return {
@@ -140,15 +149,32 @@ export class BatchesService {
     };
   }
 
+  async list(query: ListBatchesQueryDto) {
+    return this.listInternal(query, {
+      includePicoUnit: true,
+      includeRecipe: true,
+    });
+  }
+
   async listForPicoUnitId(
     pico_unit_id: number,
     query: ListPicoUnitBatchesQueryDto,
   ) {
-    return this.list({ ...query, pico_unit_id });
+    return this.listInternal(
+      { ...query, pico_unit_id },
+      {
+        includeRecipe: true,
+      },
+    );
   }
 
   async listForRecipeId(recipe_id: number, query: ListPicoUnitBatchesQueryDto) {
-    return this.list({ ...query, recipe_id });
+    return this.listInternal(
+      { ...query, recipe_id },
+      {
+        includePicoUnit: true,
+      },
+    );
   }
 
   async createRecipeFromBatch(batch: Batch, dto: CreateRecipeFromBatchDto) {

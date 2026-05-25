@@ -252,6 +252,52 @@ describe('BatchesController (e2e)', () => {
         expect.arrayContaining(['planned', 'finished', 'in-progress-null']),
       );
     });
+
+    it('includes both pico_unit and recipe relations in response', async () => {
+      const pico = await seedPicoUnit(app, {
+        handle: 'rel-pico',
+        host: 'rel.host',
+        port: 5250,
+      });
+      const recipe = await seedRecipe(app, {
+        name: 'list-test-recipe',
+        species: 'oyster',
+      });
+
+      // Create one batch with recipe
+      await seedBatch(app, pico.id, {
+        recipe_id: recipe.id,
+        notes: 'with-recipe',
+      });
+      // Create one batch without recipe
+      await seedBatch(app, pico.id, { notes: 'without-recipe' });
+
+      const res = await request(app.getHttpServer())
+        .get('/batches')
+        .expect(200);
+
+      expect(res.body.items.length).toBe(2);
+
+      // All items should have pico_unit
+      expect(
+        res.body.items.every(
+          (item: any) => item.pico_unit && item.pico_unit.id === pico.id,
+        ),
+      ).toBe(true);
+
+      // The batch with recipe should have recipe object
+      const withRecipe = res.body.items.find(
+        (item: any) => item.notes === 'with-recipe',
+      );
+      expect(withRecipe.recipe).toBeDefined();
+      expect(withRecipe.recipe.id).toBe(recipe.id);
+
+      // The batch without recipe should have null recipe
+      const withoutRecipe = res.body.items.find(
+        (item: any) => item.notes === 'without-recipe',
+      );
+      expect(withoutRecipe.recipe).toBeNull();
+    });
   });
 
   // ─── POST /batches with recipe_id ──────────────────────────────────────────

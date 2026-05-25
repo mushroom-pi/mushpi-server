@@ -4,6 +4,7 @@ import request from 'supertest';
 
 import { clearBatches, seedBatch } from './fixtures/batches.fixtures';
 import { clearPicos, seedPicoUnit } from './fixtures/pico-units.fixtures';
+import { clearRecipes, seedRecipe } from './fixtures/recipes.fixtures';
 import { closeTestApp, createTestApp } from './test-setup';
 
 describe('PicoUnitIdBatchesController (e2e)', () => {
@@ -21,6 +22,7 @@ describe('PicoUnitIdBatchesController (e2e)', () => {
   beforeEach(async () => {
     // keep tests isolated
     await clearBatches(app);
+    await clearRecipes(app);
     await clearPicos(app);
   });
 
@@ -141,6 +143,49 @@ describe('PicoUnitIdBatchesController (e2e)', () => {
 
       expect(resFin.body.total).toBe(1);
       expect(resFin.body.items[0].notes).toBe('finished');
+    });
+
+    it('includes recipe but NOT pico_unit in response', async () => {
+      const pico = await seedPicoUnit(app, {
+        handle: 'pu-rel-test',
+        host: 'pu-rel.local',
+        port: 6015,
+      });
+      const recipe = await seedRecipe(app, {
+        name: 'pico-list-recipe',
+        species: 'shiitake',
+      });
+
+      // Create batches with and without recipe
+      await seedBatch(app, pico.id, {
+        recipe_id: recipe.id,
+        notes: 'has-recipe',
+      });
+      await seedBatch(app, pico.id, { notes: 'no-recipe' });
+
+      const res = await request(app.getHttpServer())
+        .get(`/pico-units/${pico.id}/batches`)
+        .expect(200);
+
+      expect(res.body.items.length).toBe(2);
+
+      // Verify pico_unit is NOT included
+      res.body.items.forEach((item: any) => {
+        expect(item.pico_unit).toBeUndefined();
+      });
+
+      // Verify recipe IS included when present
+      const withRecipe = res.body.items.find(
+        (item: any) => item.notes === 'has-recipe',
+      );
+      expect(withRecipe.recipe).toBeDefined();
+      expect(withRecipe.recipe.id).toBe(recipe.id);
+
+      // Verify recipe is null when not present
+      const noRecipe = res.body.items.find(
+        (item: any) => item.notes === 'no-recipe',
+      );
+      expect(noRecipe.recipe).toBeNull();
     });
   });
 

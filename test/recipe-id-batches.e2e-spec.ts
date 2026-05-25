@@ -93,5 +93,51 @@ describe('RecipeIdBatchesController (e2e)', () => {
 
       expect(res2.body.items.length).toBe(1);
     });
+
+    it('includes pico_unit but NOT recipe in response', async () => {
+      const picoA = await seedPicoUnit(app, {
+        handle: 'rb-rel-a',
+        host: '127.0.0.1',
+        port: 7210,
+      });
+      const picoB = await seedPicoUnit(app, {
+        handle: 'rb-rel-b',
+        host: '127.0.0.1',
+        port: 7211,
+      });
+      const recipe = await seedRecipe(app, { name: 'rel-test-recipe' });
+
+      // Create batches linked to this recipe from different pico units
+      await seedBatch(app, picoA.id, {
+        recipe_id: recipe.id,
+        notes: 'recipe-batch-a',
+      });
+      await seedBatch(app, picoB.id, {
+        recipe_id: recipe.id,
+        notes: 'recipe-batch-b',
+      });
+
+      const res = await request(app.getHttpServer())
+        .get(`/recipes/${recipe.id}/batches`)
+        .expect(200);
+
+      expect(res.body.items.length).toBe(2);
+
+      // Verify recipe is NOT included
+      res.body.items.forEach((item: any) => {
+        expect(item.recipe).toBeUndefined();
+      });
+
+      // Verify pico_unit IS included
+      res.body.items.forEach((item: any) => {
+        expect(item.pico_unit).toBeDefined();
+        expect(item.pico_unit.id).toBeDefined();
+      });
+
+      // Verify we get batches from both pico units
+      const picoIds = res.body.items.map((item: any) => item.pico_unit.id);
+      expect(picoIds).toContain(picoA.id);
+      expect(picoIds).toContain(picoB.id);
+    });
   });
 });
