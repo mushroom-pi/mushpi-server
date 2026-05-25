@@ -56,7 +56,7 @@ export class BatchesService {
   async getByIdOrThrow(id: number): Promise<Batch> {
     const batch = await this.batchRepo.findOne({
       where: { id },
-      relations: ['pico_unit'],
+      relations: ['pico_unit', 'recipe'],
     });
     if (!batch) throw new NotFoundException(`Batch ${id} not found`);
 

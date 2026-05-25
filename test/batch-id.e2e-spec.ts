@@ -1,6 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 
 import request from 'supertest';
+import { DataSource } from 'typeorm';
 
 import {
   clearBatches,
@@ -228,6 +229,83 @@ describe('BatchIdController (e2e)', () => {
         .expect(200);
 
       expect(res.body.recipe_id).toBeNull();
+      expect(res.body.recipe).toBeNull();
+    });
+
+    it('includes the nested recipe object when recipe_id refers to a valid recipe', async () => {
+      const pico = await seedPicoUnit(app, {
+        handle: 'bid-recipe-nested-pico',
+        host: '127.0.0.1',
+        port: 7402,
+      });
+      const recipe = await seedRecipe(app, {
+        name: 'bid-recipe-nested',
+        species: 'shiitake',
+        temperature_target: 20,
+        humidity_target: 75,
+      });
+      const batch = await seedBatch(app, pico.id, { recipe_id: recipe.id });
+
+      const res = await request(app.getHttpServer())
+        .get(`/batches/${batch.id}`)
+        .expect(200);
+
+      expect(res.body).toHaveProperty('recipe_id', recipe.id);
+      expect(res.body).toHaveProperty('recipe');
+      expect(res.body.recipe).toBeDefined();
+      expect(res.body.recipe).not.toBeNull();
+      expect(res.body.recipe.id).toBe(recipe.id);
+      expect(res.body.recipe.name).toBe('bid-recipe-nested');
+      expect(res.body.recipe.species).toBe('shiitake');
+      expect(res.body.recipe.temperature_target).toBe(20);
+      expect(res.body.recipe.humidity_target).toBe(75);
+    });
+
+    it('returns recipe as null when recipe_id refers to a non-existent recipe', async () => {
+      const pico = await seedPicoUnit(app, {
+        handle: 'bid-orphaned-recipe-pico',
+        host: '127.0.0.1',
+        port: 7403,
+      });
+
+      const dataSource = app.get(DataSource);
+
+      // Temporarily disable foreign keys to create an orphaned reference
+      await dataSource.query('PRAGMA foreign_keys = OFF');
+      try {
+        // Insert batch with a recipe_id that doesn't exist
+        await dataSource.query(
+          `INSERT INTO batch (pico_unit_id, recipe_id, start_at, finish_at, species, temperature_target, humidity_target, notes, description)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            pico.id,
+            999999, // non-existent recipe
+            new Date().toISOString(),
+            null,
+            null,
+            null,
+            null,
+            '',
+            null,
+          ],
+        );
+        const batchRepo = await getBatchRepo(app);
+        const batch = await batchRepo.findOne({
+          where: { pico_unit_id: pico.id },
+          order: { id: 'DESC' },
+        });
+
+        const res = await request(app.getHttpServer())
+          .get(`/batches/${batch!.id}`)
+          .expect(200);
+
+        expect(res.body).toHaveProperty('recipe_id', 999999);
+        expect(res.body).toHaveProperty('recipe');
+        expect(res.body.recipe).toBeNull();
+      } finally {
+        // Re-enable foreign keys
+        await dataSource.query('PRAGMA foreign_keys = ON');
+      }
     });
   });
 });
