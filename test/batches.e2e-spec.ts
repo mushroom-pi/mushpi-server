@@ -168,7 +168,7 @@ describe('BatchesController (e2e)', () => {
       expect(res.body).toHaveProperty('pages', Math.ceil(5 / 2));
     });
 
-    it('filters by status (in-progress vs finished) and pico_unit_id', async () => {
+    it('filters by status (planned, in-progress vs finished) and pico_unit_id', async () => {
       const picoA = await seedPicoUnit(app, {
         handle: 'A',
         host: 'a.host',
@@ -180,8 +180,15 @@ describe('BatchesController (e2e)', () => {
         port: 5201,
       });
 
-      // create: one finished (finish_at in past), two in-progress (one null, one future)
+      // create: one planned (future start_at), one finished (finish_at in past), two in-progress (one null, one future)
       const now = Date.now();
+      // planned (start_at in future)
+      await seedBatch(app, picoA.id, {
+        start_at: new Date(now + 100000),
+        finish_at: null,
+        notes: 'planned',
+      });
+
       // finished (past)
       await seedBatch(app, picoA.id, {
         start_at: new Date(now - 100000),
@@ -202,6 +209,15 @@ describe('BatchesController (e2e)', () => {
         finish_at: new Date(now + 100000),
         notes: 'in-progress-future',
       });
+
+      // Query all planned (should return one batch)
+      const resPlanned = await request(app.getHttpServer())
+        .get('/batches')
+        .query({ status: 'planned' })
+        .expect(200);
+
+      expect(resPlanned.body.total).toBe(1);
+      expect(resPlanned.body.items[0].notes).toBe('planned');
 
       // Query all in-progress (should return two batches)
       const resIn = await request(app.getHttpServer())
@@ -224,16 +240,16 @@ describe('BatchesController (e2e)', () => {
       expect(resFin.body.total).toBe(1);
       expect(resFin.body.items[0].notes).toBe('finished');
 
-      // Query per pico unit (picoA)
+      // Query per pico unit (picoA) - should return 3 batches: planned, finished, in-progress-null
       const resA = await request(app.getHttpServer())
         .get('/batches')
         .query({ pico_unit_id: picoA.id })
         .expect(200);
 
-      expect(resA.body.total).toBe(2); // finished + in-progress-null for picoA
+      expect(resA.body.total).toBe(3);
       const notesA = resA.body.items.map((it: any) => it.notes);
       expect(notesA).toEqual(
-        expect.arrayContaining(['finished', 'in-progress-null']),
+        expect.arrayContaining(['planned', 'finished', 'in-progress-null']),
       );
     });
   });

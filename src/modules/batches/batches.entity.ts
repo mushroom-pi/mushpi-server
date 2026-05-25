@@ -1,3 +1,5 @@
+import { ApiProperty } from '@nestjs/swagger';
+
 import { Expose } from 'class-transformer';
 import { IsDate, IsInt, IsOptional, IsString, Length } from 'class-validator';
 import {
@@ -16,6 +18,7 @@ import {
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
 import { Recipe } from 'src/modules/recipes/recipes.entity';
 
+import { batchStatuses } from './batches.constant';
 import { BatchStatus } from './batches.type';
 
 @Entity('batch')
@@ -86,7 +89,15 @@ export class Batch {
   recipe_id?: number | null;
 
   @Expose()
+  @ApiProperty({
+    enum: batchStatuses,
+    description:
+      'Current status of the batch (computed from start_at and finish_at)',
+    example: 'in-progress',
+  })
   get status(): BatchStatus {
+    // if start_at is in the future => planned
+    if (this.start_at.getTime() > Date.now()) return 'planned';
     // if finish_at is null or in the future => in-progress; otherwise finished
     if (!this.finish_at) return 'in-progress';
     return this.finish_at.getTime() > Date.now() ? 'in-progress' : 'finished';

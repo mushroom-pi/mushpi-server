@@ -110,10 +110,12 @@ export class BatchesService {
     if (pico_unit_id) base.pico_unit_id = pico_unit_id;
     if (recipe_id) base.recipe_id = recipe_id;
     if (status) {
-      if (status === 'in-progress') {
+      if (status === 'planned') {
+        where.push([{ ...base, start_at: MoreThan(now) }]);
+      } else if (status === 'in-progress') {
         where.push([
-          { ...base, finish_at: IsNull() },
-          { ...base, finish_at: MoreThan(now) },
+          { ...base, finish_at: IsNull(), start_at: LessThan(now) },
+          { ...base, finish_at: MoreThan(now), start_at: LessThan(now) },
         ]);
       } else if (status === 'finished') {
         where.push([{ ...base, finish_at: LessThan(now) }]);

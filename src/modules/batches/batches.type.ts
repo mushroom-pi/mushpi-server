@@ -1,1 +1,1 @@
-export type BatchStatus = 'in-progress' | 'finished';
+export type BatchStatus = 'planned' | 'in-progress' | 'finished';
