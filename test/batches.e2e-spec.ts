@@ -83,7 +83,7 @@ describe('BatchesController (e2e)', () => {
         port: 5300,
       });
 
-      // seed an active batch (finish_at null = in-progress)
+      // seed an active batch (finish_at null = in-progress with no end date)
       await seedBatch(app, pico.id, { finish_at: null });
 
       const res = await request(app.getHttpServer())
@@ -92,7 +92,7 @@ describe('BatchesController (e2e)', () => {
         .expect(409);
 
       expect(res.body).toHaveProperty('statusCode', 409);
-      expect(res.body.message).toMatch(/already has an active batch/);
+      expect(res.body.message).toMatch(/no defined end/);
     });
 
     it('returns 409 when the pico unit already has an active batch (finish_at in the future)', async () => {
@@ -103,17 +103,80 @@ describe('BatchesController (e2e)', () => {
       });
 
       // seed an active batch with finish_at in the future
+      const activeBatchFinish = new Date(Date.now() + 10 * 60 * 1000);
       await seedBatch(app, pico.id, {
-        finish_at: new Date(Date.now() + 10 * 60 * 1000),
+        finish_at: activeBatchFinish,
       });
 
+      // Try to create new batch starting now (before active batch ends)
       const res = await request(app.getHttpServer())
         .post('/batches')
         .send({ pico_unit_id: pico.id, species: 'shiitake' })
         .expect(409);
 
       expect(res.body).toHaveProperty('statusCode', 409);
-      expect(res.body.message).toMatch(/already has an active batch/);
+      expect(res.body.message).toMatch(/Start the new batch after that time/);
+    });
+
+    it('allows creating a new batch scheduled after active batch finish_at', async () => {
+      const pico = await seedPicoUnit(app, {
+        handle: 'conflict-scheduled-future',
+        host: 'conflict-future.host',
+        port: 5303,
+      });
+
+      // seed an active batch finishing 1 hour from now
+      const activeBatchFinish = new Date(Date.now() + 60 * 60 * 1000);
+      await seedBatch(app, pico.id, {
+        start_at: new Date(Date.now() - 30 * 60 * 1000), // started 30min ago
+        finish_at: activeBatchFinish,
+      });
+
+      // Create new batch starting 2 hours from now (after active batch ends)
+      const newBatchStart = new Date(Date.now() + 120 * 60 * 1000);
+      const res = await request(app.getHttpServer())
+        .post('/batches')
+        .send({
+          pico_unit_id: pico.id,
+          species: 'oyster',
+          start_at: newBatchStart.toISOString(),
+        })
+        .expect(201);
+
+      expect(res.body).toHaveProperty('id');
+      expect(res.body).toHaveProperty('pico_unit_id', pico.id);
+      expect(new Date(res.body.start_at).toISOString()).toBe(
+        newBatchStart.toISOString(),
+      );
+    });
+
+    it('returns 409 when trying to create new batch before active batch finish_at', async () => {
+      const pico = await seedPicoUnit(app, {
+        handle: 'conflict-too-early',
+        host: 'conflict-early.host',
+        port: 5304,
+      });
+
+      // seed an active batch finishing 2 hours from now
+      const activeBatchFinish = new Date(Date.now() + 120 * 60 * 1000);
+      await seedBatch(app, pico.id, {
+        start_at: new Date(Date.now() - 30 * 60 * 1000),
+        finish_at: activeBatchFinish,
+      });
+
+      // Try to create new batch starting 1 hour from now (before active batch ends)
+      const newBatchStart = new Date(Date.now() + 60 * 60 * 1000);
+      const res = await request(app.getHttpServer())
+        .post('/batches')
+        .send({
+          pico_unit_id: pico.id,
+          species: 'shiitake',
+          start_at: newBatchStart.toISOString(),
+        })
+        .expect(409);
+
+      expect(res.body).toHaveProperty('statusCode', 409);
+      expect(res.body.message).toMatch(/Start the new batch after that time/);
     });
 
     it('allows creating a new batch when the previous one is finished', async () => {

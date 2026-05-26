@@ -2,6 +2,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  PreconditionFailedException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -30,15 +31,28 @@ export class BatchesService {
 
   async create(dto: CreateBatchDto): Promise<Batch> {
     await this.picoUnitsService.getByIdOrThrow(dto.pico_unit_id, true);
-
     const activeBatch = await this.currentForUnit(dto.pico_unit_id);
-    if (activeBatch) {
-      throw new ConflictException(
-        `Pico unit ${dto.pico_unit_id} already has an active batch (id: ${activeBatch.id}). Finish it before starting a new one.`,
-      );
-    }
 
     const createData: Partial<Batch> = { ...dto } as unknown as Partial<Batch>;
+
+    if (activeBatch) {
+      // If there's an active batch without a defined finish_at, cannot create new batch
+      if (!activeBatch.finish_at) {
+        throw new ConflictException(
+          `Pico unit ${dto.pico_unit_id} already has an active batch (id: ${activeBatch.id}) with no defined end. Finish it before starting a new one.`,
+        );
+      }
+
+      // If there's an active batch with finish_at, new batch's start_at must be after finish_at
+      // Parse start_at from DTO (string -> Date)
+      const newBatchStart = dto.start_at ? new Date(dto.start_at) : new Date();
+
+      if (activeBatch.finish_at >= newBatchStart) {
+        throw new ConflictException(
+          `Pico unit ${dto.pico_unit_id} already has an active batch (id: ${activeBatch.id}) finishing at ${activeBatch.finish_at.toISOString()}. Start the new batch after that time.`,
+        );
+      }
+    }
 
     if (dto.recipe_id != null) {
       const recipe = await this.recipesService.findOne(dto.recipe_id);
@@ -64,6 +78,36 @@ export class BatchesService {
   }
 
   async update(batch: Batch, dto: UpdateBatchDto): Promise<Batch> {
+    const now = new Date();
+
+    // Check if start_at has already happened (batch has started)
+    if (batch.start_at < now) {
+      // Cannot modify start_at if the batch has already started
+      if (dto.start_at !== undefined) {
+        throw new PreconditionFailedException(
+          'Cannot modify start_at: batch has already started',
+        );
+      }
+    }
+
+    // Check if finish_at has already happened (batch is finished)
+    if (batch.finish_at && batch.finish_at < now) {
+      // Only allow modifications to description and notes
+      const allowedFields = ['description', 'notes'];
+      const modifiedFields = Object.keys(dto).filter(
+        (key) => dto[key as keyof UpdateBatchDto] !== undefined,
+      );
+      const disallowedFields = modifiedFields.filter(
+        (field) => !allowedFields.includes(field),
+      );
+
+      if (disallowedFields.length > 0) {
+        throw new PreconditionFailedException(
+          `Cannot modify ${disallowedFields.join(', ')}: batch has already finished. Only description and notes can be modified.`,
+        );
+      }
+    }
+
     Object.assign(batch, dto);
     return this.batchRepo.save(batch);
   }

@@ -32,7 +32,7 @@ export class BatchesController {
   @ApiOperation({
     summary: 'Kick-off a new batch',
     description:
-      'For a Pico Unit, establish a new growing or incubation process',
+      "For a Pico Unit, establish a new growing or incubation process. If the unit has an active batch, the new batch can only be created if: (1) the active batch has a defined finish_at date, AND (2) the new batch's start_at is scheduled after the active batch's finish_at.",
   })
   @ApiCreatedResponse({
     description: 'New batch created',
@@ -44,9 +44,10 @@ export class BatchesController {
     type: ErrorDto,
   })
   @ApiConflictErrorResponse({
-    description: 'The Pico Unit already has an active batch',
+    description:
+      'The Pico Unit already has an active batch without a defined end, or the new batch start_at overlaps with the active batch',
     message:
-      'Pico unit 1 already has an active batch (id: 7). Finish it before starting a new one.',
+      'Pico unit 1 already has an active batch (id: 7) with no defined end. Finish it before starting a new one. OR Pico unit 1 already has an active batch (id: 7) finishing at 2026-05-27T10:00:00.000Z. Start the new batch after that time.',
   })
   create(@Body() createBatchDto: CreateBatchDto) {
     return this.svc.create(createBatchDto);

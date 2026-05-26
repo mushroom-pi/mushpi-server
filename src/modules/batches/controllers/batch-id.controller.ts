@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { ApiBatch } from 'src/common/decorators/docs/api-batch.decorator';
+import { ApiPreconditionFailedErrorResponse } from 'src/common/decorators/docs/api-precondition-failed-response.decorator';
 import { ApiEmptyOkResponse } from 'src/common/decorators/docs/empty-ok-response.decorator';
 import { GetBatch } from 'src/common/decorators/get-batch.decorator';
 
@@ -25,6 +26,10 @@ export class BatchIdController {
   @Patch()
   @ApiOperation({ summary: 'Modify an existing batch' })
   @ApiOkResponse({ type: Batch })
+  @ApiPreconditionFailedErrorResponse({
+    description:
+      'Precondition Failed: Cannot modify start_at if batch has started, or cannot modify fields other than description/notes if batch has finished',
+  })
   update(@GetBatch() batch: Batch, @Body() dto: UpdateBatchDto) {
     return this.svc.update(batch, dto);
   }

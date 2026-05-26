@@ -163,6 +163,148 @@ describe('BatchIdController (e2e)', () => {
       // notes shouldn't have changed
       expect(persisted!.notes).not.toBe('still same');
     });
+
+    it('returns 412 when trying to modify start_at after batch has started', async () => {
+      const pico = await seedPicoUnit(app, {
+        handle: 'started-batch',
+        host: 'started.host',
+        port: 5335,
+      });
+      // Create batch with start_at in the past (already started)
+      const batch = await seedBatch(app, pico.id, {
+        start_at: new Date(Date.now() - 60 * 60 * 1000), // 1h ago
+        notes: 'started-batch',
+      });
+
+      // Attempt to change start_at
+      const res = await request(app.getHttpServer())
+        .patch(`/batches/${batch.id}`)
+        .send({
+          start_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        })
+        .expect(412);
+
+      expect(res.body).toHaveProperty('statusCode', 412);
+      expect(res.body.message).toMatch(/Cannot modify start_at/);
+
+      // Batch should remain unchanged
+      const repo = await getBatchRepo(app);
+      const persisted = await repo.findOneBy({ id: batch.id });
+      expect(persisted!.notes).toBe('started-batch'); // notes unchanged (nothing else modified)
+    });
+
+    it('allows modifying other fields when batch has started', async () => {
+      const pico = await seedPicoUnit(app, {
+        handle: 'started-batch-mod',
+        host: 'started-mod.host',
+        port: 5336,
+      });
+      // Create batch with start_at in the past
+      const batch = await seedBatch(app, pico.id, {
+        start_at: new Date(Date.now() - 60 * 60 * 1000), // 1h ago
+        notes: 'original notes',
+      });
+
+      // Modify notes (should succeed)
+      const res = await request(app.getHttpServer())
+        .patch(`/batches/${batch.id}`)
+        .send({ notes: 'updated notes after start' })
+        .expect(200);
+
+      expect(res.body.notes).toBe('updated notes after start');
+    });
+
+    it('returns 412 when trying to modify non-description/notes fields after batch has finished', async () => {
+      const pico = await seedPicoUnit(app, {
+        handle: 'finished-batch',
+        host: 'finished.host',
+        port: 5337,
+      });
+      // Create batch with finish_at in the past (finished)
+      const batch = await seedBatch(app, pico.id, {
+        start_at: new Date(Date.now() - 120 * 60 * 1000), // 2h ago
+        finish_at: new Date(Date.now() - 60 * 60 * 1000), // 1h ago
+        species: 'oyster',
+        temperature_target: 20,
+      });
+
+      // Attempt to modify species (should fail)
+      const res = await request(app.getHttpServer())
+        .patch(`/batches/${batch.id}`)
+        .send({ species: 'shiitake' })
+        .expect(412);
+
+      expect(res.body).toHaveProperty('statusCode', 412);
+      expect(res.body.message).toMatch(/Cannot modify species/);
+      expect(res.body.message).toMatch(
+        /only description and notes can be modified/i,
+      );
+
+      // Verify no change
+      const repo = await getBatchRepo(app);
+      const persisted = await repo.findOneBy({ id: batch.id });
+      expect(persisted!.species).toBe('oyster');
+    });
+
+    it('allows modifying description and notes after batch has finished', async () => {
+      const pico = await seedPicoUnit(app, {
+        handle: 'finished-batch-notes',
+        host: 'finished-notes.host',
+        port: 5338,
+      });
+      // Create batch with finish_at in the past (finished)
+      const batch = await seedBatch(app, pico.id, {
+        start_at: new Date(Date.now() - 120 * 60 * 1000), // 2h ago
+        finish_at: new Date(Date.now() - 60 * 60 * 1000), // 1h ago
+        notes: 'final notes',
+        description: 'final desc',
+      });
+
+      // Modify notes and description (should succeed)
+      const res = await request(app.getHttpServer())
+        .patch(`/batches/${batch.id}`)
+        .send({
+          notes: 'updated final notes',
+          description: 'updated final desc',
+        })
+        .expect(200);
+
+      expect(res.body.notes).toBe('updated final notes');
+      expect(res.body.description).toBe('updated final desc');
+    });
+
+    it('rejects modification of temperature_target and notes together after batch has finished', async () => {
+      const pico = await seedPicoUnit(app, {
+        handle: 'finished-multi-mod',
+        host: 'finished-multi.host',
+        port: 5339,
+      });
+      // Create batch with finish_at in the past
+      const batch = await seedBatch(app, pico.id, {
+        start_at: new Date(Date.now() - 120 * 60 * 1000),
+        finish_at: new Date(Date.now() - 60 * 60 * 1000),
+        temperature_target: 20,
+        notes: 'original',
+      });
+
+      // Try to modify both temperature_target (disallowed) and notes (allowed)
+      const res = await request(app.getHttpServer())
+        .patch(`/batches/${batch.id}`)
+        .send({
+          temperature_target: 25,
+          notes: 'updated notes',
+        })
+        .expect(412);
+
+      expect(res.body.message).toMatch(/Cannot modify temperature_target/);
+      expect(res.body).toHaveProperty('statusCode', 412);
+
+      // Verify nothing changed
+      const repo = await getBatchRepo(app);
+      const persisted = await repo.findOneBy({ id: batch.id });
+      expect(persisted!.temperature_target).toBe(20);
+      expect(persisted!.notes).toBe('original');
+    });
   });
 
   describe('DELETE /batches/:id', () => {
