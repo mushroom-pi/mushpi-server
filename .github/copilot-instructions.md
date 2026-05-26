@@ -27,7 +27,7 @@ src/modules/
 
 **Readings** (`readings`): `id`, `ts`, `temperature`, `humidity`, `fan_on`, `humidifier_on`, `heater_on`, `control_loop_enabled`, `temperature_set`, `humidity_set`, `board_uptime_s`, `board_temp`, `board_used_mem`, `board_used_fs`, `time_to_response_ms`, `pico_unit_id` FK (CASCADE delete). Index on `(pico_unit_id, ts)`.
 
-**Batch** (`batch`): `id`, `start_at`, `finish_at`, `species`, `temperature_target` (integer), `humidity_target` (integer), `notes`, `pico_unit_id` FK, `recipe_id` FK (SET NULL). Virtual getter `status` → `'in-progress'` | `'finished'`.
+**Batch** (`batch`): `id`, `start_at`, `finish_at`, `species`, `temperature_target` (integer), `humidity_target` (integer), `notes`, `description`, `pico_unit_id` FK, `recipe_id` FK (SET NULL). Virtual getter `status` → `'planned'` | `'in-progress'` | `'finished'`. Computed at runtime based on start_at/finish_at dates, not stored. Requires both `@Expose()` + `@ApiProperty()` decorators to appear in Swagger responses.
 
 **Recipe** (`recipe`): `id`, `name` (unique), `species`, `temperature_target` (integer), `humidity_target` (integer), `duration_days`, `notes`, `created_at`, `updated_at`. `@OneToMany` to Batch.
 
@@ -145,3 +145,29 @@ All domain limit numbers (validator min/max, string lengths, pagination defaults
 ### E2E test isolation
 - Each test suite uses a unique `host:port` combination for any `PicoUnit` seed data to avoid unique-constraint conflicts when test suites run in parallel.
 - Always call `clearX()` fixture helpers in `beforeEach` for every entity type the test suite touches.
+
+## Batches Module — Specific Patterns
+
+### Batch status computation
+`status` is a **computed property** (not stored in DB), determined at runtime from `start_at` and `finish_at`:
+- `'planned'`: `start_at > now`
+- `'in-progress'`: `(finish_at IS NULL OR finish_at > now) AND start_at < now`
+- `'finished'`: `finish_at < now`
+
+To expose computed properties in Swagger responses: use **both** `@Expose()` (for serialization) **and** `@ApiProperty()` (for OpenAPI introspection). Neither decorator alone is sufficient.
+
+### Batch lifecycle constraints
+- **On creation**: If unit has active batch, reject unless:
+  1. Active batch has a defined `finish_at` (not null), AND
+  2. New batch's `start_at` is strictly after active batch's `finish_at`
+- **On update**: 
+  - If `start_at` has passed, prevent modification of `start_at` field (409 error)
+  - If `finish_at` has passed, allow modifications to `description` and `notes` only (409 error for other fields)
+
+### Selective relation loading
+`list()` and scoped list methods (`listForPicoUnitId`, `listForRecipeId`) use different relation configurations:
+- `list()`: loads both `pico_unit` and `recipe` (general list)
+- `listForPicoUnitId()`: loads only `recipe` (pico_unit is redundant from URL)
+- `listForRecipeId()`: loads only `pico_unit` (recipe is redundant from URL)
+
+Implement via private `listInternal()` method with optional parameters controlling which relations to include. This optimizes database queries and avoids redundant data in API payloads.
