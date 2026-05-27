@@ -1,5 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
+import { SchedulerRegistry } from '@nestjs/schedule';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ExceptionsFilter } from '../src/common/filters/exceptions.filter';
@@ -29,5 +30,16 @@ export async function createTestApp(
 }
 
 export async function closeTestApp(app?: INestApplication): Promise<void> {
-  if (app) await app.close();
+  if (!app) return;
+
+  // Stop all scheduled cron jobs before closing to prevent open handle leaks
+  // from @nestjs/schedule timers keeping the event loop alive after app.close().
+  try {
+    const scheduler = app.get(SchedulerRegistry);
+    scheduler.getCronJobs().forEach((job) => job.stop());
+  } catch {
+    // scheduler may not be available in minimal test modules
+  }
+
+  await app.close();
 }

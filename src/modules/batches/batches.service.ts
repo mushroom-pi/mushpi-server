@@ -9,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { IsNull, LessThan, MoreThan, Repository } from 'typeorm';
 
+import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
 import { PicoUnitsService } from 'src/modules/pico-units/pico-units.service';
 import { RecipesService } from 'src/modules/recipes/recipes.service';
 
@@ -142,6 +143,38 @@ export class BatchesService {
         `Pico unit ${picoUnitId} doesn't have any current batch`,
       );
     return batch;
+  }
+
+  async findAllInProgress(): Promise<Batch[]> {
+    const now = new Date();
+    return this.batchRepo.find({
+      where: [
+        { start_at: LessThan(now), finish_at: IsNull() },
+        { start_at: LessThan(now), finish_at: MoreThan(now) },
+      ],
+      relations: ['pico_unit'],
+    });
+  }
+
+  async findUnitsWithFinishedBatch(): Promise<PicoUnit[]> {
+    const now = new Date();
+
+    const activeBatches = await this.findAllInProgress();
+    const activeUnitIds = new Set(activeBatches.map((b) => b.pico_unit_id));
+
+    const finishedBatches = await this.batchRepo.find({
+      where: { finish_at: LessThan(now) },
+      relations: ['pico_unit'],
+    });
+
+    const unitMap = new Map<number, PicoUnit>();
+    for (const batch of finishedBatches) {
+      if (!activeUnitIds.has(batch.pico_unit_id) && batch.pico_unit?.enabled) {
+        unitMap.set(batch.pico_unit_id, batch.pico_unit);
+      }
+    }
+
+    return Array.from(unitMap.values());
   }
 
   private async listInternal(

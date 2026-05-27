@@ -143,8 +143,38 @@ All domain limit numbers (validator min/max, string lengths, pagination defaults
 4. `autoLoadEntities: true` alone is NOT sufficient — entities must be registered via `TypeOrmModule.forFeature()` in a module that is imported into `AppModule`.
 
 ### E2E test isolation
-- Each test suite uses a unique `host:port` combination for any `PicoUnit` seed data to avoid unique-constraint conflicts when test suites run in parallel.
+- Each test suite uses a unique `host:port` combination for any `PicoUnit` seed data to avoid unique-constraint conflicts.
 - Always call `clearX()` fixture helpers in `beforeEach` for every entity type the test suite touches.
+
+### E2E test infrastructure — known constraints
+
+**`jest-e2e.json` must always contain:**
+```json
+"forceExit": true,
+"maxWorkers": 1
+```
+
+- **`forceExit: true`** — `ScheduleModule.forRoot()` registers cron timers that survive `app.close()`, keeping the event loop alive and causing Jest to hang waiting for workers to exit. `forceExit` ensures Jest terminates cleanly after all tests pass. The "Force exiting Jest" message in output is expected and harmless.
+- **`maxWorkers: 1`** — all test files share the same SQLite database file. Parallel workers all try to write simultaneously, causing lock contention that makes the suite slower *and* flaky. Serialising to one worker is actually faster for this codebase (~5 s vs ~9 s) because it eliminates that contention.
+- **Note:** `runInBand` is a CLI-only flag and is **not** a valid Jest JSON config option — always use `maxWorkers: 1` instead.
+
+**`closeTestApp` in `test/test-setup.ts` must stop cron jobs before closing:**
+```ts
+const scheduler = app.get(SchedulerRegistry);
+scheduler.getCronJobs().forEach((job) => job.stop());
+await app.close();
+```
+Stopping jobs explicitly before `app.close()` lets NestJS shut down cleanly, reducing (but not fully eliminating) the open-handle window that `forceExit` then cleans up.
+
+**Mocking axios in e2e tests** — use `jest.mock('axios')` at the module level:
+```ts
+jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
+// reset in beforeEach:
+mockedAxios.post.mockReset();
+mockedAxios.post.mockResolvedValue({ data: {} });
+```
+`axiosRetry` attaches to the auto-mocked interceptors without issue. Plain `new Error(...)` objects are not treated as network errors by axiosRetry, so no retry delays will fire during tests.
 
 ## Batches Module — Specific Patterns
 
