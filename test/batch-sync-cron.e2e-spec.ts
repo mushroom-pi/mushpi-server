@@ -4,6 +4,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import axios from 'axios';
 import { Repository } from 'typeorm';
 
+import { BatchesService } from 'src/modules/batches/batches.service';
 import { CronService } from 'src/modules/cron/cron.service';
 import { Readings } from 'src/modules/readings/readings.entity';
 
@@ -18,6 +19,7 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 describe('CronService.handleBatchSync() (e2e)', () => {
   let app: INestApplication;
   let cronService: CronService;
+  let batchesService: BatchesService;
   let readingsRepo: Repository<Readings>;
 
   const past = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -28,6 +30,7 @@ describe('CronService.handleBatchSync() (e2e)', () => {
     app = await createTestApp();
     await app.init();
     cronService = app.get(CronService);
+    batchesService = app.get(BatchesService);
     readingsRepo = app.get(getRepositoryToken(Readings));
   });
 
@@ -261,6 +264,60 @@ describe('CronService.handleBatchSync() (e2e)', () => {
         'http://127.0.0.1:7041/setpoints',
         { temperature: 22, humidity: 70 },
       );
+    });
+  });
+
+  describe('handleBatchStarted — immediate sync on creation', () => {
+    it('pushes setpoints and enables control loop for a new in-progress batch', async () => {
+      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7042 });
+      const seeded = await seedBatch(app, pico.id, {
+        start_at: past,
+        temperature_target: 24,
+        humidity_target: 85,
+      });
+      const hydrated = await batchesService.getByIdOrThrow(seeded.id);
+
+      await cronService.handleBatchStarted({ batch: hydrated });
+
+      expect(mockedAxios.post).toHaveBeenCalledWith(
+        'http://127.0.0.1:7042/setpoints',
+        { temperature: 24, humidity: 85 },
+      );
+      expect(mockedAxios.post).toHaveBeenCalledWith(
+        'http://127.0.0.1:7042/control',
+        { enabled: true },
+      );
+    });
+
+    it('does not push when the batch setpoints already match the latest reading', async () => {
+      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7043 });
+      const seeded = await seedBatch(app, pico.id, {
+        start_at: past,
+        temperature_target: 24,
+        humidity_target: 85,
+      });
+      await seedReadingForUnit(app, pico, {
+        temperature_set: 24,
+        humidity_set: 85,
+        control_loop_enabled: true,
+      });
+      const hydrated = await batchesService.getByIdOrThrow(seeded.id);
+
+      await cronService.handleBatchStarted({ batch: hydrated });
+
+      expect(mockedAxios.post).not.toHaveBeenCalled();
+    });
+
+    it('does not throw when the Pico unit is unreachable', async () => {
+      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7044 });
+      const seeded = await seedBatch(app, pico.id, { start_at: past });
+      const hydrated = await batchesService.getByIdOrThrow(seeded.id);
+
+      mockedAxios.post.mockRejectedValueOnce(new Error('connection refused'));
+
+      await expect(
+        cronService.handleBatchStarted({ batch: hydrated }),
+      ).resolves.not.toThrow();
     });
   });
 });

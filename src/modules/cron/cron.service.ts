@@ -1,6 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
+import {
+  BATCH_EVENTS,
+  BatchStartedEvent,
+} from 'src/modules/batches/batch.events';
+import { Batch } from 'src/modules/batches/batches.entity';
 import { BatchesService } from 'src/modules/batches/batches.service';
 import { ControlService } from 'src/modules/control/control.service';
 import { ReadingsService } from 'src/modules/readings/readings.service';
@@ -27,21 +33,7 @@ export class CronService {
   async handleBatchSync() {
     const activeBatches = await this.batchesService.findAllInProgress();
     for (const batch of activeBatches) {
-      try {
-        const changed = await this.controlService.applyBatchSettings(
-          batch.pico_unit,
-          batch,
-        );
-        if (changed) {
-          this.logger.log(
-            `Applied batch ${batch.id} settings to pico unit ${batch.pico_unit_id}`,
-          );
-        }
-      } catch (error) {
-        this.logger.error(
-          `Failed to apply batch ${batch.id} settings to pico unit ${batch.pico_unit_id}: ${JSON.stringify(error)}`,
-        );
-      }
+      await this.applyBatchSettingsSafe(batch);
     }
 
     const finishedUnits =
@@ -62,9 +54,35 @@ export class CronService {
     }
   }
 
+  @OnEvent(BATCH_EVENTS.STARTED)
+  async handleBatchStarted({ batch }: BatchStartedEvent) {
+    this.logger.log(
+      `Batch ${batch.id} started — applying settings immediately to unit ${batch.pico_unit_id}`,
+    );
+    await this.applyBatchSettingsSafe(batch);
+  }
+
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   cleanReadings() {
     this.logger.log('Cleaning readings table');
     this.readingsService.deleteOlderThanMonths();
+  }
+
+  private async applyBatchSettingsSafe(batch: Batch): Promise<void> {
+    try {
+      const changed = await this.controlService.applyBatchSettings(
+        batch.pico_unit,
+        batch,
+      );
+      if (changed) {
+        this.logger.log(
+          `Applied batch ${batch.id} settings to pico unit ${batch.pico_unit_id}`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to apply batch ${batch.id} settings to pico unit ${batch.pico_unit_id}: ${JSON.stringify(error)}`,
+      );
+    }
   }
 }

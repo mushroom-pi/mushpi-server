@@ -1,5 +1,6 @@
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 
@@ -42,6 +43,7 @@ import { SwaggerModule } from './swagger/swagger.module';
     SQLiteModule,
     PicoUnitsModule,
     ReadingsModule,
+    EventEmitterModule.forRoot(),
     ScheduleModule.forRoot(),
     CronModule,
     ControlModule,

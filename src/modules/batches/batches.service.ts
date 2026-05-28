@@ -5,6 +5,7 @@ import {
   PreconditionFailedException,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { IsNull, LessThan, MoreThan, Repository } from 'typeorm';
@@ -13,6 +14,7 @@ import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
 import { PicoUnitsService } from 'src/modules/pico-units/pico-units.service';
 import { RecipesService } from 'src/modules/recipes/recipes.service';
 
+import { BATCH_EVENTS, BatchStartedEvent } from './batch.events';
 import {
   CreateBatchDto,
   CreateRecipeFromBatchDto,
@@ -28,6 +30,7 @@ export class BatchesService {
     @InjectRepository(Batch) private batchRepo: Repository<Batch>,
     private readonly picoUnitsService: PicoUnitsService,
     private readonly recipesService: RecipesService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async create(dto: CreateBatchDto): Promise<Batch> {
@@ -65,7 +68,16 @@ export class BatchesService {
     }
 
     const batch = this.batchRepo.create(createData);
-    return this.batchRepo.save(batch);
+    const saved = await this.batchRepo.save(batch);
+    // Load relations so the response and the event payload are fully hydrated
+    const hydrated = await this.getByIdOrThrow(saved.id);
+    if (hydrated.status === 'in-progress') {
+      this.eventEmitter.emit(
+        BATCH_EVENTS.STARTED,
+        new BatchStartedEvent(hydrated),
+      );
+    }
+    return hydrated;
   }
 
   async getByIdOrThrow(id: number): Promise<Batch> {
