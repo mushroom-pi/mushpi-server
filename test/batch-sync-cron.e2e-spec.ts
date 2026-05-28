@@ -320,4 +320,104 @@ describe('CronService.handleBatchSync() (e2e)', () => {
       ).resolves.not.toThrow();
     });
   });
+
+  describe('handleBatchFinished — immediate control loop disable', () => {
+    it('disables control loop immediately when a batch finishes and loop is on', async () => {
+      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7045 });
+      const seeded = await seedBatch(app, pico.id, {
+        start_at: farPast,
+        finish_at: past,
+      });
+      await seedReadingForUnit(app, pico, { control_loop_enabled: true });
+      const hydrated = await batchesService.getByIdOrThrow(seeded.id);
+
+      await cronService.handleBatchFinished({ batch: hydrated });
+
+      expect(mockedAxios.post).toHaveBeenCalledTimes(1);
+      expect(mockedAxios.post).toHaveBeenCalledWith(
+        'http://127.0.0.1:7045/control',
+        { enabled: false },
+      );
+    });
+
+    it('does nothing when control loop is already off', async () => {
+      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7046 });
+      const seeded = await seedBatch(app, pico.id, {
+        start_at: farPast,
+        finish_at: past,
+      });
+      await seedReadingForUnit(app, pico, { control_loop_enabled: false });
+      const hydrated = await batchesService.getByIdOrThrow(seeded.id);
+
+      await cronService.handleBatchFinished({ batch: hydrated });
+
+      expect(mockedAxios.post).not.toHaveBeenCalled();
+    });
+
+    it('does not throw when unit is unreachable', async () => {
+      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7047 });
+      const seeded = await seedBatch(app, pico.id, {
+        start_at: farPast,
+        finish_at: past,
+      });
+      await seedReadingForUnit(app, pico, { control_loop_enabled: true });
+      const hydrated = await batchesService.getByIdOrThrow(seeded.id);
+
+      mockedAxios.post.mockRejectedValueOnce(new Error('connection refused'));
+
+      await expect(
+        cronService.handleBatchFinished({ batch: hydrated }),
+      ).resolves.not.toThrow();
+    });
+  });
+
+  describe('handlePicoUnitRegistered — restore active batch settings', () => {
+    it('pushes batch settings when the re-registering unit has an active batch', async () => {
+      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7050 });
+      await seedBatch(app, pico.id, {
+        start_at: past,
+        temperature_target: 22,
+        humidity_target: 80,
+      });
+
+      await cronService.handlePicoUnitRegistered({ unit: pico });
+
+      expect(mockedAxios.post).toHaveBeenCalledWith(
+        'http://127.0.0.1:7050/setpoints',
+        { temperature: 22, humidity: 80 },
+      );
+      expect(mockedAxios.post).toHaveBeenCalledWith(
+        'http://127.0.0.1:7050/control',
+        { enabled: true },
+      );
+    });
+
+    it('does nothing when the unit has no batch at all', async () => {
+      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7051 });
+
+      await cronService.handlePicoUnitRegistered({ unit: pico });
+
+      expect(mockedAxios.post).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when the unit has only a planned batch', async () => {
+      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7052 });
+      await seedBatch(app, pico.id, { start_at: future });
+
+      await cronService.handlePicoUnitRegistered({ unit: pico });
+
+      expect(mockedAxios.post).not.toHaveBeenCalled();
+    });
+
+    it('does not throw when unit is unreachable', async () => {
+      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7053 });
+      await seedBatch(app, pico.id, { start_at: past });
+
+      mockedAxios.post.mockRejectedValueOnce(new Error('connection refused'));
+
+      await expect(
+        cronService.handlePicoUnitRegistered({ unit: pico }),
+      ).resolves.not.toThrow();
+    });
+  });
 });

@@ -4,11 +4,17 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 
 import {
   BATCH_EVENTS,
+  BatchFinishedEvent,
   BatchStartedEvent,
 } from 'src/modules/batches/batch.events';
 import { Batch } from 'src/modules/batches/batches.entity';
 import { BatchesService } from 'src/modules/batches/batches.service';
 import { ControlService } from 'src/modules/control/control.service';
+import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
+import {
+  PICO_UNIT_EVENTS,
+  PicoUnitRegisteredEvent,
+} from 'src/modules/pico-units/pico-unit.events';
 import { ReadingsService } from 'src/modules/readings/readings.service';
 
 @Injectable()
@@ -39,18 +45,7 @@ export class CronService {
     const finishedUnits =
       await this.batchesService.findUnitsWithFinishedBatch();
     for (const unit of finishedUnits) {
-      try {
-        const changed = await this.controlService.applyControlLoopDisable(unit);
-        if (changed) {
-          this.logger.log(
-            `Disabled control loop on pico unit ${unit.id} (batch finished)`,
-          );
-        }
-      } catch (error) {
-        this.logger.error(
-          `Failed to disable control loop on pico unit ${unit.id}: ${JSON.stringify(error)}`,
-        );
-      }
+      await this.applyControlLoopDisableSafe(unit);
     }
   }
 
@@ -58,6 +53,24 @@ export class CronService {
   async handleBatchStarted({ batch }: BatchStartedEvent) {
     this.logger.log(
       `Batch ${batch.id} started — applying settings immediately to unit ${batch.pico_unit_id}`,
+    );
+    await this.applyBatchSettingsSafe(batch);
+  }
+
+  @OnEvent(BATCH_EVENTS.FINISHED)
+  async handleBatchFinished({ batch }: BatchFinishedEvent) {
+    this.logger.log(
+      `Batch ${batch.id} finished — disabling control loop on unit ${batch.pico_unit_id}`,
+    );
+    await this.applyControlLoopDisableSafe(batch.pico_unit);
+  }
+
+  @OnEvent(PICO_UNIT_EVENTS.REGISTERED)
+  async handlePicoUnitRegistered({ unit }: PicoUnitRegisteredEvent) {
+    const batch = await this.batchesService.findInProgressForUnit(unit.id);
+    if (!batch) return;
+    this.logger.log(
+      `Pico unit ${unit.id} registered — restoring active batch ${batch.id} settings`,
     );
     await this.applyBatchSettingsSafe(batch);
   }
@@ -82,6 +95,21 @@ export class CronService {
     } catch (error) {
       this.logger.error(
         `Failed to apply batch ${batch.id} settings to pico unit ${batch.pico_unit_id}: ${JSON.stringify(error)}`,
+      );
+    }
+  }
+
+  private async applyControlLoopDisableSafe(unit: PicoUnit): Promise<void> {
+    try {
+      const changed = await this.controlService.applyControlLoopDisable(unit);
+      if (changed) {
+        this.logger.log(
+          `Disabled control loop on pico unit ${unit.id} (batch finished)`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to disable control loop on pico unit ${unit.id}: ${JSON.stringify(error)}`,
       );
     }
   }

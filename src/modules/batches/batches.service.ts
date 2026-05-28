@@ -14,7 +14,11 @@ import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
 import { PicoUnitsService } from 'src/modules/pico-units/pico-units.service';
 import { RecipesService } from 'src/modules/recipes/recipes.service';
 
-import { BATCH_EVENTS, BatchStartedEvent } from './batch.events';
+import {
+  BATCH_EVENTS,
+  BatchFinishedEvent,
+  BatchStartedEvent,
+} from './batch.events';
 import {
   CreateBatchDto,
   CreateRecipeFromBatchDto,
@@ -92,6 +96,7 @@ export class BatchesService {
 
   async update(batch: Batch, dto: UpdateBatchDto): Promise<Batch> {
     const now = new Date();
+    const wasInProgress = batch.status === 'in-progress';
 
     // Check if start_at has already happened (batch has started)
     if (batch.start_at < now) {
@@ -122,7 +127,17 @@ export class BatchesService {
     }
 
     Object.assign(batch, dto);
-    return this.batchRepo.save(batch);
+    const saved = await this.batchRepo.save(batch);
+    const hydrated = await this.getByIdOrThrow(saved.id);
+
+    if (wasInProgress && hydrated.status === 'finished') {
+      this.eventEmitter.emit(
+        BATCH_EVENTS.FINISHED,
+        new BatchFinishedEvent(hydrated),
+      );
+    }
+
+    return hydrated;
   }
 
   async removeById(id: number): Promise<void> {
@@ -163,6 +178,25 @@ export class BatchesService {
       where: [
         { start_at: LessThan(now), finish_at: IsNull() },
         { start_at: LessThan(now), finish_at: MoreThan(now) },
+      ],
+      relations: ['pico_unit'],
+    });
+  }
+
+  async findInProgressForUnit(picoUnitId: number): Promise<Batch | null> {
+    const now = new Date();
+    return this.batchRepo.findOne({
+      where: [
+        {
+          pico_unit_id: picoUnitId,
+          start_at: LessThan(now),
+          finish_at: IsNull(),
+        },
+        {
+          pico_unit_id: picoUnitId,
+          start_at: LessThan(now),
+          finish_at: MoreThan(now),
+        },
       ],
       relations: ['pico_unit'],
     });

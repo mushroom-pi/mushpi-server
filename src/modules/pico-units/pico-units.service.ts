@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import axios from 'axios';
@@ -11,12 +12,14 @@ import {
   UpsertPicoUnitDto,
 } from './pico-unit.dto';
 import { PicoUnit } from './pico-unit.entity';
+import { PICO_UNIT_EVENTS, PicoUnitRegisteredEvent } from './pico-unit.events';
 import { failsToUnhealthy } from './pico-units.constant';
 
 @Injectable()
 export class PicoUnitsService {
   constructor(
     @InjectRepository(PicoUnit) private picoUnitRepo: Repository<PicoUnit>,
+    private readonly eventEmitter: EventEmitter2,
   ) {
     axiosRetry(axios, { retryDelay: axiosRetry.exponentialDelay });
   }
@@ -54,7 +57,12 @@ export class PicoUnitsService {
     }
 
     unit.last_seen = new Date();
-    return await this.picoUnitRepo.save(unit);
+    const saved = await this.picoUnitRepo.save(unit);
+    this.eventEmitter.emit(
+      PICO_UNIT_EVENTS.REGISTERED,
+      new PicoUnitRegisteredEvent(saved),
+    );
+    return saved;
   }
 
   async getByIdOrThrow(

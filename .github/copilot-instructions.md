@@ -107,6 +107,13 @@ The agent has full permission to execute these scripts at any time without askin
 ### "Go a little farther"
 - When touching an area of the codebase, improve all related code in that area, not just the minimum required for the task. For example: if adding a constant file for a new module, extract all inline magic numbers from related existing modules at the same time.
 
+### DRY — extract repeated logic immediately
+Never write the same block of logic twice in the same file (or module). When a pattern appears more than once, extract it into a private helper method before finishing the task — not as a follow-up.
+
+Concrete rule: if two methods share the same try/catch structure, the same loop body, or the same conditional chain, extract the common part into a private method and call it from both places. The shared logic owns the error handling and logging; the callers only provide the specific inputs.
+
+**Example** (`CronService`): `handleBatchSync` (loop over active batches) and `handleBatchStarted` (single event-driven call) both needed the same try/catch around `controlService.applyBatchSettings`. The fix was a single private `applyBatchSettingsSafe(batch)` method that both call.
+
 ### Mirror existing patterns exactly
 Before implementing any new module feature, study the closest existing equivalent and mirror it precisely:
 - **Middleware**: mirrors `BatchByIdMiddleware` — reads `:resourceId` param, validates as positive integer (422 if not), loads entity via service `findOne` (404 if missing), attaches to `req.resource`.
