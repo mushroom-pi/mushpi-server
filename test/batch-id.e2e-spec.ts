@@ -305,6 +305,64 @@ describe('BatchIdController (e2e)', () => {
       expect(persisted!.temperature_target).toBe(20);
       expect(persisted!.notes).toBe('original');
     });
+
+    it('returns 422 when both start_at and finish_at are sent with finish_at before start_at', async () => {
+      const pico = await seedPicoUnit(app, {
+        handle: 'date-order-both',
+        host: 'date-order.host',
+        port: 5350,
+      });
+      // Planned batch (start_at in the future)
+      const batch = await seedBatch(app, pico.id, {
+        start_at: new Date(Date.now() + 2 * 60 * 60 * 1000),
+        finish_at: new Date(Date.now() + 3 * 60 * 60 * 1000),
+        notes: 'date-order-test',
+      });
+
+      // Attempt to set start_at > finish_at
+      const res = await request(app.getHttpServer())
+        .patch(`/batches/${batch.id}`)
+        .send({
+          start_at: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+          finish_at: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
+        })
+        .expect(422);
+
+      expect(res.body).toHaveProperty('statusCode', 422);
+      expect(JSON.stringify(res.body.message)).toMatch(/finish_at/);
+      expect(JSON.stringify(res.body.message)).toMatch(/start_at/);
+    });
+
+    it('returns 422 when start_at is updated to a date after the existing finish_at', async () => {
+      const pico = await seedPicoUnit(app, {
+        handle: 'date-order-start',
+        host: 'date-order-start.host',
+        port: 5351,
+      });
+      // Planned batch (start_at and finish_at both in the future)
+      const batch = await seedBatch(app, pico.id, {
+        start_at: new Date(Date.now() + 1 * 60 * 60 * 1000),
+        finish_at: new Date(Date.now() + 2 * 60 * 60 * 1000),
+        notes: 'date-order-start-test',
+      });
+
+      // Move start_at to after finish_at (only start_at in payload)
+      const res = await request(app.getHttpServer())
+        .patch(`/batches/${batch.id}`)
+        .send({
+          start_at: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
+        })
+        .expect(422);
+
+      expect(res.body).toHaveProperty('statusCode', 422);
+      expect(JSON.stringify(res.body.message)).toMatch(/finish_at/);
+      expect(JSON.stringify(res.body.message)).toMatch(/start_at/);
+
+      // Batch should be unchanged
+      const repo = await getBatchRepo(app);
+      const persisted = await repo.findOneBy({ id: batch.id });
+      expect(persisted!.notes).toBe('date-order-start-test');
+    });
   });
 
   describe('DELETE /batches/:id', () => {

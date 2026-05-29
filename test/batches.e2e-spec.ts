@@ -118,6 +118,26 @@ describe('BatchesController (e2e)', () => {
       expect(res.body.message).toMatch(/Start the new batch after that time/);
     });
 
+    it('returns 422 when finish_at is before start_at', async () => {
+      const pico = await seedPicoUnit(app, {
+        handle: 'date-order-pico',
+        host: '127.0.0.1',
+        port: 5400,
+      });
+
+      const startAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(); // 2h from now
+      const finishAt = new Date(Date.now() + 1 * 60 * 60 * 1000).toISOString(); // 1h from now (before start_at)
+
+      const res = await request(app.getHttpServer())
+        .post('/batches')
+        .send({ pico_unit_id: pico.id, start_at: startAt, finish_at: finishAt })
+        .expect(422);
+
+      expect(res.body).toHaveProperty('statusCode', 422);
+      expect(JSON.stringify(res.body.message)).toMatch(/finish_at/);
+      expect(JSON.stringify(res.body.message)).toMatch(/start_at/);
+    });
+
     it('allows creating a new batch scheduled after active batch finish_at', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'conflict-scheduled-future',
@@ -365,7 +385,7 @@ describe('BatchesController (e2e)', () => {
 
   // ─── POST /batches with recipe_id ──────────────────────────────────────────
 
-  describe('POST /batches — recipe snapshot', () => {
+  describe('POST /batches/:id/recipe', () => {
     it('copies species, temperature_target and humidity_target from the recipe when not explicitly provided', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'snap-pico',

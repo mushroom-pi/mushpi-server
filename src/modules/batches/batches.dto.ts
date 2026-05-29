@@ -36,6 +36,7 @@ import {
   NOTES_MAX_LENGTH,
 } from 'src/common/constants/validation.constants';
 import { PaginatedDto } from 'src/common/dto/paginated-response.dto';
+import { IsAfterDate } from 'src/common/validators/is-after-date.validator';
 
 import { batchStatuses } from './batches.constant';
 import { Batch } from './batches.entity';
@@ -52,6 +53,7 @@ export class CreateBatchDto {
   start_at?: string;
 
   @ApiPropertyOptional()
+  @IsAfterDate('start_at')
   @IsDateString()
   @IsOptional()
   finish_at?: string | null;

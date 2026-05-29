@@ -126,6 +126,22 @@ export class BatchesService {
       }
     }
 
+    // Validate effective date ordering after applying DTO overrides
+    const effectiveStartAt =
+      dto.start_at != null ? new Date(dto.start_at) : batch.start_at;
+    const effectiveFinishAt =
+      dto.finish_at !== undefined
+        ? dto.finish_at != null
+          ? new Date(dto.finish_at)
+          : null
+        : batch.finish_at;
+
+    if (effectiveFinishAt != null && effectiveStartAt >= effectiveFinishAt) {
+      throw new UnprocessableEntityException(
+        'finish_at must be a date after start_at',
+      );
+    }
+
     Object.assign(batch, dto);
     const saved = await this.batchRepo.save(batch);
     const hydrated = await this.getByIdOrThrow(saved.id);
