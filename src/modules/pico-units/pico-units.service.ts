@@ -12,7 +12,12 @@ import {
   UpsertPicoUnitDto,
 } from './pico-unit.dto';
 import { PicoUnit } from './pico-unit.entity';
-import { PICO_UNIT_EVENTS, PicoUnitRegisteredEvent } from './pico-unit.events';
+import {
+  PICO_UNIT_EVENTS,
+  PicoUnitDisabledEvent,
+  PicoUnitEnabledEvent,
+  PicoUnitRegisteredEvent,
+} from './pico-unit.events';
 import { failsToUnhealthy } from './pico-units.constant';
 
 @Injectable()
@@ -124,8 +129,23 @@ export class PicoUnitsService {
   }
 
   async update(unit: PicoUnit, dto: UpdatePicoUnitDto): Promise<PicoUnit> {
+    const wasEnabled = unit.enabled;
     Object.assign(unit, dto);
-    return await this.picoUnitRepo.save(unit);
+    const saved = await this.picoUnitRepo.save(unit);
+
+    if (wasEnabled && !saved.enabled) {
+      this.eventEmitter.emit(
+        PICO_UNIT_EVENTS.DISABLED,
+        new PicoUnitDisabledEvent(saved),
+      );
+    } else if (!wasEnabled && saved.enabled) {
+      this.eventEmitter.emit(
+        PICO_UNIT_EVENTS.ENABLED,
+        new PicoUnitEnabledEvent(saved),
+      );
+    }
+
+    return saved;
   }
 
   async removeById(id: number): Promise<void> {

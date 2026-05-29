@@ -13,6 +13,8 @@ import { ControlService } from 'src/modules/control/control.service';
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
 import {
   PICO_UNIT_EVENTS,
+  PicoUnitDisabledEvent,
+  PicoUnitEnabledEvent,
   PicoUnitRegisteredEvent,
 } from 'src/modules/pico-units/pico-unit.events';
 import { ReadingsService } from 'src/modules/readings/readings.service';
@@ -75,6 +77,32 @@ export class CronService {
     await this.applyBatchSettingsSafe(batch);
   }
 
+  @OnEvent(PICO_UNIT_EVENTS.DISABLED)
+  async handlePicoUnitDisabled({ unit }: PicoUnitDisabledEvent) {
+    this.logger.log(
+      `Pico unit ${unit.id} disabled — turning off control loop and all outputs`,
+    );
+    await this.applyUnitDisabledSafe(unit);
+  }
+
+  @OnEvent(PICO_UNIT_EVENTS.ENABLED)
+  async handlePicoUnitEnabled({ unit }: PicoUnitEnabledEvent) {
+    this.logger.log(`Pico unit ${unit.id} enabled — resuming readings`);
+    try {
+      await this.readingsService.pollReadingsFromUnit(unit);
+    } catch (error) {
+      this.logger.warn(
+        `Could not poll readings on enable for unit ${unit.id}: ${JSON.stringify(error)}`,
+      );
+    }
+    const batch = await this.batchesService.findInProgressForUnit(unit.id);
+    if (!batch) return;
+    this.logger.log(
+      `Pico unit ${unit.id} enabled — applying active batch ${batch.id} settings`,
+    );
+    await this.applyBatchSettingsSafe(batch);
+  }
+
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   cleanReadings() {
     this.logger.log('Cleaning readings table');
@@ -95,6 +123,21 @@ export class CronService {
     } catch (error) {
       this.logger.error(
         `Failed to apply batch ${batch.id} settings to pico unit ${batch.pico_unit_id}: ${JSON.stringify(error)}`,
+      );
+    }
+  }
+
+  private async applyUnitDisabledSafe(unit: PicoUnit): Promise<void> {
+    try {
+      const changed = await this.controlService.applyUnitDisabled(unit);
+      if (changed) {
+        this.logger.log(
+          `Turned off control loop and outputs for disabled pico unit ${unit.id}`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to turn off outputs for disabled pico unit ${unit.id}: ${JSON.stringify(error)}`,
       );
     }
   }

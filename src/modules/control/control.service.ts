@@ -143,4 +143,31 @@ export class ControlService {
     });
     return true;
   }
+
+  async applyUnitDisabled(picoUnit: PicoUnit): Promise<boolean> {
+    const latest = await this.readingsService.latestForUnit(picoUnit.id);
+    const controlEnabled = latest?.control_loop_enabled ?? false;
+    const anyOutputOn =
+      (latest?.fan_on ?? false) ||
+      (latest?.humidifier_on ?? false) ||
+      (latest?.heater_on ?? false);
+
+    if (!controlEnabled && !anyOutputOn) return false;
+
+    if (controlEnabled) {
+      await this.callSilent(picoUnit, `${picoUnit.address}/control`, {
+        enabled: false,
+      });
+    }
+
+    if (anyOutputOn) {
+      await this.callSilent(picoUnit, `${picoUnit.address}/outputs`, {
+        fan: false,
+        humidifier: false,
+        heater: false,
+      });
+    }
+
+    return true;
+  }
 }
