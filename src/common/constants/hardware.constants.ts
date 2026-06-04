@@ -5,3 +5,4 @@ export const GPIO_PIN_MAX = 28;
 /** Standard TCP/IP port range. */
 export const PORT_MIN = 1;
 export const PORT_MAX = 65535;
+export const PORT_DEFAULT = 5000;

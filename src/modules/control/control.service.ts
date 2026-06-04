@@ -8,6 +8,7 @@ import {
   OutputsDto,
   SetpointsDto,
 } from 'src/common/dto/pico-unit-response.dto';
+import { postWithFallback } from 'src/common/utils/http-fallback';
 import { Batch } from 'src/modules/batches/batches.entity';
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
 import { PicoUnitsService } from 'src/modules/pico-units/pico-units.service';
@@ -31,20 +32,24 @@ export class ControlService {
 
   private async callSilent(
     picoUnit: PicoUnit,
-    url: string,
+    path: string,
     dto: unknown,
   ): Promise<void> {
     try {
-      await axios.post(url, dto);
+      await postWithFallback(picoUnit, path, dto);
     } catch (error) {
       await this.picoUnitsService.addFailedCall(picoUnit);
       throw error;
     }
   }
 
-  private async callPollAndUpdate(picoUnit: PicoUnit, url: string, dto: any) {
+  private async callPollAndUpdate(
+    picoUnit: PicoUnit,
+    path: string,
+    dto: unknown,
+  ) {
     try {
-      const res = await axios.post(url, dto);
+      const res = await postWithFallback(picoUnit, path, dto);
       await this.readingsService.pollReadingsFromUnit(picoUnit);
 
       return res.data;
@@ -60,7 +65,7 @@ export class ControlService {
   ): Promise<SetpointsDto> {
     return this.callPollAndUpdate(
       picoUnit,
-      `${picoUnit.address}/setpoints`,
+      '/setpoints',
       setpointsDto,
     ) as unknown as SetpointsDto;
   }
@@ -71,7 +76,7 @@ export class ControlService {
   ): Promise<DevicesDto> {
     return this.callPollAndUpdate(
       picoUnit,
-      `${picoUnit.address}/setup`,
+      '/setup',
       setupDto,
     ) as unknown as DevicesDto;
   }
@@ -82,7 +87,7 @@ export class ControlService {
   ): Promise<OutputsDto> {
     return this.callPollAndUpdate(
       picoUnit,
-      `${picoUnit.address}/outputs`,
+      '/outputs',
       outputsDto,
     ) as unknown as OutputsDto;
   }
@@ -93,7 +98,7 @@ export class ControlService {
   ): Promise<ControlLoopDto> {
     return this.callPollAndUpdate(
       picoUnit,
-      `${picoUnit.address}/control`,
+      '/control',
       controlLoopDto,
     ) as unknown as ControlLoopDto;
   }
@@ -118,15 +123,11 @@ export class ControlService {
         setpoints.temperature = batch.temperature_target;
       if (batch.humidity_target != null)
         setpoints.humidity = batch.humidity_target;
-      await this.callSilent(
-        picoUnit,
-        `${picoUnit.address}/setpoints`,
-        setpoints,
-      );
+      await this.callSilent(picoUnit, '/setpoints', setpoints);
     }
 
     if (loopNeedsEnable) {
-      await this.callSilent(picoUnit, `${picoUnit.address}/control`, {
+      await this.callSilent(picoUnit, '/control', {
         enabled: true,
       });
     }
@@ -138,7 +139,7 @@ export class ControlService {
     const latest = await this.readingsService.latestForUnit(picoUnit.id);
     if (!latest?.control_loop_enabled) return false;
 
-    await this.callSilent(picoUnit, `${picoUnit.address}/control`, {
+    await this.callSilent(picoUnit, '/control', {
       enabled: false,
     });
     return true;
@@ -155,13 +156,13 @@ export class ControlService {
     if (!controlEnabled && !anyOutputOn) return false;
 
     if (controlEnabled) {
-      await this.callSilent(picoUnit, `${picoUnit.address}/control`, {
+      await this.callSilent(picoUnit, '/control', {
         enabled: false,
       });
     }
 
     if (anyOutputOn) {
-      await this.callSilent(picoUnit, `${picoUnit.address}/outputs`, {
+      await this.callSilent(picoUnit, '/outputs', {
         fan: false,
         humidifier: false,
         heater: false,

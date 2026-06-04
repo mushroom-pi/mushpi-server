@@ -145,7 +145,6 @@ describe('RecipeIdController (e2e)', () => {
     it('sets recipe_id to NULL on linked batches after deletion (ON DELETE SET NULL)', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'del-recipe-pico',
-        host: '127.0.0.1',
         port: 7100,
       });
       const recipe = await seedRecipe(app, { name: 'to-delete-with-batch' });

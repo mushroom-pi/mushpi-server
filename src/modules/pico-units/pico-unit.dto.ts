@@ -7,6 +7,7 @@ import {
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsIP,
   IsInt,
   IsOptional,
   IsString,
@@ -15,7 +16,11 @@ import {
   Min,
 } from 'class-validator';
 
-import { PORT_MAX, PORT_MIN } from 'src/common/constants/hardware.constants';
+import {
+  PORT_DEFAULT,
+  PORT_MAX,
+  PORT_MIN,
+} from 'src/common/constants/hardware.constants';
 import {
   PAGINATION_DEFAULT_LIMIT,
   PAGINATION_DEFAULT_PAGE,
@@ -47,28 +52,29 @@ export class UpsertPicoUnitDto {
   @Length(NAME_MIN_LENGTH, HANDLE_MAX_LENGTH)
   handle!: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     type: String,
-    minLength: NAME_MIN_LENGTH,
-    maxLength: STANDARD_TEXT_MAX_LENGTH,
-    description: 'IPv4/hostname where the Pico API is reachable.',
-    examples: ['192.168.1.50', 'rpi3.local'],
+    description:
+      'IPv4 address where the Pico API is reachable. Provided by the unit on announcement.',
+    example: '192.168.1.50',
   })
   @IsString()
-  @Length(NAME_MIN_LENGTH, STANDARD_TEXT_MAX_LENGTH)
-  host!: string;
+  @IsOptional()
+  @IsIP('4')
+  ip?: string;
 
   @ApiProperty({
     type: Number,
-    example: 5000,
+    example: PORT_DEFAULT,
     minimum: PORT_MIN,
     maximum: PORT_MAX,
+    default: PORT_DEFAULT,
     description: 'Pico API port',
   })
   @IsInt()
   @Min(PORT_MIN)
   @Max(PORT_MAX)
-  port!: number;
+  port?: number = PORT_DEFAULT;
 
   @ApiPropertyOptional({
     type: String,
@@ -196,7 +202,7 @@ export class ListPicoUnitsQueryDto {
   @IsBoolean()
   enabled?: boolean;
 
-  @ApiProperty({ required: false, description: 'Search in handle/name/host' })
+  @ApiProperty({ required: false, description: 'Search in handle/name/ip' })
   @IsOptional()
   @IsString()
   q?: string;

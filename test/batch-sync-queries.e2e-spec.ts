@@ -36,7 +36,7 @@ describe('BatchesService sync queries (e2e)', () => {
     });
 
     it('returns open-ended in-progress batch (start_at past, finish_at null)', async () => {
-      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7001 });
+      const pico = await seedPicoUnit(app, { port: 7001 });
       await seedBatch(app, pico.id, { start_at: past, finish_at: null });
 
       const result = await batchesService.findAllInProgress();
@@ -45,7 +45,7 @@ describe('BatchesService sync queries (e2e)', () => {
     });
 
     it('returns fixed-end in-progress batch (start_at past, finish_at future)', async () => {
-      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7002 });
+      const pico = await seedPicoUnit(app, { port: 7002 });
       await seedBatch(app, pico.id, { start_at: past, finish_at: future });
 
       const result = await batchesService.findAllInProgress();
@@ -53,7 +53,7 @@ describe('BatchesService sync queries (e2e)', () => {
     });
 
     it('excludes planned batch (start_at in the future)', async () => {
-      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7003 });
+      const pico = await seedPicoUnit(app, { port: 7003 });
       await seedBatch(app, pico.id, { start_at: future });
 
       const result = await batchesService.findAllInProgress();
@@ -61,7 +61,7 @@ describe('BatchesService sync queries (e2e)', () => {
     });
 
     it('excludes finished batch (finish_at in the past)', async () => {
-      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7004 });
+      const pico = await seedPicoUnit(app, { port: 7004 });
       await seedBatch(app, pico.id, { start_at: farPast, finish_at: past });
 
       const result = await batchesService.findAllInProgress();
@@ -70,7 +70,6 @@ describe('BatchesService sync queries (e2e)', () => {
 
     it('loads the pico_unit relation on results', async () => {
       const pico = await seedPicoUnit(app, {
-        host: '127.0.0.1',
         port: 7005,
         handle: 'relation-test',
       });
@@ -82,8 +81,8 @@ describe('BatchesService sync queries (e2e)', () => {
     });
 
     it('returns all in-progress batches across multiple units', async () => {
-      const picoA = await seedPicoUnit(app, { host: '127.0.0.1', port: 7006 });
-      const picoB = await seedPicoUnit(app, { host: '127.0.0.1', port: 7007 });
+      const picoA = await seedPicoUnit(app, { port: 7006 });
+      const picoB = await seedPicoUnit(app, { port: 7007 });
       await seedBatch(app, picoA.id, { start_at: past });
       await seedBatch(app, picoB.id, { start_at: past });
 
@@ -99,7 +98,7 @@ describe('BatchesService sync queries (e2e)', () => {
     });
 
     it('returns unit when its only batch is finished', async () => {
-      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7010 });
+      const pico = await seedPicoUnit(app, { port: 7010 });
       await seedBatch(app, pico.id, { start_at: farPast, finish_at: past });
 
       const result = await batchesService.findUnitsWithFinishedBatch();
@@ -108,7 +107,7 @@ describe('BatchesService sync queries (e2e)', () => {
     });
 
     it('excludes unit that currently has an in-progress batch', async () => {
-      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7011 });
+      const pico = await seedPicoUnit(app, { port: 7011 });
       await seedBatch(app, pico.id, { start_at: farPast, finish_at: past });
       await seedBatch(app, pico.id, { start_at: past, finish_at: null });
 
@@ -117,7 +116,7 @@ describe('BatchesService sync queries (e2e)', () => {
     });
 
     it('excludes unit with only planned batches', async () => {
-      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7012 });
+      const pico = await seedPicoUnit(app, { port: 7012 });
       await seedBatch(app, pico.id, { start_at: future });
 
       const result = await batchesService.findUnitsWithFinishedBatch();
@@ -126,7 +125,6 @@ describe('BatchesService sync queries (e2e)', () => {
 
     it('excludes disabled unit with a finished batch', async () => {
       const pico = await seedPicoUnit(app, {
-        host: '127.0.0.1',
         port: 7013,
         enabled: false,
       });
@@ -137,8 +135,8 @@ describe('BatchesService sync queries (e2e)', () => {
     });
 
     it('returns multiple units when each has only finished batches', async () => {
-      const picoA = await seedPicoUnit(app, { host: '127.0.0.1', port: 7014 });
-      const picoB = await seedPicoUnit(app, { host: '127.0.0.1', port: 7015 });
+      const picoA = await seedPicoUnit(app, { port: 7014 });
+      const picoB = await seedPicoUnit(app, { port: 7015 });
       await seedBatch(app, picoA.id, { start_at: farPast, finish_at: past });
       await seedBatch(app, picoB.id, { start_at: farPast, finish_at: past });
 

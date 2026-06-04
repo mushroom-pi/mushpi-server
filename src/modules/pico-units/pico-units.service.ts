@@ -6,6 +6,8 @@ import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import { ILike, MoreThan, Repository } from 'typeorm';
 
+import { getWithFallback } from 'src/common/utils/http-fallback';
+
 import {
   ListPicoUnitsQueryDto,
   UpdatePicoUnitDto,
@@ -31,9 +33,9 @@ export class PicoUnitsService {
 
   async upsert(unitDto: UpsertPicoUnitDto): Promise<PicoUnit> {
     const {
-      host,
       port,
       handle,
+      ip,
       micropython_version,
       software_version,
       board,
@@ -42,13 +44,13 @@ export class PicoUnitsService {
       board_total_mem_byte,
     } = unitDto;
     let unit: Partial<PicoUnit> = await this.picoUnitRepo.findOne({
-      where: { host, port },
+      where: { handle },
     });
 
     if (!unit) {
       unit = {
         handle,
-        host,
+        ip: ip ?? null,
         port,
         micropython_version: micropython_version ?? null,
         software_version: software_version ?? null,
@@ -62,12 +64,13 @@ export class PicoUnitsService {
     }
 
     unit.last_seen = new Date();
-    const saved = await this.picoUnitRepo.save(unit);
+    await this.picoUnitRepo.save(unit);
+    const saved = await this.picoUnitRepo.findOneBy({ handle });
     this.eventEmitter.emit(
       PICO_UNIT_EVENTS.REGISTERED,
-      new PicoUnitRegisteredEvent(saved),
+      new PicoUnitRegisteredEvent(saved!),
     );
-    return saved;
+    return saved!;
   }
 
   async getByIdOrThrow(
@@ -94,7 +97,7 @@ export class PicoUnitsService {
       // OR across fields
       where.push({ ...base, handle: like });
       where.push({ ...base, name: like });
-      where.push({ ...base, host: like });
+      where.push({ ...base, ip: like });
     } else {
       where.push(base);
     }
@@ -160,7 +163,7 @@ export class PicoUnitsService {
 
   async ping(unit: PicoUnit): Promise<string> {
     try {
-      await axios.get(`${unit.address}/ping`, { timeout: 5000 });
+      await getWithFallback(unit, '/ping', { timeout: 5000 });
       await this.touch(unit);
       return 'pong';
     } catch (error) {

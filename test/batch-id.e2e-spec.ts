@@ -57,7 +57,6 @@ describe('BatchIdController (e2e)', () => {
     it('returns the batch (including loaded pico_unit relation)', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'get-test',
-        host: 'g.host',
         port: 5300,
       });
       const batch = await seedBatch(app, pico.id, { notes: 'get-test-batch' });
@@ -80,7 +79,6 @@ describe('BatchIdController (e2e)', () => {
     it('updates allowed fields and returns the updated batch', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'patch-test',
-        host: 'p.host',
         port: 5310,
       });
       const batch = await seedBatch(app, pico.id, {
@@ -122,7 +120,6 @@ describe('BatchIdController (e2e)', () => {
     it('rejects invalid payload types (422) e.g., invalid date format', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'patch-invalid',
-        host: 'pi.host',
         port: 5320,
       });
       const batch = await seedBatch(app, pico.id, { notes: 'some' });
@@ -137,12 +134,10 @@ describe('BatchIdController (e2e)', () => {
     it('does not allow changing pico_unit_id via update DTO (pico_unit_id is not in UpdateBatchDto)', async () => {
       const picoA = await seedPicoUnit(app, {
         handle: 'pA',
-        host: 'pa.host',
         port: 5330,
       });
       const picoB = await seedPicoUnit(app, {
         handle: 'pB',
-        host: 'pb.host',
         port: 5331,
       });
       const batch = await seedBatch(app, picoA.id, { notes: 'immutable test' });
@@ -167,7 +162,6 @@ describe('BatchIdController (e2e)', () => {
     it('returns 412 when trying to modify start_at after batch has started', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'started-batch',
-        host: 'started.host',
         port: 5335,
       });
       // Create batch with start_at in the past (already started)
@@ -196,7 +190,6 @@ describe('BatchIdController (e2e)', () => {
     it('allows modifying other fields when batch has started', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'started-batch-mod',
-        host: 'started-mod.host',
         port: 5336,
       });
       // Create batch with start_at in the past
@@ -217,7 +210,6 @@ describe('BatchIdController (e2e)', () => {
     it('returns 412 when trying to modify non-description/notes fields after batch has finished', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'finished-batch',
-        host: 'finished.host',
         port: 5337,
       });
       // Create batch with finish_at in the past (finished)
@@ -249,7 +241,6 @@ describe('BatchIdController (e2e)', () => {
     it('allows modifying description and notes after batch has finished', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'finished-batch-notes',
-        host: 'finished-notes.host',
         port: 5338,
       });
       // Create batch with finish_at in the past (finished)
@@ -276,7 +267,6 @@ describe('BatchIdController (e2e)', () => {
     it('rejects modification of temperature_target and notes together after batch has finished', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'finished-multi-mod',
-        host: 'finished-multi.host',
         port: 5339,
       });
       // Create batch with finish_at in the past
@@ -309,7 +299,6 @@ describe('BatchIdController (e2e)', () => {
     it('returns 422 when both start_at and finish_at are sent with finish_at before start_at', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'date-order-both',
-        host: 'date-order.host',
         port: 5350,
       });
       // Planned batch (start_at in the future)
@@ -336,7 +325,6 @@ describe('BatchIdController (e2e)', () => {
     it('returns 422 when start_at is updated to a date after the existing finish_at', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'date-order-start',
-        host: 'date-order-start.host',
         port: 5351,
       });
       // Planned batch (start_at and finish_at both in the future)
@@ -369,7 +357,6 @@ describe('BatchIdController (e2e)', () => {
     it('deletes the batch and subsequent GET returns 404', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'del-test',
-        host: 'd.host',
         port: 5340,
       });
       const batch = await seedBatch(app, pico.id, { notes: 'to-delete' });
@@ -403,7 +390,6 @@ describe('BatchIdController (e2e)', () => {
     it('includes recipe_id in the response when the batch was created with one', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'bid-recipe-pico',
-        host: '127.0.0.1',
         port: 7400,
       });
       const recipe = await seedRecipe(app, { name: 'bid-recipe' });
@@ -419,7 +405,6 @@ describe('BatchIdController (e2e)', () => {
     it('has recipe_id as null when the batch was created without one', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'bid-no-recipe-pico',
-        host: '127.0.0.1',
         port: 7401,
       });
       const batch = await seedBatch(app, pico.id, {});
@@ -435,7 +420,6 @@ describe('BatchIdController (e2e)', () => {
     it('includes the nested recipe object when recipe_id refers to a valid recipe', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'bid-recipe-nested-pico',
-        host: '127.0.0.1',
         port: 7402,
       });
       const recipe = await seedRecipe(app, {
@@ -464,7 +448,6 @@ describe('BatchIdController (e2e)', () => {
     it('returns recipe as null when recipe_id refers to a non-existent recipe', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'bid-orphaned-recipe-pico',
-        host: '127.0.0.1',
         port: 7403,
       });
 

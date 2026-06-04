@@ -52,7 +52,7 @@ describe('CronService.handleBatchSync() (e2e)', () => {
   });
 
   it('does not push to units that have no batch at all', async () => {
-    await seedPicoUnit(app, { host: '127.0.0.1', port: 7020 });
+    await seedPicoUnit(app, { handle: 'u7020', port: 7020 });
 
     await cronService.handleBatchSync();
 
@@ -60,7 +60,7 @@ describe('CronService.handleBatchSync() (e2e)', () => {
   });
 
   it('does not push for a planned batch (start_at in the future)', async () => {
-    const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7021 });
+    const pico = await seedPicoUnit(app, { handle: 'u7021', port: 7021 });
     await seedBatch(app, pico.id, { start_at: future });
 
     await cronService.handleBatchSync();
@@ -70,7 +70,7 @@ describe('CronService.handleBatchSync() (e2e)', () => {
 
   describe('active batch — first sync (no prior reading)', () => {
     it('pushes setpoints and enables control loop', async () => {
-      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7022 });
+      const pico = await seedPicoUnit(app, { handle: 'u7022', port: 7022 });
       await seedBatch(app, pico.id, {
         start_at: past,
         temperature_target: 25,
@@ -80,17 +80,17 @@ describe('CronService.handleBatchSync() (e2e)', () => {
       await cronService.handleBatchSync();
 
       expect(mockedAxios.post).toHaveBeenCalledWith(
-        'http://127.0.0.1:7022/setpoints',
+        'http://u7022.local:7022/setpoints',
         { temperature: 25, humidity: 60 },
       );
       expect(mockedAxios.post).toHaveBeenCalledWith(
-        'http://127.0.0.1:7022/control',
+        'http://u7022.local:7022/control',
         { enabled: true },
       );
     });
 
     it('only pushes humidity setpoint when temperature_target is null', async () => {
-      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7023 });
+      const pico = await seedPicoUnit(app, { handle: 'u7023', port: 7023 });
       await seedBatch(app, pico.id, {
         start_at: past,
         temperature_target: null,
@@ -100,13 +100,13 @@ describe('CronService.handleBatchSync() (e2e)', () => {
       await cronService.handleBatchSync();
 
       expect(mockedAxios.post).toHaveBeenCalledWith(
-        'http://127.0.0.1:7023/setpoints',
+        'http://u7023.local:7023/setpoints',
         { humidity: 75 },
       );
     });
 
     it('only pushes temperature setpoint when humidity_target is null', async () => {
-      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7024 });
+      const pico = await seedPicoUnit(app, { handle: 'u7024', port: 7024 });
       await seedBatch(app, pico.id, {
         start_at: past,
         temperature_target: 22,
@@ -116,7 +116,7 @@ describe('CronService.handleBatchSync() (e2e)', () => {
       await cronService.handleBatchSync();
 
       expect(mockedAxios.post).toHaveBeenCalledWith(
-        'http://127.0.0.1:7024/setpoints',
+        'http://u7024.local:7024/setpoints',
         { temperature: 22 },
       );
     });
@@ -124,7 +124,7 @@ describe('CronService.handleBatchSync() (e2e)', () => {
 
   describe('active batch — reading already matches', () => {
     it('does not push when setpoints and control loop already match', async () => {
-      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7025 });
+      const pico = await seedPicoUnit(app, { handle: 'u7025', port: 7025 });
       await seedBatch(app, pico.id, {
         start_at: past,
         temperature_target: 25,
@@ -142,7 +142,7 @@ describe('CronService.handleBatchSync() (e2e)', () => {
     });
 
     it('pushes setpoints when temperature differs, even if loop is already enabled', async () => {
-      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7026 });
+      const pico = await seedPicoUnit(app, { handle: 'u7026', port: 7026 });
       await seedBatch(app, pico.id, {
         start_at: past,
         temperature_target: 28,
@@ -157,17 +157,17 @@ describe('CronService.handleBatchSync() (e2e)', () => {
       await cronService.handleBatchSync();
 
       expect(mockedAxios.post).toHaveBeenCalledWith(
-        'http://127.0.0.1:7026/setpoints',
+        'http://u7026.local:7026/setpoints',
         expect.objectContaining({ temperature: 28 }),
       );
       expect(mockedAxios.post).not.toHaveBeenCalledWith(
-        'http://127.0.0.1:7026/control',
+        'http://u7026.local:7026/control',
         expect.anything(),
       );
     });
 
     it('enables control loop when setpoints match but loop is off', async () => {
-      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7027 });
+      const pico = await seedPicoUnit(app, { handle: 'u7027', port: 7027 });
       await seedBatch(app, pico.id, {
         start_at: past,
         temperature_target: 25,
@@ -183,7 +183,7 @@ describe('CronService.handleBatchSync() (e2e)', () => {
 
       expect(mockedAxios.post).toHaveBeenCalledTimes(1);
       expect(mockedAxios.post).toHaveBeenCalledWith(
-        'http://127.0.0.1:7027/control',
+        'http://u7027.local:7027/control',
         { enabled: true },
       );
     });
@@ -191,7 +191,7 @@ describe('CronService.handleBatchSync() (e2e)', () => {
 
   describe('finished batch — control loop management', () => {
     it('disables control loop when the unit has a finished batch and loop is on', async () => {
-      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7030 });
+      const pico = await seedPicoUnit(app, { handle: 'u7030', port: 7030 });
       await seedBatch(app, pico.id, { start_at: farPast, finish_at: past });
       await seedReadingForUnit(app, pico, { control_loop_enabled: true });
 
@@ -199,13 +199,13 @@ describe('CronService.handleBatchSync() (e2e)', () => {
 
       expect(mockedAxios.post).toHaveBeenCalledTimes(1);
       expect(mockedAxios.post).toHaveBeenCalledWith(
-        'http://127.0.0.1:7030/control',
+        'http://u7030.local:7030/control',
         { enabled: false },
       );
     });
 
     it('does not push when control loop is already off', async () => {
-      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7031 });
+      const pico = await seedPicoUnit(app, { handle: 'u7031', port: 7031 });
       await seedBatch(app, pico.id, { start_at: farPast, finish_at: past });
       await seedReadingForUnit(app, pico, { control_loop_enabled: false });
 
@@ -215,7 +215,7 @@ describe('CronService.handleBatchSync() (e2e)', () => {
     });
 
     it('does not disable control loop for a unit with an active batch', async () => {
-      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7032 });
+      const pico = await seedPicoUnit(app, { handle: 'u7032', port: 7032 });
       await seedBatch(app, pico.id, { start_at: past, finish_at: null });
       await seedReadingForUnit(app, pico, {
         control_loop_enabled: true,
@@ -231,7 +231,7 @@ describe('CronService.handleBatchSync() (e2e)', () => {
       await cronService.handleBatchSync();
 
       expect(mockedAxios.post).not.toHaveBeenCalledWith(
-        'http://127.0.0.1:7032/control',
+        'http://u7032.local:7032/control',
         { enabled: false },
       );
     });
@@ -239,8 +239,8 @@ describe('CronService.handleBatchSync() (e2e)', () => {
 
   describe('error isolation', () => {
     it('continues processing remaining units when one POST fails', async () => {
-      const picoA = await seedPicoUnit(app, { host: '127.0.0.1', port: 7040 });
-      const picoB = await seedPicoUnit(app, { host: '127.0.0.1', port: 7041 });
+      const picoA = await seedPicoUnit(app, { handle: 'u7040', port: 7040 });
+      const picoB = await seedPicoUnit(app, { handle: 'u7041', port: 7041 });
 
       await seedBatch(app, picoA.id, {
         start_at: past,
@@ -261,7 +261,7 @@ describe('CronService.handleBatchSync() (e2e)', () => {
 
       // picoB's setpoints should still have been attempted
       expect(mockedAxios.post).toHaveBeenCalledWith(
-        'http://127.0.0.1:7041/setpoints',
+        'http://u7041.local:7041/setpoints',
         { temperature: 22, humidity: 70 },
       );
     });
@@ -269,7 +269,7 @@ describe('CronService.handleBatchSync() (e2e)', () => {
 
   describe('handleBatchStarted — immediate sync on creation', () => {
     it('pushes setpoints and enables control loop for a new in-progress batch', async () => {
-      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7042 });
+      const pico = await seedPicoUnit(app, { handle: 'u7042', port: 7042 });
       const seeded = await seedBatch(app, pico.id, {
         start_at: past,
         temperature_target: 24,
@@ -280,17 +280,17 @@ describe('CronService.handleBatchSync() (e2e)', () => {
       await cronService.handleBatchStarted({ batch: hydrated });
 
       expect(mockedAxios.post).toHaveBeenCalledWith(
-        'http://127.0.0.1:7042/setpoints',
+        'http://u7042.local:7042/setpoints',
         { temperature: 24, humidity: 85 },
       );
       expect(mockedAxios.post).toHaveBeenCalledWith(
-        'http://127.0.0.1:7042/control',
+        'http://u7042.local:7042/control',
         { enabled: true },
       );
     });
 
     it('does not push when the batch setpoints already match the latest reading', async () => {
-      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7043 });
+      const pico = await seedPicoUnit(app, { handle: 'u7043', port: 7043 });
       const seeded = await seedBatch(app, pico.id, {
         start_at: past,
         temperature_target: 24,
@@ -309,7 +309,7 @@ describe('CronService.handleBatchSync() (e2e)', () => {
     });
 
     it('does not throw when the Pico unit is unreachable', async () => {
-      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7044 });
+      const pico = await seedPicoUnit(app, { handle: 'u7044', port: 7044 });
       const seeded = await seedBatch(app, pico.id, { start_at: past });
       const hydrated = await batchesService.getByIdOrThrow(seeded.id);
 
@@ -323,7 +323,7 @@ describe('CronService.handleBatchSync() (e2e)', () => {
 
   describe('handleBatchFinished — immediate control loop disable', () => {
     it('disables control loop immediately when a batch finishes and loop is on', async () => {
-      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7045 });
+      const pico = await seedPicoUnit(app, { handle: 'u7045', port: 7045 });
       const seeded = await seedBatch(app, pico.id, {
         start_at: farPast,
         finish_at: past,
@@ -335,13 +335,13 @@ describe('CronService.handleBatchSync() (e2e)', () => {
 
       expect(mockedAxios.post).toHaveBeenCalledTimes(1);
       expect(mockedAxios.post).toHaveBeenCalledWith(
-        'http://127.0.0.1:7045/control',
+        'http://u7045.local:7045/control',
         { enabled: false },
       );
     });
 
     it('does nothing when control loop is already off', async () => {
-      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7046 });
+      const pico = await seedPicoUnit(app, { handle: 'u7046', port: 7046 });
       const seeded = await seedBatch(app, pico.id, {
         start_at: farPast,
         finish_at: past,
@@ -355,7 +355,7 @@ describe('CronService.handleBatchSync() (e2e)', () => {
     });
 
     it('does not throw when unit is unreachable', async () => {
-      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7047 });
+      const pico = await seedPicoUnit(app, { handle: 'u7047', port: 7047 });
       const seeded = await seedBatch(app, pico.id, {
         start_at: farPast,
         finish_at: past,
@@ -373,7 +373,7 @@ describe('CronService.handleBatchSync() (e2e)', () => {
 
   describe('handlePicoUnitRegistered — restore active batch settings', () => {
     it('pushes batch settings when the re-registering unit has an active batch', async () => {
-      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7050 });
+      const pico = await seedPicoUnit(app, { handle: 'u7050', port: 7050 });
       await seedBatch(app, pico.id, {
         start_at: past,
         temperature_target: 22,
@@ -383,17 +383,17 @@ describe('CronService.handleBatchSync() (e2e)', () => {
       await cronService.handlePicoUnitRegistered({ unit: pico });
 
       expect(mockedAxios.post).toHaveBeenCalledWith(
-        'http://127.0.0.1:7050/setpoints',
+        'http://u7050.local:7050/setpoints',
         { temperature: 22, humidity: 80 },
       );
       expect(mockedAxios.post).toHaveBeenCalledWith(
-        'http://127.0.0.1:7050/control',
+        'http://u7050.local:7050/control',
         { enabled: true },
       );
     });
 
     it('does nothing when the unit has no batch at all', async () => {
-      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7051 });
+      const pico = await seedPicoUnit(app, { handle: 'u7051', port: 7051 });
 
       await cronService.handlePicoUnitRegistered({ unit: pico });
 
@@ -401,7 +401,7 @@ describe('CronService.handleBatchSync() (e2e)', () => {
     });
 
     it('does nothing when the unit has only a planned batch', async () => {
-      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7052 });
+      const pico = await seedPicoUnit(app, { handle: 'u7052', port: 7052 });
       await seedBatch(app, pico.id, { start_at: future });
 
       await cronService.handlePicoUnitRegistered({ unit: pico });
@@ -410,7 +410,7 @@ describe('CronService.handleBatchSync() (e2e)', () => {
     });
 
     it('does not throw when unit is unreachable', async () => {
-      const pico = await seedPicoUnit(app, { host: '127.0.0.1', port: 7053 });
+      const pico = await seedPicoUnit(app, { handle: 'u7053', port: 7053 });
       await seedBatch(app, pico.id, { start_at: past });
 
       mockedAxios.post.mockRejectedValueOnce(new Error('connection refused'));

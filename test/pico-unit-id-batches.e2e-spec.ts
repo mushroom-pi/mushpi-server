@@ -31,12 +31,10 @@ describe('PicoUnitIdBatchesController (e2e)', () => {
       // create two pico units
       const picoA = await seedPicoUnit(app, {
         handle: 'pu-a',
-        host: 'a.local',
         port: 6000,
       });
       const picoB = await seedPicoUnit(app, {
         handle: 'pu-b',
-        host: 'b.local',
         port: 6001,
       });
 
@@ -96,7 +94,6 @@ describe('PicoUnitIdBatchesController (e2e)', () => {
     it('accepts status filter and pico_unit_id is implicit by path', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'pu-status',
-        host: 's.local',
         port: 6010,
       });
       const now = Date.now();
@@ -148,7 +145,6 @@ describe('PicoUnitIdBatchesController (e2e)', () => {
     it('includes recipe but NOT pico_unit in response', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'pu-rel-test',
-        host: 'pu-rel.local',
         port: 6015,
       });
       const recipe = await seedRecipe(app, {
@@ -193,7 +189,6 @@ describe('PicoUnitIdBatchesController (e2e)', () => {
     it('returns the active batch when finish_at is null', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'pu-current1',
-        host: 'c1.local',
         port: 6020,
       });
       const now = Date.now();
@@ -224,7 +219,6 @@ describe('PicoUnitIdBatchesController (e2e)', () => {
     it('returns the active batch when finish_at is in the future', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'pu-current2',
-        host: 'c2.local',
         port: 6021,
       });
       const now = Date.now();
@@ -254,7 +248,6 @@ describe('PicoUnitIdBatchesController (e2e)', () => {
     it('returns 404 when there is no active batch', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'pu-none',
-        host: 'none.local',
         port: 6022,
       });
       const now = Date.now();

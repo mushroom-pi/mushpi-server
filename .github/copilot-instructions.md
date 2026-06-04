@@ -23,7 +23,7 @@ src/modules/
 
 ## Entities (SQLite via TypeORM)
 
-**PicoUnit** (`pico_unit`): `id`, `handle` (= Pico's `device_name`), `name`, `description`, `host`, `port`, `enabled`, `last_seen`, `failed_calls`, board metrics. Unique on `(host, port)`. Virtual getter `address` → `http://host:port`.
+**PicoUnit** (`pico_unit`): `id`, `handle` (unique, = Pico's `device_name`), `name`, `description`, `port`, `ip` (optional, IPv4), `enabled`, `last_seen`, `failed_calls`, board metrics. `host` is a **virtual getter** (`handle + '.local'`). Virtual getters: `address` → `http://host:port`, `ipAddress` → `http://ip:port` (undefined if no ip).
 
 **Readings** (`readings`): `id`, `ts`, `temperature`, `humidity`, `fan_on`, `humidifier_on`, `heater_on`, `control_loop_enabled`, `temperature_set`, `humidity_set`, `board_uptime_s`, `board_temp`, `board_used_mem`, `board_used_fs`, `time_to_response_ms`, `pico_unit_id` FK (CASCADE delete). Index on `(pico_unit_id, ts)`.
 
@@ -114,6 +114,9 @@ Concrete rule: if two methods share the same try/catch structure, the same loop 
 
 **Example** (`CronService`): `handleBatchSync` (loop over active batches) and `handleBatchStarted` (single event-driven call) both needed the same try/catch around `controlService.applyBatchSettings`. The fix was a single private `applyBatchSettingsSafe(batch)` method that both call.
 
+### Shared HTTP fallback utility — `src/common/utils/http-fallback.ts`
+This module provides `isNetworkError()`, `getWithFallback()`, and `postWithFallback()` for cross-service mDNS → IP fallback. Any service that makes outbound HTTP calls to Pico units imports from here instead of calling `axios.get`/`axios.post` directly. The fallback logic: try `unit.address` (mDNS) first; if `isNetworkError` returns true AND `unit.ipAddress` is set, retry using the IP-based address.
+
 ### Mirror existing patterns exactly
 Before implementing any new module feature, study the closest existing equivalent and mirror it precisely:
 - **Middleware**: mirrors `BatchByIdMiddleware` — reads `:resourceId` param, validates as positive integer (422 if not), loads entity via service `findOne` (404 if missing), attaches to `req.resource`.
@@ -182,6 +185,18 @@ mockedAxios.post.mockReset();
 mockedAxios.post.mockResolvedValue({ data: {} });
 ```
 `axiosRetry` attaches to the auto-mocked interceptors without issue. Plain `new Error(...)` objects are not treated as network errors by axiosRetry, so no retry delays will fire during tests.
+
+**Important gotcha: `axios.isAxiosError` is auto-mocked to return `undefined`.** The shared `isNetworkError()` in `http-fallback.ts` depends on this check. Always install a proper implementation in `beforeEach`:
+```ts
+mockedAxios.isAxiosError = jest.fn(
+  (err: any) => err?.isAxiosError === true,
+) as any;
+```
+
+**`ClassSerializerInterceptor` must be registered in test setup.** `main.ts` registers `app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)))`, but `createTestApp()` in `test/test-setup.ts` does not include it by default. Without it, `@Expose()` virtual getters are omitted from responses (they are not own properties, so `JSON.stringify` skips them). Add the interceptor to `createTestApp` when new entity getter tests are needed:
+```ts
+app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+```
 
 ## Batches Module — Specific Patterns
 

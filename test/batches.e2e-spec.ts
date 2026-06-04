@@ -34,7 +34,6 @@ describe('BatchesController (e2e)', () => {
     it('creates a batch for an existing pico unit', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'create-test',
-        host: 'create.host',
         port: 5100,
       });
 
@@ -79,7 +78,6 @@ describe('BatchesController (e2e)', () => {
     it('returns 409 when the pico unit already has an active batch (finish_at null)', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'conflict-null',
-        host: 'conflict.host',
         port: 5300,
       });
 
@@ -98,7 +96,6 @@ describe('BatchesController (e2e)', () => {
     it('returns 409 when the pico unit already has an active batch (finish_at in the future)', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'conflict-future',
-        host: 'conflict.host',
         port: 5301,
       });
 
@@ -121,7 +118,6 @@ describe('BatchesController (e2e)', () => {
     it('returns 422 when finish_at is before start_at', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'date-order-pico',
-        host: '127.0.0.1',
         port: 5400,
       });
 
@@ -141,7 +137,6 @@ describe('BatchesController (e2e)', () => {
     it('allows creating a new batch scheduled after active batch finish_at', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'conflict-scheduled-future',
-        host: 'conflict-future.host',
         port: 5303,
       });
 
@@ -173,7 +168,6 @@ describe('BatchesController (e2e)', () => {
     it('returns 409 when trying to create new batch before active batch finish_at', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'conflict-too-early',
-        host: 'conflict-early.host',
         port: 5304,
       });
 
@@ -202,7 +196,6 @@ describe('BatchesController (e2e)', () => {
     it('allows creating a new batch when the previous one is finished', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'conflict-finished',
-        host: 'conflict.host',
         port: 5302,
       });
 
@@ -225,7 +218,6 @@ describe('BatchesController (e2e)', () => {
     it('returns paginated list and respects page/limit', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'list-pico',
-        host: 'list.host',
         port: 5110,
       });
 
@@ -254,12 +246,10 @@ describe('BatchesController (e2e)', () => {
     it('filters by status (planned, in-progress vs finished) and pico_unit_id', async () => {
       const picoA = await seedPicoUnit(app, {
         handle: 'A',
-        host: 'a.host',
         port: 5200,
       });
       const picoB = await seedPicoUnit(app, {
         handle: 'B',
-        host: 'b.host',
         port: 5201,
       });
 
@@ -339,7 +329,6 @@ describe('BatchesController (e2e)', () => {
     it('includes both pico_unit and recipe relations in response', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'rel-pico',
-        host: 'rel.host',
         port: 5250,
       });
       const recipe = await seedRecipe(app, {
@@ -389,7 +378,6 @@ describe('BatchesController (e2e)', () => {
     it('copies species, temperature_target and humidity_target from the recipe when not explicitly provided', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'snap-pico',
-        host: '127.0.0.1',
         port: 7300,
       });
       const recipe = await seedRecipe(app, {
@@ -413,7 +401,6 @@ describe('BatchesController (e2e)', () => {
     it('uses explicitly provided fields and only copies unset ones from the recipe', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'snap-explicit-pico',
-        host: '127.0.0.1',
         port: 7301,
       });
       const recipe = await seedRecipe(app, {
@@ -441,7 +428,6 @@ describe('BatchesController (e2e)', () => {
     it('returns 404 when recipe_id does not match any existing recipe', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'snap-missing-pico',
-        host: '127.0.0.1',
         port: 7302,
       });
 

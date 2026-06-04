@@ -39,7 +39,6 @@ describe('RecipeIdBatchesController (e2e)', () => {
     it('returns only batches linked to this recipe', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'rb-pico',
-        host: '127.0.0.1',
         port: 7200,
       });
       const recipeA = await seedRecipe(app, { name: 'recipe-a' });
@@ -65,7 +64,6 @@ describe('RecipeIdBatchesController (e2e)', () => {
     it('respects page and limit pagination', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'rb-paged-pico',
-        host: '127.0.0.1',
         port: 7201,
       });
       const recipe = await seedRecipe(app, { name: 'paged-recipe' });
@@ -97,12 +95,10 @@ describe('RecipeIdBatchesController (e2e)', () => {
     it('includes pico_unit but NOT recipe in response', async () => {
       const picoA = await seedPicoUnit(app, {
         handle: 'rb-rel-a',
-        host: '127.0.0.1',
         port: 7210,
       });
       const picoB = await seedPicoUnit(app, {
         handle: 'rb-rel-b',
-        host: '127.0.0.1',
         port: 7211,
       });
       const recipe = await seedRecipe(app, { name: 'rel-test-recipe' });

@@ -47,7 +47,6 @@ describe('Readings endpoints (e2e)', () => {
     it('returns paginated chronological readings', async () => {
       const unit = await seedPicoUnitPartial(app, {
         handle: 'list-test',
-        host: 'list.host',
         port: 5010,
       });
 
@@ -98,7 +97,6 @@ describe('Readings endpoints (e2e)', () => {
     it('returns empty list if none', async () => {
       const unit = await seedPicoUnitPartial(app, {
         handle: 'empty',
-        host: 'empty.host',
         port: 5020,
       });
 
@@ -119,7 +117,6 @@ describe('Readings endpoints (e2e)', () => {
       beforeEach(async () => {
         unit = await seedPicoUnitPartial(app, {
           handle: 'time-window',
-          host: 'time.host',
           port: 5030,
         });
 
@@ -219,7 +216,6 @@ describe('Readings endpoints (e2e)', () => {
     it('fetches device, validates and saves a reading, writing time_to_response_ms', async () => {
       const unit = await seedPicoUnitPartial(app, {
         handle: 'poll-test',
-        host: 'poll.host',
         port: 5050,
       });
 
@@ -249,7 +245,6 @@ describe('Readings endpoints (e2e)', () => {
     it('locks concurrent polling: second request should fail while first is running', async () => {
       const unit = await seedPicoUnitPartial(app, {
         handle: 'poll-test',
-        host: 'poll.host',
         port: 5050,
       });
 
@@ -308,7 +303,6 @@ describe('Readings endpoints (e2e)', () => {
     it("doesn't lock if the previous request has already been completed", async () => {
       const unit = await seedPicoUnitPartial(app, {
         handle: 'poll-test',
-        host: 'poll.host',
         port: 5050,
       });
 
@@ -347,7 +341,6 @@ describe('Readings endpoints (e2e)', () => {
     it('maps a remote validation error to 412 Precondition Failed (and does not persist)', async () => {
       const unit = await seedPicoUnitPartial(app, {
         handle: 'poll-bad',
-        host: 'bad.host',
         port: 5051,
       });
 
@@ -371,7 +364,6 @@ describe('Readings endpoints (e2e)', () => {
     it('maps a network failure to 502 Bad Gateway and does not persist', async () => {
       const unit = await seedPicoUnitPartial(app, {
         handle: 'poll-netfail',
-        host: 'nf.host',
         port: 5052,
       });
 

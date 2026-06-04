@@ -21,7 +21,7 @@ export async function seedPicoUnit(
   const repo = await getPicoRepo(app);
   const entity = repo.create({
     handle: 'unit-' + Math.random().toString(16).slice(2, 6),
-    host: '127.0.0.1',
+    ip: '127.0.0.1',
     port: 5000,
     enabled: true,
     micropython_version: 'v1.26.0 on 2025-08-09 (GNU 14.2.0 MinSizeRel)',
@@ -42,9 +42,8 @@ export async function seedManyPicoUnits(
 ) {
   const out: PicoUnit[] = [];
   for (let i = 0; i < count; i++) {
-    // ensure unique host:port
+    // ensure unique handle:port
     const unit = await seedPicoUnit(app, {
-      host: base.host ?? `127.0.0.${i + 1}`,
       port: base.port ?? 5000 + i,
       handle: base.handle ?? `unit-${i + 1}`,
       name: base.name,

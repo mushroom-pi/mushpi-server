@@ -38,7 +38,6 @@ describe('Batch readings endpoint (e2e)', () => {
   it('returns readings within the batch window when no query provided', async () => {
     const pico = await seedPicoUnit(app, {
       handle: 'batch-unit-1',
-      host: 'bu1',
       port: 5400,
     });
 
@@ -85,7 +84,6 @@ describe('Batch readings endpoint (e2e)', () => {
   it('applies start/end inside batch window to narrow results', async () => {
     const pico = await seedPicoUnit(app, {
       handle: 'batch-unit-2',
-      host: 'bu2',
       port: 5401,
     });
 
@@ -145,7 +143,6 @@ describe('Batch readings endpoint (e2e)', () => {
   it('clamps requested window outside batch to the batch window', async () => {
     const pico = await seedPicoUnit(app, {
       handle: 'batch-unit-3',
-      host: 'bu3',
       port: 5402,
     });
 
@@ -192,7 +189,6 @@ describe('Batch readings endpoint (e2e)', () => {
   it('returns 400 when requested window does not overlap the batch', async () => {
     const pico = await seedPicoUnit(app, {
       handle: 'batch-unit-4',
-      host: 'bu4',
       port: 5403,
     });
 
@@ -222,7 +218,6 @@ describe('Batch readings endpoint (e2e)', () => {
   it('returns 422 for invalid date format', async () => {
     const pico = await seedPicoUnit(app, {
       handle: 'batch-unit-5',
-      host: 'bu5',
       port: 5404,
     });
     const batch = await seedBatch(app, pico.id, {
@@ -239,7 +234,6 @@ describe('Batch readings endpoint (e2e)', () => {
   it('returns 400 when start > end', async () => {
     const pico = await seedPicoUnit(app, {
       handle: 'batch-unit-6',
-      host: 'bu6',
       port: 5405,
     });
 

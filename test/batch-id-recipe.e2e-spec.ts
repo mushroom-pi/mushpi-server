@@ -30,7 +30,6 @@ describe('BatchIdRecipeController (e2e)', () => {
     it('creates a recipe with species and targets from the batch, duration_days from dates', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'bir-pico',
-        host: '127.0.0.1',
         port: 7500,
       });
       const start = new Date('2024-01-01T00:00:00Z');
@@ -65,7 +64,6 @@ describe('BatchIdRecipeController (e2e)', () => {
     it('accepts optional notes and includes them in the recipe', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'bir-notes',
-        host: '127.0.0.1',
         port: 7501,
       });
       const batch = await seedBatch(app, pico.id, {
@@ -88,7 +86,6 @@ describe('BatchIdRecipeController (e2e)', () => {
     it('rounds up partial days to the next whole day', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'bir-round',
-        host: '127.0.0.1',
         port: 7502,
       });
       const batch = await seedBatch(app, pico.id, {
@@ -113,7 +110,6 @@ describe('BatchIdRecipeController (e2e)', () => {
     it('returns 422 when the batch is not finished (no finish_at)', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'bir-unfinished',
-        host: '127.0.0.1',
         port: 7510,
       });
       const batch = await seedBatch(app, pico.id, {
@@ -133,7 +129,6 @@ describe('BatchIdRecipeController (e2e)', () => {
     it('returns 422 when the batch is missing species', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'bir-no-species',
-        host: '127.0.0.1',
         port: 7511,
       });
       const batch = await seedBatch(app, pico.id, {
@@ -152,7 +147,6 @@ describe('BatchIdRecipeController (e2e)', () => {
     it('returns 422 when the batch is missing temperature_target', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'bir-no-temp',
-        host: '127.0.0.1',
         port: 7512,
       });
       const batch = await seedBatch(app, pico.id, {
@@ -171,7 +165,6 @@ describe('BatchIdRecipeController (e2e)', () => {
     it('returns 422 when the batch is missing humidity_target', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'bir-no-humid',
-        host: '127.0.0.1',
         port: 7513,
       });
       const batch = await seedBatch(app, pico.id, {
@@ -190,7 +183,6 @@ describe('BatchIdRecipeController (e2e)', () => {
     it('returns 400 when name is missing from the body', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'bir-no-name',
-        host: '127.0.0.1',
         port: 7514,
       });
       const batch = await seedBatch(app, pico.id, {
@@ -210,7 +202,6 @@ describe('BatchIdRecipeController (e2e)', () => {
     it('returns 409 when a recipe with the same name already exists', async () => {
       const pico = await seedPicoUnit(app, {
         handle: 'bir-dup',
-        host: '127.0.0.1',
         port: 7515,
       });
       const batch = await seedBatch(app, pico.id, {

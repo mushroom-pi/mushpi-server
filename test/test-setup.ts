@@ -1,5 +1,5 @@
-import { INestApplication } from '@nestjs/common';
-import { HttpAdapterHost } from '@nestjs/core';
+import { ClassSerializerInterceptor, INestApplication } from '@nestjs/common';
+import { HttpAdapterHost, Reflector } from '@nestjs/core';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { Test, TestingModule } from '@nestjs/testing';
 
@@ -25,6 +25,7 @@ export async function createTestApp(
 
   app.useGlobalFilters(new ExceptionsFilter(httpAdapterHost, configService));
   app.useGlobalPipes(validationPipe);
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
   return app;
 }

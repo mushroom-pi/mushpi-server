@@ -28,6 +28,7 @@ import {
   validateDeviceResponse,
 } from 'src/common/dto/pico-unit-response.dto';
 import { LockedException } from 'src/common/exceptions/locked.exception';
+import { getWithFallback } from 'src/common/utils/http-fallback';
 import { BatchesService } from 'src/modules/batches/batches.service';
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
 import { PicoUnitsService } from 'src/modules/pico-units/pico-units.service';
@@ -56,9 +57,9 @@ export class ReadingsService {
     axiosRetry(axios, { retryDelay: axiosRetry.exponentialDelay });
   }
 
-  async fetchAndValidateReading(url: string) {
+  async fetchAndValidateReading(unit: PicoUnit, path: string) {
     const t0 = new Date();
-    const r = await axios.get(url, { timeout: 10000 });
+    const r = await getWithFallback(unit, path, { timeout: 10000 });
     const t1 = new Date();
     const durationMs = Number(t1.getTime() - t0.getTime());
     const { errors } = await validateDeviceResponse(r.data);
@@ -111,7 +112,8 @@ export class ReadingsService {
       this.isPolling = true;
       this.logger.log(`Polling data from pico unit ${unit.id}`);
       const { response, durationMs } = await this.fetchAndValidateReading(
-        `${unit.address}/?force=1`,
+        unit,
+        '/?force=1',
       );
       await this.picoUnitsService.touchAndResetFailedCalls(unit);
       const reading = await this.createFromDeviceResponse(
