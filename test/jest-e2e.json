@@ -1,13 +1,31 @@
 {
   "moduleFileExtensions": ["js", "json", "ts"],
-  "rootDir": ".",
+  "rootDir": "../",
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   },
-  "moduleDirectories": ["<rootDir>/../", "node_modules"],
+  "moduleDirectories": ["<rootDir>/", "node_modules"],
   "reporters": [["github-actions", { "silent": false }], "summary"],
   "forceExit": true,
-  "maxWorkers": 1
+  "maxWorkers": 1,
+  "collectCoverageFrom": ["src/**/*.{ts,js}"],
+  "coverageProvider": "v8",
+  "coveragePathIgnorePatterns": [
+    "/node_modules/",
+    "/dist/",
+    "/test/",
+    "\\.spec\\.ts$",
+    "\\.e2e-spec\\.ts$",
+    "\\.interface\\.ts$",
+    "\\.interfaces\\.ts$",
+    "\\.constant\\.ts$",
+    "\\.constants\\.ts$",
+    "\\.types\\.ts$",
+    "\\.type\\.ts$",
+    "/src/modules/swagger/",
+    "/src/modules/sqlite/",
+    "main\\.ts$"
+  ]
 }

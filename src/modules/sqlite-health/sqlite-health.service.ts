@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { Repository } from 'typeorm';
 
-import { DatabaseStatus } from 'src/modules/monitoring/monitoring.inferface';
+import { DatabaseStatus } from 'src/modules/monitoring/monitoring.interface';
 
 import { Health } from './sqlite-health.entity';
 

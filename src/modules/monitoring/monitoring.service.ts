@@ -17,7 +17,7 @@ import {
   HealthCheckResponse,
   ServerStatus,
   ServiceStatus,
-} from './monitoring.inferface';
+} from './monitoring.interface';
 
 @Injectable()
 export class MonitoringService {

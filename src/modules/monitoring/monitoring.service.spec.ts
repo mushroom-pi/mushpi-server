@@ -5,7 +5,7 @@ import { version } from 'package.json';
 import { CustomConfigService } from 'src/modules/config/config.service';
 import { SQLiteHealthService } from 'src/modules/sqlite-health/sqlite-health.service';
 
-import { HealthCheckInput, HealthCheckResponse } from './monitoring.inferface';
+import { HealthCheckInput, HealthCheckResponse } from './monitoring.interface';
 import { MonitoringService } from './monitoring.service';
 
 const upTimeSeconds = 12345.67;
