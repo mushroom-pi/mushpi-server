@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import {
   DocsConfig,
   EnvironmentVariables,
+  LogsConfig,
   SQLiteConfig,
   SecurityConfig,
   ServerConfig,
@@ -53,12 +54,19 @@ export class CustomConfigService {
       host: this.configService.get('APP_HOST'),
       port:
         this.configService.get('APP_PORT') || this.configService.get('PORT'),
-      logsLevel: this.configService.get('LOGS_LEVEL'),
       errorsDetail:
         typeof this.configService.get('ERRORS_DETAIL') === 'boolean'
           ? this.configService.get('ERRORS_DETAIL')
           : this.configService.get('ERRORS_DETAIL') !== 'false',
       isProd: this.configService.get('NODE_ENV') === 'prod',
+    };
+  }
+
+  get logs(): LogsConfig {
+    return {
+      level: this.configService.get('LOGS_LEVEL'),
+      path: this.configService.get('LOGS_PATH'),
+      lifeDays: this.configService.get('LOGS_LIFE_DAYS'),
     };
   }
 

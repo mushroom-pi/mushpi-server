@@ -16,6 +16,10 @@ yarn install
 
 Check the required [environment variables]('/docs/ENVIRONMENT.md) before you use the repo.
 
+## Logs
+
+Check the [instructions]('/docs/logs.md') to retrieve and query production logs for debugging.
+
 ## Running the app
 
 ```bash

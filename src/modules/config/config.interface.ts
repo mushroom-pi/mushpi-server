@@ -12,6 +12,8 @@ export interface EnvironmentVariables {
   DOCS_USERNAME?: string;
   DOCS_PASSWORD?: string;
   LOGS_LEVEL: LogLevels;
+  LOGS_PATH: string;
+  LOGS_LIFE_DAYS: number;
   ERRORS_DETAIL?: boolean;
   MAX_EVENT_LOOP_DELAY: number;
   MAX_REQUESTS?: number;
@@ -24,9 +26,14 @@ export interface ServerConfig {
   nodeEnv: EnvironmentVariables['NODE_ENV'];
   host: EnvironmentVariables['APP_HOST'];
   port: EnvironmentVariables['APP_PORT'];
-  logsLevel: EnvironmentVariables['LOGS_LEVEL'];
   errorsDetail?: EnvironmentVariables['ERRORS_DETAIL'];
   isProd: boolean;
+}
+
+export interface LogsConfig {
+  level: EnvironmentVariables['LOGS_LEVEL'];
+  path: EnvironmentVariables['LOGS_PATH'];
+  lifeDays: EnvironmentVariables['LOGS_LIFE_DAYS'];
 }
 
 export interface SecurityConfig {

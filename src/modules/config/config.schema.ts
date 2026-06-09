@@ -82,6 +82,8 @@ export const validationSchema = Joi.object({
   }),
   DOCS_PASSWORD: password('DOCS_USERNAME'),
   LOGS_LEVEL: addValids(logLevels, 'info'),
+  LOGS_PATH: Joi.string().default('data/logs'),
+  LOGS_LIFE_DAYS: Joi.number().integer().default(7),
   ERRORS_DETAIL: Joi.boolean().optional(),
   MAX_EVENT_LOOP_DELAY: Joi.number().default(100),
   MAX_REQUESTS: Joi.number(),

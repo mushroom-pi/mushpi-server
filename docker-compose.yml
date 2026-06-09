@@ -1,0 +1,17 @@
+services:
+  mushpi-server:
+    build:
+      context: .
+      target: dev
+    ports:
+      - "3000:3000"
+    volumes:
+      # Persists SQLite database and log files across container restarts
+      - ./data:/data
+    env_file:
+      - .env.prod
+    environment:
+      NODE_ENV: prod
+      SQLITE_PATH: /data/app.sqlite
+      LOGS_PATH: /data/logs
+    restart: unless-stopped
