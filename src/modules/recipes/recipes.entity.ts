@@ -59,6 +59,11 @@ export class Recipe {
   @Length(0, NOTES_MAX_LENGTH)
   notes?: string | null;
 
+  @Column({ type: 'text', nullable: true, default: null })
+  @IsString()
+  @IsOptional()
+  image?: string | null;
+
   @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;
 

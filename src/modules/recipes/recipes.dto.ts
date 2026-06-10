@@ -5,7 +5,15 @@ import {
   PartialType,
 } from '@nestjs/swagger';
 
-import { IsInt, IsOptional, IsString, Length, Max, Min } from 'class-validator';
+import {
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUrl,
+  Length,
+  Max,
+  Min,
+} from 'class-validator';
 
 import {
   HUMIDITY_MAX,
@@ -110,3 +118,11 @@ export class ListRecipesQueryDto {
 
 @ApiExtraModels(Recipe)
 export class RecipeListResponseDto extends PaginatedDto(Recipe) {}
+
+export class SetRecipeImageDto {
+  @ApiPropertyOptional({ type: String, description: 'External image URL' })
+  @IsOptional()
+  @IsString()
+  @IsUrl()
+  url?: string;
+}
