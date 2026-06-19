@@ -1,10 +1,15 @@
 # mushpi-server — Agent Instructions
 
-NestJS 11 backend for mushroom growing control system. Runs on Raspberry Pi, polls Pico units via cron, stores readings in SQLite.
+NestJS 11 backend for mushroom growing control system. Runs on Raspberry Pi, polls Pico units via cron, stores readings in SQLite. Exposes REST API + OpenAPI spec consumed by `mushpi-client`.
+
+## External Relationships
+
+- **mushpi-grow** (Pico units): each unit runs a MicroPython HTTP server on `handle.local:port`. Server proxies calls (`/sensors`, `/setpoints`, `/outputs`, `/setup`, `/control`) via mDNS → IP fallback using `src/common/utils/http-fallback.ts` (`getWithFallback`/`postWithFallback`). Units self-register on boot via `POST /pico-units`.
+- **mushpi-client** (frontend): consumes Swagger JSON at `/<DOCS_ENDPOINT>-json` to regenerate its API client. CORS origin from `CLIENT_URL` env var.
 
 ## Verification Commands
 
-**After every code change batch, run these in order:**
+Run these after every change batch without asking:
 
 ```bash
 yarn build   # Must exit 0
@@ -12,122 +17,114 @@ yarn lint    # Must have no new errors
 yarn start   # Must boot without exceptions
 ```
 
-Do not ask permission to run these — just execute them.
+## Project-Specific Domain Rules
 
-## Critical Conventions
+### `temperature_target` and `humidity_target` are always integers
+Use `@IsInt()`, `{ type: 'integer' }` in TypeORM, `{ type: 'integer' }` in Swagger. Never floats.
 
-### Cross-module imports
-Use absolute paths: `import { Recipe } from 'src/modules/recipes/recipes.entity'`
-Never use relative `../` paths across module boundaries.
-
-### Type precision
-`temperature_target` and `humidity_target` are **always integers**:
-- Use `@IsInt()` (not `@IsNumber()`)
-- TypeORM column: `{ type: 'integer' }`
-- Swagger: `{ type: 'integer' }`
-- Never use floats for these fields
-
-### Route parameters
-Use `:resourceId` (not `:id`) — consistent with `:picoUnitId`, `:batchId`, `:recipeId`
-
-### Constants
-All domain limits (validator min/max, string lengths, pagination defaults) live in `src/common/constants/`. Never use inline magic numbers in DTOs, entities, or services.
-
-### DRY enforcement
-If two methods share the same try/catch, loop body, or conditional chain, extract the common part into a private helper method **before finishing the task** — not as a follow-up.
-
-### Controller responsibility
-Controllers contain **only** endpoint definitions and Swagger documentation. All business logic (validation, file operations, conditional flows) goes into:
-- `*.service.ts` — core business logic
-- `*.middleware.ts` — request preprocessing, entity loading
-- `*.interceptor.ts` — request/response transformation, file upload handling
-- `*.guard.ts` — authorization checks
-
-Never nest logic like `if (condition) { ... }` or private helper methods in controllers.
-
-### Interface and type exports
-Export interfaces/types to separate `*.interfaces.ts` or `*.types.ts` files **only** if they're imported by multiple files. Otherwise:
-- Inline the type in the method signature: `method(): { isUrl: boolean; value: string }`
-- Define it locally within the file if needed for clarity
-
-Never export a type that's only used once in the same file.
-
-## Module Structure
-
-Each feature module has:
-- `*.module.ts`, `*.service.ts`, `*.entity.ts`, `*.dto.ts`
-- Controllers split into `controllers/` subdirectory:
-  - `resource.controller.ts` (collection routes)
-  - `resource-id.controller.ts` (single-item routes)
-  - `resource-id-sub.controller.ts` (nested sub-resources)
-
-### Service update pattern
-`update()` accepts pre-loaded entity + DTO: `update(recipe: Recipe, dto: UpdateRecipeDto)`
-Entity is loaded by middleware, passed directly to service.
-
-### Virtual getters
-Computed properties (like Batch `status`) need **both** decorators:
-```typescript
-@Expose()        // For serialization
-@ApiProperty()   // For Swagger
-```
-Neither alone is sufficient.
-
-## E2E Testing
-
-**Jest config constraints** (`test/jest-e2e.json`):
-- `forceExit: true` — cron timers survive `app.close()`, Jest hangs without this
-- `maxWorkers: 1` — all tests share one SQLite file, parallel writes cause lock contention
-
-**Axios mocking gotcha:**
-```typescript
-jest.mock('axios');
-const mockedAxios = axios as jest.Mocked<typeof axios>;
-
-// In beforeEach:
-mockedAxios.isAxiosError = jest.fn(
-  (err: any) => err?.isAxiosError === true,
-) as any;
-```
-Auto-mock makes `isAxiosError` return `undefined`, breaking `isNetworkError()` in `http-fallback.ts`.
-
-**ClassSerializerInterceptor required:**
-```typescript
-app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
-```
-Without it, `@Expose()` virtual getters are omitted from responses.
-
-**Test isolation:**
-- Each test suite uses unique `host:port` for PicoUnit seeds (unique constraint)
-- Call `clearX()` fixture helpers in `beforeEach` for every entity type touched
-
-## Batch Status Computation
-
-`status` is computed at runtime from `start_at`/`finish_at`, not stored:
+### Batch `status` — computed, not stored
 - `'planned'`: `start_at > now`
 - `'in-progress'`: `(finish_at IS NULL OR finish_at > now) AND start_at < now`
 - `'finished'`: `finish_at < now`
+Requires `@Expose()` + `@ApiProperty()` to serialize.
 
-## Entity Registration
+### Batch lifecycle constraints
+- **Create**: if unit has an active batch, reject unless active batch has `finish_at` AND new `start_at > finish_at`.
+- **Update**: if `start_at` has passed, prevent changing `start_at` (409). If `finish_at` has passed, allow `description`/`notes` only (409 for other fields).
 
-New entities must be registered in **both**:
-1. `src/modules/sqlite/data-source.ts` (TypeORM CLI)
-2. `TypeOrmModule.forFeature([Entity])` in the module (runtime)
+### Selective relation loading
+- `list()`: loads both `pico_unit` + `recipe`
+- `listForPicoUnitId()`: loads only `recipe` (unit implicit from URL)
+- `listForRecipeId()`: loads only `pico_unit` (recipe implicit from URL)
+Via private `listInternal()` with relation params.
 
-Both must stay in sync. `autoLoadEntities: true` alone is insufficient.
+### Data integrity
+- Snapshot copy over live reference: when linking recipe to batch, copy `species`, `temperature_target`, `humidity_target` at creation. Editing recipe must never alter historical batches.
+- Immutable FK references (`recipe_id`, `pico_unit_id`) omitted from UpdateDto via `OmitType`.
+- Entity registration: `src/modules/sqlite/data-source.ts` (CLI) + `TypeOrmModule.forFeature` (runtime) — both required.
 
-## Selective Relation Loading
+### Image uploads
+- `image` field stores relative path (`/images/recipes/{id}.{ext}`) for uploaded files or external URL
+- `image_url` is a computed field (not stored) that returns absolute URL for uploaded files or the external URL as-is
+- Uploaded files stored in `data/images/recipes/` and served via `ServeStaticModule` at `/images/`
 
-List methods use different relation configs to avoid redundant data:
-- `list()`: loads all relations (general list)
-- `listForPicoUnitId()`: loads only `recipe` (pico_unit redundant from URL)
-- `listForRecipeId()`: loads only `pico_unit` (recipe redundant from URL)
+#### Computed fields with DI dependencies
+When a computed field needs access to services (like `CustomConfigService` for `image_url`), compute it in the service layer rather than using `@Transform()` or getters. Apply the computation method to all service methods that return the entity.
 
-Implement via private `listInternal()` with optional relation parameters.
+#### Static file serving
+When using `ServeStaticModule`, explicitly disable SPA mode with `serveStaticOptions: { index: false, fallthrough: false }` to prevent it from looking for `index.html`.
 
-## Data Integrity
+#### Relative path storage
+Store relative paths in the database (`/images/recipes/{id}.{ext}`) and compute absolute URLs at runtime using `configService.baseUrl`. This avoids hardcoding server URLs in the database.
 
-- Snapshot copy over live reference: when linking template/recipe to record, copy values at creation time
-- Editing template must never alter historical records
-- FK references used as templates are immutable after creation (omit from UpdateDto)
-- SQLite requires `PRAGMA foreign_keys = ON` (already enabled in `sqlite.module.ts`)
+#### Path resolution
+Use `path.resolve(process.cwd(), 'data/images')` for static file roots, not `path.join(__dirname, ...)`, since the app runs from the project root.
+
+## Module Layout
+
+```
+pico-units/   — CRUD + ping proxy
+readings/     — readings storage and time-range queries
+batches/      — batch CRUD + lifecycle rules + recipe linking
+control/      — proxy: setpoints, outputs, setup, control loop toggle
+cron/         — scheduled polling of all enabled Pico units
+monitoring/   — /ping, /health
+swagger/      — OpenAPI setup with global error schemas
+```
+
+## REST API
+
+| Method | Path | Notes |
+|--------|------|-------|
+| GET/POST | `/pico-units` | List (paginated) / Register (upsert, called by Pico on boot) |
+| GET/PATCH/DELETE | `/pico-units/:picoUnitId` | CRUD |
+| GET | `/pico-units/:picoUnitId/ping` | Proxy → Pico `/` |
+| PUT | `/pico-units/:picoUnitId/setpoints` | Proxy → Pico `/setpoints` |
+| PUT | `/pico-units/:picoUnitId/setup` | Proxy → Pico `/setup` |
+| PUT | `/pico-units/:picoUnitId/outputs` | Proxy → Pico `/outputs` |
+| POST/DELETE | `/pico-units/:picoUnitId/control` | Proxy → Pico `/control` toggle |
+| GET | `/pico-units/:picoUnitId/readings` | Filterable by time range + limit |
+| GET | `/pico-units/:picoUnitId/batches` | + `/current` |
+| GET/POST | `/batches` | List (paginated) / Create |
+| GET/PATCH/DELETE | `/batches/:batchId` | CRUD |
+| GET | `/batches/:batchId/readings` | Readings for a batch |
+| POST | `/batches/:batchId/recipe` | Link recipe to batch |
+| GET/POST | `/recipes` | List / Create |
+| GET/PATCH/DELETE | `/recipes/:recipeId` | CRUD |
+| GET | `/recipes/:recipeId/batches` | Batches using this recipe |
+| PUT/DELETE | `/recipes/:recipeId/image` | Recipe image upload/removal |
+| GET | `/monitoring/ping` + `/monitoring/health` | Liveness / full health |
+
+## Cron Polling
+
+`CronService` polls all **enabled** PicoUnits every minute: `GET /` → creates `Readings` → updates `last_seen` + `failed_calls` + board metadata. Failed units increment `failed_calls` but are not auto-disabled. Uses error-safe wrappers (`applyBatchSettingsSafe`) to avoid crashing the cron job.
+
+## Guards
+
+- `IsPicoUnitEnabledGuard` (410 Gone for disabled units) — used via `@OnlyEnabledPicoUnits()` decorator
+- `IsControlLoopEnabledGuard` (409 Conflict when control loop active, prevents manual output changes) — used via `@OnlyEnabledPicoUnitsWithControlLoop()`
+- `TooManyRequestsGuard` — `@nestjs/throttler` rate limiting
+- `AppSecretBearerMiddleware` — optional Bearer token auth from `APP_SECRET`
+- `ProtectEventLoopMiddleware` — toobusy-js overload rejection
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `3000` | Listen port |
+| `NODE_ENV` | `local` | `dev/local/prod/staging/test` |
+| `SQLITE_PATH` | `./data/app.sqlite` | DB path |
+| `CLIENT_URL` | — | CORS allowed origin |
+| `APP_SECRET` | — | Bearer token (required in prod) |
+| `DOCS_ENDPOINT` | — | Swagger UI path |
+| `LOGS_LEVEL` | `info` | Pino level |
+
+## E2E Testing Gotchas
+
+- `forceExit: true` + `maxWorkers: 1` in `jest-e2e.json` — cron timers survive `app.close()`; parallel workers cause SQLite lock contention.
+- Axios auto-mock makes `isAxiosError` return `undefined` — install manually in `beforeEach`:
+  ```ts
+  mockedAxios.isAxiosError = jest.fn((err: any) => err?.isAxiosError === true) as any;
+  ```
+- `ClassSerializerInterceptor` must be registered in `createTestApp()` or `@Expose()` virtual getters are omitted.
+- Each test suite uses unique `host:port` for PicoUnit seeds (unique constraint). Call `clearX()` for every touched entity in `beforeEach`.
