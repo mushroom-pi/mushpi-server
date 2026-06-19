@@ -10,7 +10,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import * as fs from 'fs';
 
-import { IMAGE_UPLOAD_DIR } from 'src/common/constants/upload.constants';
 import { BatchesModule } from 'src/modules/batches/batches.module';
 
 import { RecipeIdBatchesController } from './controllers/recipe-id-batches.controller';
@@ -18,6 +17,7 @@ import { RecipeIdImageController } from './controllers/recipe-id-image.controlle
 import { RecipeIdController } from './controllers/recipe-id.controller';
 import { RecipesController } from './controllers/recipes.controller';
 import { RecipeByIdMiddleware } from './recipe-by-id.middleware';
+import { RECIPE_IMAGE_UPLOAD_DIR } from './recipes.constant';
 import { Recipe } from './recipes.entity';
 import { RecipesService } from './recipes.service';
 
@@ -37,7 +37,7 @@ import { RecipesService } from './recipes.service';
 })
 export class RecipesModule implements NestModule, OnModuleInit {
   onModuleInit() {
-    fs.mkdirSync(IMAGE_UPLOAD_DIR, { recursive: true });
+    fs.mkdirSync(RECIPE_IMAGE_UPLOAD_DIR, { recursive: true });
   }
 
   configure(consumer: MiddlewareConsumer) {

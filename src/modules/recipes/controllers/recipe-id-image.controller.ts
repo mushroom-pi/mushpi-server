@@ -2,11 +2,9 @@ import {
   Body,
   Controller,
   Delete,
-  Get,
   HttpCode,
   HttpStatus,
   Put,
-  Res,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
@@ -18,8 +16,6 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-
-import { Response } from 'express';
 
 import { ApiRecipeImageErrors } from 'src/common/decorators/docs/api-recipe-image.decorator';
 import { ApiRecipe } from 'src/common/decorators/docs/api-recipe.decorator';
@@ -37,7 +33,11 @@ export class RecipeIdImageController {
   constructor(private readonly svc: RecipesService) {}
 
   @Put()
-  @ApiOperation({ summary: 'Upload or set recipe image' })
+  @ApiOperation({
+    summary: 'Upload or set recipe image',
+    description:
+      'Beware: if an image is already associated to the recipe, providing a new one will automatically remove the previous.',
+  })
   @ApiConsumes('multipart/form-data', 'application/json')
   @ApiBody({
     schema: {
@@ -61,23 +61,6 @@ export class RecipeIdImageController {
     @Body() dto: SetRecipeImageDto,
   ) {
     return this.svc.setImage(recipe, file, dto);
-  }
-
-  @Get()
-  @ApiOperation({ summary: 'Get recipe image' })
-  @ApiOkResponse({
-    description: 'Returns the image file or redirects to external URL',
-    schema: { type: 'string', format: 'binary' },
-  })
-  @ApiRecipeImageErrors()
-  getImage(@GetRecipe() recipe: Recipe, @Res() res: Response) {
-    const result = this.svc.getImage(recipe);
-
-    if (result.isUrl) {
-      return res.redirect(result.value);
-    }
-
-    return res.sendFile(result.filePath!);
   }
 
   @Delete()

@@ -1,3 +1,5 @@
+import { ApiProperty } from '@nestjs/swagger';
+
 import { IsInt, IsOptional, IsString, Length, Max, Min } from 'class-validator';
 import {
   Column,
@@ -63,6 +65,13 @@ export class Recipe {
   @IsString()
   @IsOptional()
   image?: string | null;
+
+  @ApiProperty({
+    nullable: true,
+    description: 'Absolute URL to the image',
+    example: 'http://localhost:3000/images/recipes/1.jpg',
+  })
+  image_url?: string | null;
 
   @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;

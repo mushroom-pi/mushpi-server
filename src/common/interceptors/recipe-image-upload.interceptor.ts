@@ -13,8 +13,8 @@ import { Observable } from 'rxjs';
 import {
   IMAGE_ALLOWED_MIME_TYPES,
   IMAGE_MAX_FILE_SIZE,
-  IMAGE_UPLOAD_DIR,
 } from 'src/common/constants/upload.constants';
+import { RECIPE_IMAGE_UPLOAD_DIR } from 'src/modules/recipes/recipes.constant';
 import { Recipe } from 'src/modules/recipes/recipes.entity';
 
 const MIME_TO_EXT: Record<string, string> = {
@@ -24,7 +24,7 @@ const MIME_TO_EXT: Record<string, string> = {
 
 export const recipeImageMulterOptions = {
   storage: diskStorage({
-    destination: IMAGE_UPLOAD_DIR,
+    destination: RECIPE_IMAGE_UPLOAD_DIR,
     filename: (
       req: any,
       file: Express.Multer.File,

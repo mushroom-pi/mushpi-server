@@ -113,4 +113,14 @@ export class CustomConfigService {
       ? !this.is('prod')
       : this.server.errorsDetail;
   }
+
+  get baseUrl(): string {
+    const host = this.configService.get('APP_HOST') || 'localhost';
+    const port =
+      this.configService.get('APP_PORT') ||
+      this.configService.get('PORT') ||
+      '3000';
+    const protocol = host.includes('http') ? '' : 'http://';
+    return `${protocol}${host}:${port}`;
+  }
 }

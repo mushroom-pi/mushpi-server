@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import request from 'supertest';
 
-import { IMAGE_UPLOAD_DIR } from '../src/common/constants/upload.constants';
+import { RECIPE_IMAGE_UPLOAD_DIR } from '../src/modules/recipes/recipes.constant';
 import { clearPicos } from './fixtures/pico-units.fixtures';
 import {
   clearRecipes,
@@ -51,12 +51,6 @@ describe('RecipeIdImageController (e2e)', () => {
         .expect(404);
     });
 
-    it('returns 404 when the recipe does not exist on GET', async () => {
-      await request(app.getHttpServer())
-        .get('/recipes/99999/image')
-        .expect(404);
-    });
-
     it('returns 404 when the recipe does not exist on DELETE', async () => {
       await request(app.getHttpServer())
         .delete('/recipes/99999/image')
@@ -67,7 +61,7 @@ describe('RecipeIdImageController (e2e)', () => {
   // ─── PUT /recipes/:recipeId/image ────────────────────────────────────────
 
   describe('PUT /recipes/:recipeId/image', () => {
-    it('uploads a JPEG file and stores the filename in the database', async () => {
+    it('uploads a JPEG file and stores the relative path in the database', async () => {
       const recipe = await seedRecipe(app, { name: 'upload-jpeg' });
 
       const imageBuffer = Buffer.from('fake-jpeg-data', 'utf-8');
@@ -78,13 +72,16 @@ describe('RecipeIdImageController (e2e)', () => {
         .expect(200);
 
       expect(res.body).toHaveProperty('id', recipe.id);
-      expect(res.body.image).toBe(`${recipe.id}.jpg`);
+      expect(res.body.image).toBe(`/images/recipes/${recipe.id}.jpg`);
+      expect(res.body.image_url).toMatch(
+        new RegExp(`^http://localhost:\\d+/images/recipes/${recipe.id}\\.jpg$`),
+      );
 
       const repo = await getRecipeRepo(app);
       const persisted = await repo.findOneBy({ id: recipe.id });
-      expect(persisted!.image).toBe(`${recipe.id}.jpg`);
+      expect(persisted!.image).toBe(`/images/recipes/${recipe.id}.jpg`);
 
-      const filePath = path.join(IMAGE_UPLOAD_DIR, `${recipe.id}.jpg`);
+      const filePath = path.join(RECIPE_IMAGE_UPLOAD_DIR, `${recipe.id}.jpg`);
       expect(fs.existsSync(filePath)).toBe(true);
       fs.unlinkSync(filePath);
     });
@@ -99,9 +96,12 @@ describe('RecipeIdImageController (e2e)', () => {
         .attach('image', imageBuffer, 'test.png')
         .expect(200);
 
-      expect(res.body.image).toBe(`${recipe.id}.png`);
+      expect(res.body.image).toBe(`/images/recipes/${recipe.id}.png`);
+      expect(res.body.image_url).toMatch(
+        new RegExp(`^http://localhost:\\d+/images/recipes/${recipe.id}\\.png$`),
+      );
 
-      const filePath = path.join(IMAGE_UPLOAD_DIR, `${recipe.id}.png`);
+      const filePath = path.join(RECIPE_IMAGE_UPLOAD_DIR, `${recipe.id}.png`);
       expect(fs.existsSync(filePath)).toBe(true);
       fs.unlinkSync(filePath);
     });
@@ -120,6 +120,7 @@ describe('RecipeIdImageController (e2e)', () => {
         .expect(200);
 
       expect(res.body.image).toBe('https://example.com/image.jpg');
+      expect(res.body.image_url).toBe('https://example.com/image.jpg');
 
       const repo = await getRecipeRepo(app);
       const persisted = await repo.findOneBy({ id: recipe.id });
@@ -213,7 +214,7 @@ describe('RecipeIdImageController (e2e)', () => {
         .attach('image', imageBuffer1, 'test1.jpg')
         .expect(200);
 
-      const filePath1 = path.join(IMAGE_UPLOAD_DIR, `${recipe.id}.jpg`);
+      const filePath1 = path.join(RECIPE_IMAGE_UPLOAD_DIR, `${recipe.id}.jpg`);
       expect(fs.existsSync(filePath1)).toBe(true);
 
       const imageBuffer2 = Buffer.from('fake-png-2', 'utf-8');
@@ -222,10 +223,10 @@ describe('RecipeIdImageController (e2e)', () => {
         .attach('image', imageBuffer2, 'test2.png')
         .expect(200);
 
-      expect(res.body.image).toBe(`${recipe.id}.png`);
+      expect(res.body.image).toBe(`/images/recipes/${recipe.id}.png`);
       expect(fs.existsSync(filePath1)).toBe(false);
 
-      const filePath2 = path.join(IMAGE_UPLOAD_DIR, `${recipe.id}.png`);
+      const filePath2 = path.join(RECIPE_IMAGE_UPLOAD_DIR, `${recipe.id}.png`);
       expect(fs.existsSync(filePath2)).toBe(true);
       fs.unlinkSync(filePath2);
     });
@@ -249,76 +250,8 @@ describe('RecipeIdImageController (e2e)', () => {
         .attach('image', imageBuffer, 'new.png')
         .expect(200);
 
-      expect(res.body.image).toBe(`${recipe.id}.png`);
-      fs.unlinkSync(path.join(IMAGE_UPLOAD_DIR, `${recipe.id}.png`));
-    });
-  });
-
-  // ─── GET /recipes/:recipeId/image ────────────────────────────────────────
-
-  describe('GET /recipes/:recipeId/image', () => {
-    it('returns the uploaded image file', async () => {
-      const recipe = await seedRecipe(app, { name: 'get-image' });
-
-      const imageBuffer = Buffer.from('fake-jpeg-data', 'utf-8');
-      await request(app.getHttpServer())
-        .put(`/recipes/${recipe.id}/image`)
-        .attach('image', imageBuffer, 'test.jpg')
-        .expect(200);
-
-      const res = await request(app.getHttpServer())
-        .get(`/recipes/${recipe.id}/image`)
-        .expect(200);
-
-      expect(res.headers['content-type']).toMatch(/image/);
-
-      fs.unlinkSync(path.join(IMAGE_UPLOAD_DIR, `${recipe.id}.jpg`));
-    });
-
-    it('redirects to external URL when image is a URL', async () => {
-      const recipe = await seedRecipe(app, { name: 'get-url' });
-
-      mockedAxios.head.mockResolvedValueOnce({
-        status: 200,
-        headers: { 'content-type': 'image/jpeg' },
-      } as any);
-
-      await request(app.getHttpServer())
-        .put(`/recipes/${recipe.id}/image`)
-        .send({ url: 'https://example.com/image.jpg' })
-        .expect(200);
-
-      const res = await request(app.getHttpServer())
-        .get(`/recipes/${recipe.id}/image`)
-        .expect(302);
-
-      expect(res.headers.location).toBe('https://example.com/image.jpg');
-    });
-
-    it('returns 404 when no image is set', async () => {
-      const recipe = await seedRecipe(app, { name: 'no-image' });
-
-      const res = await request(app.getHttpServer())
-        .get(`/recipes/${recipe.id}/image`)
-        .expect(404);
-
-      expect(res.body).toHaveProperty('statusCode', 404);
-      expect(res.body.message).toContain('No image set');
-    });
-
-    it('returns 404 when image file does not exist on disk', async () => {
-      const recipe = await seedRecipe(app, { name: 'missing-file' });
-
-      const repo = await getRecipeRepo(app);
-      recipe.image = `${recipe.id}.jpg`;
-      await repo.save(recipe);
-
-      const res = await request(app.getHttpServer())
-        .get(`/recipes/${recipe.id}/image`)
-        .expect(404);
-
-      expect(res.body).toHaveProperty('statusCode', 404);
-      expect(res.body.message).toContain('Image file not found');
+      expect(res.body.image).toBe(`/images/recipes/${recipe.id}.png`);
+      fs.unlinkSync(path.join(RECIPE_IMAGE_UPLOAD_DIR, `${recipe.id}.png`));
     });
   });
 
@@ -334,7 +267,7 @@ describe('RecipeIdImageController (e2e)', () => {
         .attach('image', imageBuffer, 'test.jpg')
         .expect(200);
 
-      const filePath = path.join(IMAGE_UPLOAD_DIR, `${recipe.id}.jpg`);
+      const filePath = path.join(RECIPE_IMAGE_UPLOAD_DIR, `${recipe.id}.jpg`);
       expect(fs.existsSync(filePath)).toBe(true);
 
       await request(app.getHttpServer())

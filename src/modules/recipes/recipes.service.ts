@@ -11,11 +11,13 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Like, Repository } from 'typeorm';
 
-import {
-  IMAGE_ALLOWED_MIME_TYPES,
-  IMAGE_UPLOAD_DIR,
-} from 'src/common/constants/upload.constants';
+import { IMAGE_ALLOWED_MIME_TYPES } from 'src/common/constants/upload.constants';
+import { CustomConfigService } from 'src/modules/config/config.service';
 
+import {
+  RECIPE_IMAGE_RELATIVE_URL,
+  RECIPE_IMAGE_UPLOAD_DIR,
+} from './recipes.constant';
 import {
   CreateRecipeDto,
   ListRecipesQueryDto,
@@ -28,6 +30,7 @@ import { Recipe } from './recipes.entity';
 export class RecipesService {
   constructor(
     @InjectRepository(Recipe) private recipeRepo: Repository<Recipe>,
+    private readonly configService: CustomConfigService,
   ) {}
 
   async findAll(query: ListRecipesQueryDto) {
@@ -41,7 +44,7 @@ export class RecipesService {
     });
 
     return {
-      items,
+      items: this.withImagesUrl(items),
       page,
       limit,
       total,
@@ -52,17 +55,19 @@ export class RecipesService {
   async findOne(id: number): Promise<Recipe> {
     const recipe = await this.recipeRepo.findOne({ where: { id } });
     if (!recipe) throw new NotFoundException(`Recipe ${id} not found`);
-    return recipe;
+    return this.withImageUrl(recipe);
   }
 
   async create(dto: CreateRecipeDto): Promise<Recipe> {
     const recipe = this.recipeRepo.create(dto);
-    return this.recipeRepo.save(recipe);
+    const saved = await this.recipeRepo.save(recipe);
+    return this.withImageUrl(saved);
   }
 
   async update(recipe: Recipe, dto: UpdateRecipeDto): Promise<Recipe> {
     Object.assign(recipe, dto);
-    return this.recipeRepo.save(recipe);
+    const saved = await this.recipeRepo.save(recipe);
+    return this.withImageUrl(saved);
   }
 
   async remove(id: number): Promise<void> {
@@ -78,7 +83,7 @@ export class RecipesService {
     let value: string;
 
     if (file) {
-      value = file.filename;
+      value = `${RECIPE_IMAGE_RELATIVE_URL}/${file.filename}`;
     } else if (dto?.url) {
       await this.validateImageUrl(dto.url);
       value = dto.url;
@@ -90,34 +95,8 @@ export class RecipesService {
 
     this.deleteOldImageFile(recipe);
     recipe.image = value;
-    return this.recipeRepo.save(recipe);
-  }
-
-  getImage(recipe: Recipe): {
-    isUrl: boolean;
-    value: string;
-    filePath?: string;
-  } {
-    if (!recipe.image) {
-      throw new NotFoundException('No image set for this recipe');
-    }
-
-    const isUrl = this.isExternalUrl(recipe.image);
-
-    if (isUrl) {
-      return { isUrl: true, value: recipe.image };
-    }
-
-    const filePath = path.join(IMAGE_UPLOAD_DIR, recipe.image);
-    if (!fs.existsSync(filePath)) {
-      throw new NotFoundException('Image file not found');
-    }
-
-    return {
-      isUrl: false,
-      value: recipe.image,
-      filePath: path.resolve(filePath),
-    };
+    const saved = await this.recipeRepo.save(recipe);
+    return this.withImageUrl(saved);
   }
 
   async removeImage(recipe: Recipe): Promise<Recipe> {
@@ -126,17 +105,34 @@ export class RecipesService {
     }
     this.deleteOldImageFile(recipe);
     recipe.image = null;
-    return this.recipeRepo.save(recipe);
+    const saved = await this.recipeRepo.save(recipe);
+    return this.withImageUrl(saved);
   }
 
   private isExternalUrl(value: string): boolean {
     return value.startsWith('http://') || value.startsWith('https://');
   }
 
+  private withImageUrl(recipe: Recipe): Recipe {
+    if (!recipe.image) {
+      recipe.image_url = null;
+    } else if (this.isExternalUrl(recipe.image)) {
+      recipe.image_url = recipe.image;
+    } else {
+      recipe.image_url = `${this.configService.baseUrl}${recipe.image}`;
+    }
+    return recipe;
+  }
+
+  private withImagesUrl(recipes: Recipe[]): Recipe[] {
+    return recipes.map((r) => this.withImageUrl(r));
+  }
+
   private deleteOldImageFile(recipe: Recipe): void {
     if (!recipe.image) return;
     if (this.isExternalUrl(recipe.image)) return;
-    const filePath = path.join(IMAGE_UPLOAD_DIR, recipe.image);
+    const filename = recipe.image.replace('/images/recipes/', '');
+    const filePath = path.join(RECIPE_IMAGE_UPLOAD_DIR, filename);
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
     }

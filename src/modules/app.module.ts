@@ -2,8 +2,10 @@ import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ServeStaticModule } from '@nestjs/serve-static';
 import { ThrottlerModule } from '@nestjs/throttler';
 
+import * as path from 'path';
 import { DataSource } from 'typeorm';
 
 import { TooManyRequestsGuard } from 'src/common/guards/too-many-requests.guard';
@@ -30,6 +32,20 @@ import { SwaggerModule } from './swagger/swagger.module';
     SwaggerModule,
     PinoLoggerModule.forRoot(),
     MonitoringModule,
+    ServeStaticModule.forRootAsync({
+      imports: [CustomConfigModule],
+      inject: [CustomConfigService],
+      useFactory: () => [
+        {
+          serveRoot: '/images',
+          rootPath: path.resolve(process.cwd(), 'data/images'),
+          serveStaticOptions: {
+            index: false,
+            fallthrough: false,
+          },
+        },
+      ],
+    }),
     ThrottlerModule.forRootAsync({
       imports: [CustomConfigModule],
       inject: [CustomConfigService],
