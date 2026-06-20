@@ -47,12 +47,24 @@ Via private `listInternal()` with relation params.
 - `image` field stores relative path (`/images/recipes/{id}.{ext}`) for uploaded files or external URL
 - `image_url` is a computed field (not stored) that returns absolute URL for uploaded files or the external URL as-is
 - Uploaded files stored in `data/images/recipes/` and served via `ServeStaticModule` at `/images/`
+- Recipe deletion also removes the associated uploaded image file
 
 #### Computed fields with DI dependencies
 When a computed field needs access to services (like `CustomConfigService` for `image_url`), compute it in the service layer rather than using `@Transform()` or getters. Apply the computation method to all service methods that return the entity.
 
 #### Static file serving
 When using `ServeStaticModule`, explicitly disable SPA mode with `serveStaticOptions: { index: false, fallthrough: false }` to prevent it from looking for `index.html`.
+
+#### Static files and CORS
+`ServeStaticModule` registers Express-level middleware that bypasses NestJS's `app.enableCors()`. Use the `setHeaders` callback in `serveStaticOptions` to add CORS headers manually:
+```ts
+setHeaders: (res) => {
+  const origin = config.security.clientUrl;
+  if (origin) res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+}
+```
+Also override `Cross-Origin-Resource-Policy` to `cross-origin` — `helmet` sets it to `same-origin` by default, which blocks cross-origin resource loading even when CORS headers are present.
 
 #### Relative path storage
 Store relative paths in the database (`/images/recipes/{id}.{ext}`) and compute absolute URLs at runtime using `configService.baseUrl`. This avoids hardcoding server URLs in the database.

@@ -314,4 +314,37 @@ describe('RecipeIdImageController (e2e)', () => {
       expect(res.body.message).toContain('No image set');
     });
   });
+
+  // ─── DELETE /recipes/:recipeId ───────────────────────────────────────────
+
+  describe('DELETE /recipes/:recipeId (image cleanup)', () => {
+    it('deletes the uploaded image file when recipe is removed', async () => {
+      const recipe = await seedRecipe(app, {
+        name: 'delete-recipe-with-image',
+      });
+
+      const imageBuffer = Buffer.from('fake-jpeg-data', 'utf-8');
+      await request(app.getHttpServer())
+        .put(`/recipes/${recipe.id}/image`)
+        .attach('image', imageBuffer, 'test.jpg')
+        .expect(200);
+
+      const filePath = path.join(RECIPE_IMAGE_UPLOAD_DIR, `${recipe.id}.jpg`);
+      expect(fs.existsSync(filePath)).toBe(true);
+
+      await request(app.getHttpServer())
+        .delete(`/recipes/${recipe.id}`)
+        .expect(204);
+
+      expect(fs.existsSync(filePath)).toBe(false);
+    });
+
+    it('does not fail when recipe has no image', async () => {
+      const recipe = await seedRecipe(app, { name: 'delete-recipe-no-image' });
+
+      await request(app.getHttpServer())
+        .delete(`/recipes/${recipe.id}`)
+        .expect(204);
+    });
+  });
 });

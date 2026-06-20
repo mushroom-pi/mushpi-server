@@ -71,7 +71,8 @@ export class RecipesService {
   }
 
   async remove(id: number): Promise<void> {
-    await this.findOne(id);
+    const recipe = await this.findOne(id);
+    this.deleteOldImageFile(recipe);
     await this.recipeRepo.delete(id);
   }
 

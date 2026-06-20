@@ -35,13 +35,22 @@ import { SwaggerModule } from './swagger/swagger.module';
     ServeStaticModule.forRootAsync({
       imports: [CustomConfigModule],
       inject: [CustomConfigService],
-      useFactory: () => [
+      useFactory: (config: CustomConfigService) => [
         {
           serveRoot: '/images',
           rootPath: path.resolve(process.cwd(), 'data/images'),
           serveStaticOptions: {
             index: false,
             fallthrough: false,
+            setHeaders: (res) => {
+              const origin = config.security.clientUrl;
+              if (origin) {
+                res.setHeader('Access-Control-Allow-Origin', origin);
+              }
+              // helmet sets Cross-Origin-Resource-Policy to same-origin by default,
+              // which blocks cross-origin resource loading even with CORS headers
+              res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+            },
           },
         },
       ],
