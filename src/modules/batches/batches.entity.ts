@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 import { Expose } from 'class-transformer';
 import { IsDate, IsInt, IsOptional, IsString, Length } from 'class-validator';
@@ -18,7 +18,7 @@ import {
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
 import { Recipe } from 'src/modules/recipes/recipes.entity';
 
-import { batchStatuses } from './batches.constant';
+import { IMAGE_MAX_FILES_PER_BATCH, batchStatuses } from './batches.constant';
 import { BatchStatus } from './batches.type';
 
 @Entity('batch')
@@ -63,6 +63,20 @@ export class Batch {
   @Length(0, DESCRIPTION_MAX_LENGTH)
   description?: string | null;
 
+  @Column({ type: 'simple-json', nullable: true, default: null })
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Relative paths of attached images',
+  })
+  images?: string[] | null;
+
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Absolute URLs to the batch images (computed)',
+    example: ['http://localhost:3000/images/batches/7/1.jpg'],
+  })
+  images_url?: string[];
+
   @Index()
   @ManyToOne(() => PicoUnit, (u) => u.readings ?? undefined, {
     nullable: false,
@@ -101,5 +115,17 @@ export class Batch {
     // if finish_at is null or in the future => in-progress; otherwise finished
     if (!this.finish_at) return 'in-progress';
     return this.finish_at.getTime() > Date.now() ? 'in-progress' : 'finished';
+  }
+
+  @Expose()
+  @ApiProperty({
+    type: Number,
+    description: 'Number of images that can still be uploaded to this batch',
+    example: 3,
+    minimum: 0,
+    maximum: IMAGE_MAX_FILES_PER_BATCH,
+  })
+  get images_left(): number {
+    return IMAGE_MAX_FILES_PER_BATCH - (this.images?.length ?? 0);
   }
 }

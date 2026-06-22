@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -8,8 +9,13 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import * as fs from 'fs';
+import * as path from 'path';
 import { IsNull, LessThan, MoreThan, Repository } from 'typeorm';
 
+import { deleteImageFile } from 'src/common/utils/image-file.util';
+import { buildImageUrls } from 'src/common/utils/image-url.util';
+import { CustomConfigService } from 'src/modules/config/config.service';
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
 import { PicoUnitsService } from 'src/modules/pico-units/pico-units.service';
 import { RecipesService } from 'src/modules/recipes/recipes.service';
@@ -19,6 +25,11 @@ import {
   BatchFinishedEvent,
   BatchStartedEvent,
 } from './batch.events';
+import {
+  BATCH_IMAGE_RELATIVE_URL,
+  BATCH_IMAGE_UPLOAD_DIR,
+  IMAGE_MAX_FILES_PER_BATCH,
+} from './batches.constant';
 import {
   CreateBatchDto,
   CreateRecipeFromBatchDto,
@@ -35,6 +46,7 @@ export class BatchesService {
     private readonly picoUnitsService: PicoUnitsService,
     private readonly recipesService: RecipesService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly configService: CustomConfigService,
   ) {}
 
   async create(dto: CreateBatchDto): Promise<Batch> {
@@ -91,7 +103,7 @@ export class BatchesService {
     });
     if (!batch) throw new NotFoundException(`Batch ${id} not found`);
 
-    return batch;
+    return this.withImageUrl(batch);
   }
 
   async update(batch: Batch, dto: UpdateBatchDto): Promise<Batch> {
@@ -157,26 +169,32 @@ export class BatchesService {
   }
 
   async removeById(id: number): Promise<void> {
+    const batchDir = path.join(BATCH_IMAGE_UPLOAD_DIR, String(id));
+    if (fs.existsSync(batchDir)) {
+      fs.rmSync(batchDir, { recursive: true, force: true });
+    }
     await this.batchRepo.delete(id);
     return;
   }
 
   async latestForUnit(pico_unit_id: number): Promise<Batch | null> {
-    return this.batchRepo.findOne({
+    const batch = await this.batchRepo.findOne({
       where: { pico_unit_id },
       order: { start_at: 'DESC' },
     });
+    return batch ? this.withImageUrl(batch) : null;
   }
 
   async currentForUnit(pico_unit_id: number): Promise<Batch | null> {
     const now = new Date();
-    return this.batchRepo.findOne({
+    const batch = await this.batchRepo.findOne({
       where: [
         { pico_unit_id, finish_at: IsNull() },
         { pico_unit_id, finish_at: MoreThan(now) },
       ],
       order: { start_at: 'DESC' },
     });
+    return batch ? this.withImageUrl(batch) : null;
   }
 
   async currentForUnitOrThrow(picoUnitId: number): Promise<Batch> {
@@ -190,18 +208,19 @@ export class BatchesService {
 
   async findAllInProgress(): Promise<Batch[]> {
     const now = new Date();
-    return this.batchRepo.find({
+    const batches = await this.batchRepo.find({
       where: [
         { start_at: LessThan(now), finish_at: IsNull() },
         { start_at: LessThan(now), finish_at: MoreThan(now) },
       ],
       relations: ['pico_unit'],
     });
+    return this.withImagesUrls(batches);
   }
 
   async findInProgressForUnit(picoUnitId: number): Promise<Batch | null> {
     const now = new Date();
-    return this.batchRepo.findOne({
+    const batch = await this.batchRepo.findOne({
       where: [
         {
           pico_unit_id: picoUnitId,
@@ -216,6 +235,7 @@ export class BatchesService {
       ],
       relations: ['pico_unit'],
     });
+    return batch ? this.withImageUrl(batch) : null;
   }
 
   async findUnitsWithFinishedBatch(): Promise<PicoUnit[]> {
@@ -280,7 +300,7 @@ export class BatchesService {
     });
 
     return {
-      items,
+      items: this.withImagesUrls(items),
       page,
       limit,
       total,
@@ -352,5 +372,59 @@ export class BatchesService {
       duration_days,
       notes: dto.notes,
     });
+  }
+
+  async addImages(batch: Batch, files: Express.Multer.File[]): Promise<Batch> {
+    const existing = batch.images?.length ?? 0;
+    if (existing + files.length > IMAGE_MAX_FILES_PER_BATCH) {
+      for (const file of files) {
+        const filePath = path.join(
+          BATCH_IMAGE_UPLOAD_DIR,
+          String(batch.id),
+          file.filename,
+        );
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      }
+      throw new ConflictException(
+        `Cannot add ${files.length} image(s): batch already has ${existing} of ${IMAGE_MAX_FILES_PER_BATCH} allowed`,
+      );
+    }
+
+    const newPaths = files.map(
+      (f) => `${BATCH_IMAGE_RELATIVE_URL}/${batch.id}/${f.filename}`,
+    );
+    batch.images = [...(batch.images ?? []), ...newPaths];
+    const saved = await this.batchRepo.save(batch);
+    return this.withImageUrl(saved);
+  }
+
+  async removeImage(batch: Batch, filename: string): Promise<Batch> {
+    if (!/^[A-Za-z0-9._-]+$/.test(filename) || filename.includes('..')) {
+      throw new BadRequestException('Invalid filename');
+    }
+
+    const storedPath = `${BATCH_IMAGE_RELATIVE_URL}/${batch.id}/${filename}`;
+    const images = batch.images ?? [];
+    const index = images.indexOf(storedPath);
+
+    if (index === -1) {
+      throw new NotFoundException(`Image ${filename} not found for this batch`);
+    }
+
+    deleteImageFile(storedPath);
+    images.splice(index, 1);
+    batch.images = images.length > 0 ? images : null;
+    const saved = await this.batchRepo.save(batch);
+    return this.withImageUrl(saved);
+  }
+
+  private withImageUrl(batch: Batch): Batch {
+    if (!batch.images) batch.images = [];
+    batch.images_url = buildImageUrls(batch.images, this.configService.baseUrl);
+    return batch;
+  }
+
+  private withImagesUrls(batches: Batch[]): Batch[] {
+    return batches.map((b) => this.withImageUrl(b));
   }
 }

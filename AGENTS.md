@@ -48,6 +48,17 @@ Via private `listInternal()` with relation params.
 - `image_url` is a computed field (not stored) that returns absolute URL for uploaded files or the external URL as-is
 - Uploaded files stored in `data/images/recipes/` and served via `ServeStaticModule` at `/images/`
 - Recipe deletion also removes the associated uploaded image file
+- Shared image utilities in `src/common/utils/image-url.util.ts` and `src/common/utils/image-file.util.ts` — both recipes and batches use these for URL computation and file deletion
+- Shared multer options factory in `src/common/interceptors/image-upload.helpers.ts`
+
+#### Batch images (multi-image, no hotlinking)
+- `images` column (`simple-json`) stores an array of relative paths (`/images/batches/{batchId}/{slot}.{ext}`), `[]` when empty
+- `images_url` is a computed field returning absolute URLs for each image
+- Up to 5 images per batch (`IMAGE_MAX_FILES_PER_BATCH`); additive PUT appends, rejecting if total would exceed 5
+- Files stored in `data/images/batches/{batchId}/` subdirectories, enumerated `1.jpg`–`5.jpg` using first free slot
+- `DELETE /batches/:batchId/images/:filename` removes one image; filename validated against path traversal
+- Batch deletion (`removeById`) wipes the entire `data/images/batches/{batchId}/` subdirectory
+- No hotlinking (files only, no URL body); uses `FilesInterceptor` with dynamic per-request max count
 
 #### Computed fields with DI dependencies
 When a computed field needs access to services (like `CustomConfigService` for `image_url`), compute it in the service layer rather than using `@Transform()` or getters. Apply the computation method to all service methods that return the entity.
@@ -101,6 +112,7 @@ swagger/      — OpenAPI setup with global error schemas
 | GET/PATCH/DELETE | `/batches/:batchId` | CRUD |
 | GET | `/batches/:batchId/readings` | Readings for a batch |
 | POST | `/batches/:batchId/recipe` | Link recipe to batch |
+| PUT/DELETE | `/batches/:batchId/images/:filename` | Batch image upload (append, max 5) / removal |
 | GET/POST | `/recipes` | List / Create |
 | GET/PATCH/DELETE | `/recipes/:recipeId` | CRUD |
 | GET | `/recipes/:recipeId/batches` | Batches using this recipe |
