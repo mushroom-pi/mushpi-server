@@ -66,7 +66,7 @@ export class Batch {
   @Column({ type: 'simple-json', nullable: true, default: null })
   @ApiPropertyOptional({
     type: [String],
-    description: 'Relative paths of attached images',
+    description: 'Filenames of attached images',
   })
   images?: string[] | null;
 

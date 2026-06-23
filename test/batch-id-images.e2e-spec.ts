@@ -68,7 +68,7 @@ describe('BatchIdImagesController (e2e)', () => {
   // ─── PUT /batches/:batchId/images ────────────────────────────────────────
 
   describe('PUT /batches/:batchId/images', () => {
-    it('uploads a single JPEG file and stores the relative path', async () => {
+    it('uploads a single JPEG file and stores the filename', async () => {
       const pico = await seedPicoUnit(app);
       const batch = await seedBatch(app, pico.id);
 
@@ -80,7 +80,7 @@ describe('BatchIdImagesController (e2e)', () => {
         .expect(200);
 
       expect(res.body).toHaveProperty('id', batch.id);
-      expect(res.body.images).toEqual([`/images/batches/${batch.id}/1.jpg`]);
+      expect(res.body.images).toEqual(['1.jpg']);
       expect(res.body.images_url).toEqual(
         expect.arrayContaining([
           expect.stringMatching(
@@ -93,7 +93,7 @@ describe('BatchIdImagesController (e2e)', () => {
 
       const repo = await getBatchRepo(app);
       const persisted = await repo.findOneBy({ id: batch.id });
-      expect(persisted!.images).toEqual([`/images/batches/${batch.id}/1.jpg`]);
+      expect(persisted!.images).toEqual(['1.jpg']);
 
       const filePath = path.join(
         BATCH_IMAGE_UPLOAD_DIR,
@@ -114,7 +114,7 @@ describe('BatchIdImagesController (e2e)', () => {
         .attach('images', imageBuffer, 'test.png')
         .expect(200);
 
-      expect(res.body.images).toEqual([`/images/batches/${batch.id}/1.png`]);
+      expect(res.body.images).toEqual(['1.png']);
 
       const filePath = path.join(
         BATCH_IMAGE_UPLOAD_DIR,
@@ -140,9 +140,9 @@ describe('BatchIdImagesController (e2e)', () => {
         .expect(200);
 
       expect(res.body.images).toHaveLength(3);
-      expect(res.body.images).toContain(`/images/batches/${batch.id}/1.jpg`);
-      expect(res.body.images).toContain(`/images/batches/${batch.id}/2.jpg`);
-      expect(res.body.images).toContain(`/images/batches/${batch.id}/3.png`);
+      expect(res.body.images).toContain('1.jpg');
+      expect(res.body.images).toContain('2.jpg');
+      expect(res.body.images).toContain('3.png');
       expect(res.body.images_url).toHaveLength(3);
     });
 
@@ -165,8 +165,8 @@ describe('BatchIdImagesController (e2e)', () => {
         .expect(200);
 
       expect(res.body.images).toHaveLength(2);
-      expect(res.body.images).toContain(`/images/batches/${batch.id}/1.jpg`);
-      expect(res.body.images).toContain(`/images/batches/${batch.id}/2.png`);
+      expect(res.body.images).toContain('1.jpg');
+      expect(res.body.images).toContain('2.png');
     });
 
     it('returns 400 when file type is not allowed', async () => {
@@ -269,7 +269,7 @@ describe('BatchIdImagesController (e2e)', () => {
 
       const repo = await getBatchRepo(app);
       const persisted = await repo.findOneBy({ id: batch.id });
-      expect(persisted!.images).toEqual([`/images/batches/${batch.id}/2.jpg`]);
+      expect(persisted!.images).toEqual(['2.jpg']);
     });
 
     it('returns 404 when image filename is not found', async () => {
@@ -330,9 +330,9 @@ describe('BatchIdImagesController (e2e)', () => {
         .expect(200);
 
       expect(res.body.images).toHaveLength(3);
-      expect(res.body.images).toContain(`/images/batches/${batch.id}/1.jpg`);
-      expect(res.body.images).toContain(`/images/batches/${batch.id}/2.jpg`);
-      expect(res.body.images).toContain(`/images/batches/${batch.id}/3.jpg`);
+      expect(res.body.images).toContain('1.jpg');
+      expect(res.body.images).toContain('2.jpg');
+      expect(res.body.images).toContain('3.jpg');
     });
   });
 
@@ -385,7 +385,7 @@ describe('BatchIdImagesController (e2e)', () => {
         .get(`/batches/${batch.id}`)
         .expect(200);
 
-      expect(res.body.images).toEqual([`/images/batches/${batch.id}/1.jpg`]);
+      expect(res.body.images).toEqual(['1.jpg']);
       expect(res.body.images_url).toHaveLength(1);
       expect(res.body.images_url[0]).toMatch(
         new RegExp(

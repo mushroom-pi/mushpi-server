@@ -69,7 +69,7 @@ export class RecipesService {
 
   async remove(id: number): Promise<void> {
     const recipe = await this.findOne(id);
-    deleteImageFile(recipe.image);
+    deleteImageFile(recipe.image, RECIPE_IMAGE_RELATIVE_URL);
     await this.recipeRepo.delete(id);
   }
 
@@ -81,7 +81,7 @@ export class RecipesService {
     let value: string;
 
     if (file) {
-      value = `${RECIPE_IMAGE_RELATIVE_URL}/${file.filename}`;
+      value = file.filename;
     } else if (dto?.url) {
       await this.validateImageUrl(dto.url);
       value = dto.url;
@@ -91,7 +91,7 @@ export class RecipesService {
       );
     }
 
-    deleteImageFile(recipe.image);
+    deleteImageFile(recipe.image, RECIPE_IMAGE_RELATIVE_URL);
     recipe.image = value;
     const saved = await this.recipeRepo.save(recipe);
     return this.withImageUrl(saved);
@@ -101,14 +101,18 @@ export class RecipesService {
     if (!recipe.image) {
       throw new NotFoundException('No image set for this recipe');
     }
-    deleteImageFile(recipe.image);
+    deleteImageFile(recipe.image, RECIPE_IMAGE_RELATIVE_URL);
     recipe.image = null;
     const saved = await this.recipeRepo.save(recipe);
     return this.withImageUrl(saved);
   }
 
   private withImageUrl(recipe: Recipe): Recipe {
-    recipe.image_url = buildImageUrl(recipe.image, this.configService.baseUrl);
+    recipe.image_url = buildImageUrl(
+      recipe.image,
+      this.configService.baseUrl,
+      RECIPE_IMAGE_RELATIVE_URL,
+    );
     return recipe;
   }
 

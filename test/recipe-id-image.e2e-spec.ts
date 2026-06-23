@@ -61,7 +61,7 @@ describe('RecipeIdImageController (e2e)', () => {
   // ─── PUT /recipes/:recipeId/image ────────────────────────────────────────
 
   describe('PUT /recipes/:recipeId/image', () => {
-    it('uploads a JPEG file and stores the relative path in the database', async () => {
+    it('uploads a JPEG file and stores the filename in the database', async () => {
       const recipe = await seedRecipe(app, { name: 'upload-jpeg' });
 
       const imageBuffer = Buffer.from('fake-jpeg-data', 'utf-8');
@@ -72,14 +72,14 @@ describe('RecipeIdImageController (e2e)', () => {
         .expect(200);
 
       expect(res.body).toHaveProperty('id', recipe.id);
-      expect(res.body.image).toBe(`/images/recipes/${recipe.id}.jpg`);
+      expect(res.body.image).toBe(`${recipe.id}.jpg`);
       expect(res.body.image_url).toMatch(
         new RegExp(`^http://localhost:\\d+/images/recipes/${recipe.id}\\.jpg$`),
       );
 
       const repo = await getRecipeRepo(app);
       const persisted = await repo.findOneBy({ id: recipe.id });
-      expect(persisted!.image).toBe(`/images/recipes/${recipe.id}.jpg`);
+      expect(persisted!.image).toBe(`${recipe.id}.jpg`);
 
       const filePath = path.join(RECIPE_IMAGE_UPLOAD_DIR, `${recipe.id}.jpg`);
       expect(fs.existsSync(filePath)).toBe(true);
@@ -96,7 +96,7 @@ describe('RecipeIdImageController (e2e)', () => {
         .attach('image', imageBuffer, 'test.png')
         .expect(200);
 
-      expect(res.body.image).toBe(`/images/recipes/${recipe.id}.png`);
+      expect(res.body.image).toBe(`${recipe.id}.png`);
       expect(res.body.image_url).toMatch(
         new RegExp(`^http://localhost:\\d+/images/recipes/${recipe.id}\\.png$`),
       );
@@ -223,7 +223,7 @@ describe('RecipeIdImageController (e2e)', () => {
         .attach('image', imageBuffer2, 'test2.png')
         .expect(200);
 
-      expect(res.body.image).toBe(`/images/recipes/${recipe.id}.png`);
+      expect(res.body.image).toBe(`${recipe.id}.png`);
       expect(fs.existsSync(filePath1)).toBe(false);
 
       const filePath2 = path.join(RECIPE_IMAGE_UPLOAD_DIR, `${recipe.id}.png`);
@@ -250,7 +250,7 @@ describe('RecipeIdImageController (e2e)', () => {
         .attach('image', imageBuffer, 'new.png')
         .expect(200);
 
-      expect(res.body.image).toBe(`/images/recipes/${recipe.id}.png`);
+      expect(res.body.image).toBe(`${recipe.id}.png`);
       fs.unlinkSync(path.join(RECIPE_IMAGE_UPLOAD_DIR, `${recipe.id}.png`));
     });
   });

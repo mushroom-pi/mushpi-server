@@ -44,15 +44,15 @@ Via private `listInternal()` with relation params.
 - Entity registration: `src/modules/sqlite/data-source.ts` (CLI) + `TypeOrmModule.forFeature` (runtime) — both required.
 
 ### Image uploads
-- `image` field stores relative path (`/images/recipes/{id}.{ext}`) for uploaded files or external URL
+- `image` field stores filename (e.g. `1.jpg`) for uploaded files or external URL
 - `image_url` is a computed field (not stored) that returns absolute URL for uploaded files or the external URL as-is
 - Uploaded files stored in `data/images/recipes/` and served via `ServeStaticModule` at `/images/`
 - Recipe deletion also removes the associated uploaded image file
-- Shared image utilities in `src/common/utils/image-url.util.ts` and `src/common/utils/image-file.util.ts` — both recipes and batches use these for URL computation and file deletion
+- Shared image utilities in `src/common/utils/image-url.util.ts` and `src/common/utils/image-file.util.ts` — both recipes and batches use these for URL computation and file deletion; pass a `pathPrefix` (e.g. `/images/recipes`) to reconstruct full paths from filenames
 - Shared multer options factory in `src/common/interceptors/image-upload.helpers.ts`
 
 #### Batch images (multi-image, no hotlinking)
-- `images` column (`simple-json`) stores an array of relative paths (`/images/batches/{batchId}/{slot}.{ext}`), `[]` when empty
+- `images` column (`simple-json`) stores an array of filenames (e.g. `['1.jpg', '2.png']`), `[]` when empty
 - `images_url` is a computed field returning absolute URLs for each image
 - Up to 5 images per batch (`IMAGE_MAX_FILES_PER_BATCH`); additive PUT appends, rejecting if total would exceed 5
 - Files stored in `data/images/batches/{batchId}/` subdirectories, enumerated `1.jpg`–`5.jpg` using first free slot

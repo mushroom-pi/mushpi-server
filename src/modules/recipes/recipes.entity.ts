@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 import { IsInt, IsOptional, IsString, Length, Max, Min } from 'class-validator';
 import {
@@ -64,6 +64,10 @@ export class Recipe {
   @Column({ type: 'text', nullable: true, default: null })
   @IsString()
   @IsOptional()
+  @ApiPropertyOptional({
+    description: 'Filename of the uploaded image or external URL',
+    example: '1.jpg',
+  })
   image?: string | null;
 
   @ApiProperty({

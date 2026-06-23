@@ -18,7 +18,7 @@ import { Batch } from 'src/modules/batches/batches.entity';
 import { MIME_TO_EXT, buildImageMulterOptions } from './image-upload.helpers';
 
 function parseSlotNumber(stored: string): number | null {
-  const match = stored.match(/\/(\d+)\.[^.]+$/);
+  const match = stored.match(/(?:\/|^)(\d+)\.[^.]+$/);
   return match ? Number(match[1]) : null;
 }
 

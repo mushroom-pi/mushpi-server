@@ -390,10 +390,8 @@ export class BatchesService {
       );
     }
 
-    const newPaths = files.map(
-      (f) => `${BATCH_IMAGE_RELATIVE_URL}/${batch.id}/${f.filename}`,
-    );
-    batch.images = [...(batch.images ?? []), ...newPaths];
+    const newFilenames = files.map((f) => f.filename);
+    batch.images = [...(batch.images ?? []), ...newFilenames];
     const saved = await this.batchRepo.save(batch);
     return this.withImageUrl(saved);
   }
@@ -403,15 +401,15 @@ export class BatchesService {
       throw new BadRequestException('Invalid filename');
     }
 
-    const storedPath = `${BATCH_IMAGE_RELATIVE_URL}/${batch.id}/${filename}`;
     const images = batch.images ?? [];
-    const index = images.indexOf(storedPath);
+    const index = images.indexOf(filename);
 
     if (index === -1) {
       throw new NotFoundException(`Image ${filename} not found for this batch`);
     }
 
-    deleteImageFile(storedPath);
+    const prefix = `${BATCH_IMAGE_RELATIVE_URL}/${batch.id}`;
+    deleteImageFile(filename, prefix);
     images.splice(index, 1);
     batch.images = images.length > 0 ? images : null;
     const saved = await this.batchRepo.save(batch);
@@ -420,7 +418,12 @@ export class BatchesService {
 
   private withImageUrl(batch: Batch): Batch {
     if (!batch.images) batch.images = [];
-    batch.images_url = buildImageUrls(batch.images, this.configService.baseUrl);
+    const prefix = `${BATCH_IMAGE_RELATIVE_URL}/${batch.id}`;
+    batch.images_url = buildImageUrls(
+      batch.images,
+      this.configService.baseUrl,
+      prefix,
+    );
     return batch;
   }
 
