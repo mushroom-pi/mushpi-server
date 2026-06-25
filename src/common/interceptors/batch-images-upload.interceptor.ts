@@ -12,8 +12,8 @@ import * as path from 'path';
 import { Observable } from 'rxjs';
 
 import { IMAGE_MAX_FILES_PER_BATCH } from 'src/modules/batches/batches.constant';
-import { BATCH_IMAGE_UPLOAD_DIR } from 'src/modules/batches/batches.constant';
 import { Batch } from 'src/modules/batches/batches.entity';
+import { CustomConfigService } from 'src/modules/config/config.service';
 
 import { MIME_TO_EXT, buildImageMulterOptions } from './image-upload.helpers';
 
@@ -24,6 +24,8 @@ function parseSlotNumber(stored: string): number | null {
 
 @Injectable()
 export class BatchImagesUploadInterceptor implements NestInterceptor {
+  constructor(private readonly configService: CustomConfigService) {}
+
   intercept(
     context: ExecutionContext,
     next: CallHandler,
@@ -41,7 +43,11 @@ export class BatchImagesUploadInterceptor implements NestInterceptor {
 
     const multerOptions = buildImageMulterOptions({
       destination: (_req: any, _file: Express.Multer.File, cb: any) => {
-        const dir = path.join(BATCH_IMAGE_UPLOAD_DIR, String(batch.id));
+        const dir = path.join(
+          this.configService.upload.imageDir,
+          'batches',
+          String(batch.id),
+        );
         fs.mkdirSync(dir, { recursive: true });
         cb(null, dir);
       },

@@ -1,6 +1,7 @@
 import {
   MiddlewareConsumer,
   Module,
+  NestModule,
   OnModuleInit,
   RequestMethod,
   forwardRef,
@@ -8,12 +9,13 @@ import {
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import * as fs from 'fs';
+import * as path from 'path';
 
 import { BatchByIdMiddleware } from 'src/common/middleware/batch-by-id.middleware';
+import { CustomConfigService } from 'src/modules/config/config.service';
 import { PicoUnitsModule } from 'src/modules/pico-units/pico-units.module';
 import { RecipesModule } from 'src/modules/recipes/recipes.module';
 
-import { BATCH_IMAGE_UPLOAD_DIR } from './batches.constant';
 import { Batch } from './batches.entity';
 import { BatchesService } from './batches.service';
 import { BatchIdImagesController } from './controllers/batch-id-images.controller';
@@ -38,9 +40,15 @@ import { PicoUnitIdBatchesController } from './controllers/pico-unit-id-batches.
     PicoUnitIdBatchesController,
   ],
 })
-export class BatchesModule implements OnModuleInit {
+export class BatchesModule implements NestModule, OnModuleInit {
+  constructor(private readonly configService: CustomConfigService) {}
+
   onModuleInit() {
-    fs.mkdirSync(BATCH_IMAGE_UPLOAD_DIR, { recursive: true });
+    const batchImageDir = path.join(
+      this.configService.upload.imageDir,
+      'batches',
+    );
+    fs.mkdirSync(batchImageDir, { recursive: true });
   }
 
   configure(consumer: MiddlewareConsumer) {

@@ -38,7 +38,7 @@ import { SwaggerModule } from './swagger/swagger.module';
       useFactory: (config: CustomConfigService) => [
         {
           serveRoot: '/images',
-          rootPath: path.resolve(process.cwd(), 'data/images'),
+          rootPath: path.resolve(config.upload.imageDir),
           serveStaticOptions: {
             index: false,
             fallthrough: false,

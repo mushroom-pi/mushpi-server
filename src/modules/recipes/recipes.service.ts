@@ -69,7 +69,11 @@ export class RecipesService {
 
   async remove(id: number): Promise<void> {
     const recipe = await this.findOne(id);
-    deleteImageFile(recipe.image, RECIPE_IMAGE_RELATIVE_URL);
+    deleteImageFile(
+      recipe.image,
+      RECIPE_IMAGE_RELATIVE_URL,
+      this.configService.upload.imageDir,
+    );
     await this.recipeRepo.delete(id);
   }
 
@@ -91,7 +95,11 @@ export class RecipesService {
       );
     }
 
-    deleteImageFile(recipe.image, RECIPE_IMAGE_RELATIVE_URL);
+    deleteImageFile(
+      recipe.image,
+      RECIPE_IMAGE_RELATIVE_URL,
+      this.configService.upload.imageDir,
+    );
     recipe.image = value;
     const saved = await this.recipeRepo.save(recipe);
     return this.withImageUrl(saved);
@@ -101,7 +109,11 @@ export class RecipesService {
     if (!recipe.image) {
       throw new NotFoundException('No image set for this recipe');
     }
-    deleteImageFile(recipe.image, RECIPE_IMAGE_RELATIVE_URL);
+    deleteImageFile(
+      recipe.image,
+      RECIPE_IMAGE_RELATIVE_URL,
+      this.configService.upload.imageDir,
+    );
     recipe.image = null;
     const saved = await this.recipeRepo.save(recipe);
     return this.withImageUrl(saved);

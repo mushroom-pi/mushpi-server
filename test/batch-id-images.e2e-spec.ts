@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import request from 'supertest';
 
-import { BATCH_IMAGE_UPLOAD_DIR } from '../src/modules/batches/batches.constant';
+import { CustomConfigService } from '../src/modules/config/config.service';
 import {
   clearBatches,
   getBatchRepo,
@@ -15,10 +15,13 @@ import { closeTestApp, createTestApp } from './test-setup';
 
 describe('BatchIdImagesController (e2e)', () => {
   let app: INestApplication;
+  let batchImageUploadDir: string;
 
   beforeAll(async () => {
     app = await createTestApp();
     await app.init();
+    const configService = app.get(CustomConfigService);
+    batchImageUploadDir = path.join(configService.upload.imageDir, 'batches');
   });
 
   afterAll(async () => {
@@ -28,10 +31,9 @@ describe('BatchIdImagesController (e2e)', () => {
   beforeEach(async () => {
     await clearBatches(app);
     await clearPicoUnits(app);
-    // Clean up any leftover batch image directories
-    if (fs.existsSync(BATCH_IMAGE_UPLOAD_DIR)) {
-      for (const entry of fs.readdirSync(BATCH_IMAGE_UPLOAD_DIR)) {
-        const dir = path.join(BATCH_IMAGE_UPLOAD_DIR, entry);
+    if (fs.existsSync(batchImageUploadDir)) {
+      for (const entry of fs.readdirSync(batchImageUploadDir)) {
+        const dir = path.join(batchImageUploadDir, entry);
         if (fs.statSync(dir).isDirectory()) {
           fs.rmSync(dir, { recursive: true, force: true });
         }
@@ -96,7 +98,7 @@ describe('BatchIdImagesController (e2e)', () => {
       expect(persisted!.images).toEqual(['1.jpg']);
 
       const filePath = path.join(
-        BATCH_IMAGE_UPLOAD_DIR,
+        batchImageUploadDir,
         String(batch.id),
         '1.jpg',
       );
@@ -117,7 +119,7 @@ describe('BatchIdImagesController (e2e)', () => {
       expect(res.body.images).toEqual(['1.png']);
 
       const filePath = path.join(
-        BATCH_IMAGE_UPLOAD_DIR,
+        batchImageUploadDir,
         String(batch.id),
         '1.png',
       );
@@ -235,7 +237,7 @@ describe('BatchIdImagesController (e2e)', () => {
         .expect(200);
 
       const filePath = path.join(
-        BATCH_IMAGE_UPLOAD_DIR,
+        batchImageUploadDir,
         String(batch.id),
         '1.jpg',
       );
@@ -349,7 +351,7 @@ describe('BatchIdImagesController (e2e)', () => {
         .attach('images', Buffer.from('d2', 'utf-8'), 'b.jpg')
         .expect(200);
 
-      const batchDir = path.join(BATCH_IMAGE_UPLOAD_DIR, String(batch.id));
+      const batchDir = path.join(batchImageUploadDir, String(batch.id));
       expect(fs.existsSync(batchDir)).toBe(true);
 
       await request(app.getHttpServer())

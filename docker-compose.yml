@@ -14,4 +14,5 @@ services:
       NODE_ENV: prod
       SQLITE_PATH: /data/app.sqlite
       LOGS_PATH: /data/logs
+      UPLOAD_DIR: /data
     restart: unless-stopped

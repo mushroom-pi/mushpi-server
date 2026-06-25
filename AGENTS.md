@@ -81,7 +81,7 @@ Also override `Cross-Origin-Resource-Policy` to `cross-origin` — `helmet` sets
 Store relative paths in the database (`/images/recipes/{id}.{ext}`) and compute absolute URLs at runtime using `configService.baseUrl`. This avoids hardcoding server URLs in the database.
 
 #### Path resolution
-Use `path.resolve(process.cwd(), 'data/images')` for static file roots, not `path.join(__dirname, ...)`, since the app runs from the project root.
+Upload paths are driven by the `UPLOAD_DIR` env var (default `data`). Access via `configService.upload.imageDir` (resolves to `${UPLOAD_DIR}/images`). The `ServeStaticModule` root path uses `path.resolve(config.upload.imageDir)`. In Docker, set `UPLOAD_DIR: /data` so uploads land in the mounted volume.
 
 ## Module Layout
 

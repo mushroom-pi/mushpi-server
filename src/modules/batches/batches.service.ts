@@ -27,7 +27,6 @@ import {
 } from './batch.events';
 import {
   BATCH_IMAGE_RELATIVE_URL,
-  BATCH_IMAGE_UPLOAD_DIR,
   IMAGE_MAX_FILES_PER_BATCH,
 } from './batches.constant';
 import {
@@ -169,7 +168,11 @@ export class BatchesService {
   }
 
   async removeById(id: number): Promise<void> {
-    const batchDir = path.join(BATCH_IMAGE_UPLOAD_DIR, String(id));
+    const batchDir = path.join(
+      this.configService.upload.imageDir,
+      'batches',
+      String(id),
+    );
     if (fs.existsSync(batchDir)) {
       fs.rmSync(batchDir, { recursive: true, force: true });
     }
@@ -379,7 +382,8 @@ export class BatchesService {
     if (existing + files.length > IMAGE_MAX_FILES_PER_BATCH) {
       for (const file of files) {
         const filePath = path.join(
-          BATCH_IMAGE_UPLOAD_DIR,
+          this.configService.upload.imageDir,
+          'batches',
           String(batch.id),
           file.filename,
         );
@@ -409,7 +413,7 @@ export class BatchesService {
     }
 
     const prefix = `${BATCH_IMAGE_RELATIVE_URL}/${batch.id}`;
-    deleteImageFile(filename, prefix);
+    deleteImageFile(filename, prefix, this.configService.upload.imageDir);
     images.splice(index, 1);
     batch.images = images.length > 0 ? images : null;
     const saved = await this.batchRepo.save(batch);

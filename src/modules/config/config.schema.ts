@@ -90,4 +90,5 @@ export const validationSchema = Joi.object({
   MAX_REQUESTS_TIME: Joi.number(),
   SQLITE_PATH: Joi.string().default('data/app.sqlite'),
   SQLITE_LOG: Joi.boolean().truthy('true').falsy('false').default(false),
+  UPLOAD_DIR: Joi.string().default('data'),
 });

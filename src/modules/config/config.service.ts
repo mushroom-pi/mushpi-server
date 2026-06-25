@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
+import * as path from 'path';
+
 import {
   DocsConfig,
   EnvironmentVariables,
@@ -9,6 +11,7 @@ import {
   SecurityConfig,
   ServerConfig,
   ServiceConfig,
+  UploadConfig,
 } from './config.interface';
 import { NodeEnvironments, Services } from './config.types';
 
@@ -97,6 +100,14 @@ export class CustomConfigService {
     return {
       database: this.configService.get('SQLITE_PATH'),
       logging: this.configService.get('SQLITE_LOG'),
+    };
+  }
+
+  get upload(): UploadConfig {
+    const dir = this.configService.get('UPLOAD_DIR');
+    return {
+      dir,
+      imageDir: path.join(dir, 'images'),
     };
   }
 

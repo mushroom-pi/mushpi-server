@@ -20,6 +20,7 @@ export interface EnvironmentVariables {
   MAX_REQUESTS_TIME?: number;
   SQLITE_PATH: string;
   SQLITE_LOG: boolean;
+  UPLOAD_DIR: string;
 }
 
 export interface ServerConfig {
@@ -72,4 +73,9 @@ export interface ServiceConfig {
 export interface SQLiteConfig {
   database: string;
   logging: boolean;
+}
+
+export interface UploadConfig {
+  dir: string;
+  imageDir: string;
 }

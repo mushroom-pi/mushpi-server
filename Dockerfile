@@ -22,6 +22,6 @@ ENV APP_HOST=http://127.0.0.1
 ENV APP_PORT=3000
 ENV LOGS_LEVEL=warn
 COPY --from=builder /usr/src/app/runner/ ./
-RUN mkdir -p /data/logs
+RUN mkdir -p /data/logs /data/images
 EXPOSE 3000
 CMD ["node", "index.js"]

@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import request from 'supertest';
 
-import { RECIPE_IMAGE_UPLOAD_DIR } from '../src/modules/recipes/recipes.constant';
+import { CustomConfigService } from '../src/modules/config/config.service';
 import { clearPicos } from './fixtures/pico-units.fixtures';
 import {
   clearRecipes,
@@ -19,10 +19,13 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('RecipeIdImageController (e2e)', () => {
   let app: INestApplication;
+  let recipeImageUploadDir: string;
 
   beforeAll(async () => {
     app = await createTestApp();
     await app.init();
+    const configService = app.get(CustomConfigService);
+    recipeImageUploadDir = path.join(configService.upload.imageDir, 'recipes');
   });
 
   afterAll(async () => {
@@ -36,6 +39,14 @@ describe('RecipeIdImageController (e2e)', () => {
     mockedAxios.isAxiosError = jest.fn(
       (err: any) => err?.isAxiosError === true,
     ) as any;
+    if (fs.existsSync(recipeImageUploadDir)) {
+      for (const entry of fs.readdirSync(recipeImageUploadDir)) {
+        const filePath = path.join(recipeImageUploadDir, entry);
+        if (fs.statSync(filePath).isFile()) {
+          fs.unlinkSync(filePath);
+        }
+      }
+    }
   });
 
   // ─── Middleware ───────────────────────────────────────────────────────────
@@ -81,7 +92,7 @@ describe('RecipeIdImageController (e2e)', () => {
       const persisted = await repo.findOneBy({ id: recipe.id });
       expect(persisted!.image).toBe(`${recipe.id}.jpg`);
 
-      const filePath = path.join(RECIPE_IMAGE_UPLOAD_DIR, `${recipe.id}.jpg`);
+      const filePath = path.join(recipeImageUploadDir, `${recipe.id}.jpg`);
       expect(fs.existsSync(filePath)).toBe(true);
       fs.unlinkSync(filePath);
     });
@@ -101,7 +112,7 @@ describe('RecipeIdImageController (e2e)', () => {
         new RegExp(`^http://localhost:\\d+/images/recipes/${recipe.id}\\.png$`),
       );
 
-      const filePath = path.join(RECIPE_IMAGE_UPLOAD_DIR, `${recipe.id}.png`);
+      const filePath = path.join(recipeImageUploadDir, `${recipe.id}.png`);
       expect(fs.existsSync(filePath)).toBe(true);
       fs.unlinkSync(filePath);
     });
@@ -214,7 +225,7 @@ describe('RecipeIdImageController (e2e)', () => {
         .attach('image', imageBuffer1, 'test1.jpg')
         .expect(200);
 
-      const filePath1 = path.join(RECIPE_IMAGE_UPLOAD_DIR, `${recipe.id}.jpg`);
+      const filePath1 = path.join(recipeImageUploadDir, `${recipe.id}.jpg`);
       expect(fs.existsSync(filePath1)).toBe(true);
 
       const imageBuffer2 = Buffer.from('fake-png-2', 'utf-8');
@@ -226,7 +237,7 @@ describe('RecipeIdImageController (e2e)', () => {
       expect(res.body.image).toBe(`${recipe.id}.png`);
       expect(fs.existsSync(filePath1)).toBe(false);
 
-      const filePath2 = path.join(RECIPE_IMAGE_UPLOAD_DIR, `${recipe.id}.png`);
+      const filePath2 = path.join(recipeImageUploadDir, `${recipe.id}.png`);
       expect(fs.existsSync(filePath2)).toBe(true);
       fs.unlinkSync(filePath2);
     });
@@ -251,7 +262,7 @@ describe('RecipeIdImageController (e2e)', () => {
         .expect(200);
 
       expect(res.body.image).toBe(`${recipe.id}.png`);
-      fs.unlinkSync(path.join(RECIPE_IMAGE_UPLOAD_DIR, `${recipe.id}.png`));
+      fs.unlinkSync(path.join(recipeImageUploadDir, `${recipe.id}.png`));
     });
   });
 
@@ -267,7 +278,7 @@ describe('RecipeIdImageController (e2e)', () => {
         .attach('image', imageBuffer, 'test.jpg')
         .expect(200);
 
-      const filePath = path.join(RECIPE_IMAGE_UPLOAD_DIR, `${recipe.id}.jpg`);
+      const filePath = path.join(recipeImageUploadDir, `${recipe.id}.jpg`);
       expect(fs.existsSync(filePath)).toBe(true);
 
       await request(app.getHttpServer())
@@ -329,7 +340,7 @@ describe('RecipeIdImageController (e2e)', () => {
         .attach('image', imageBuffer, 'test.jpg')
         .expect(200);
 
-      const filePath = path.join(RECIPE_IMAGE_UPLOAD_DIR, `${recipe.id}.jpg`);
+      const filePath = path.join(recipeImageUploadDir, `${recipe.id}.jpg`);
       expect(fs.existsSync(filePath)).toBe(true);
 
       await request(app.getHttpServer())

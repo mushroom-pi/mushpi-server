@@ -22,3 +22,4 @@
 | `MAX_REQUESTS_TIME` | number | Never |  |  |  |
 | `SQLITE_PATH` | string | Never | `"data/app.sqlite"` |  |  |
 | `SQLITE_LOG` | boolean | Never | `false` |  |  |
+| `UPLOAD_DIR` | string | Never | `"data"` |  |  |
