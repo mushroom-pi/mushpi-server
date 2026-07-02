@@ -39,7 +39,7 @@ import { PaginatedDto } from 'src/common/dto/paginated-response.dto';
 
 import { PicoUnit } from './pico-unit.entity';
 
-export class UpsertPicoUnitDto {
+export class AnnouncePicoUnitDto {
   @ApiProperty({
     type: String,
     example: 'unit-01',
@@ -138,6 +138,19 @@ export class UpsertPicoUnitDto {
   @IsInt()
   @IsOptional()
   board_cpu_freq_mhz?: number;
+}
+
+export class CreatePicoUnitDto {
+  @ApiProperty({
+    type: String,
+    example: 'unit-01',
+    description: 'Handle (mDNS name) of the Pico unit to add manually',
+    minLength: 1,
+    maxLength: 64,
+  })
+  @IsString()
+  @Length(1, 64)
+  handle!: string;
 }
 
 export class UpdatePicoUnitDto {

@@ -21,6 +21,7 @@ export interface EnvironmentVariables {
   SQLITE_PATH: string;
   SQLITE_LOG: boolean;
   UPLOAD_DIR: string;
+  PICO_ANNOUNCE_SECRET?: string;
 }
 
 export interface ServerConfig {
@@ -78,4 +79,8 @@ export interface SQLiteConfig {
 export interface UploadConfig {
   dir: string;
   imageDir: string;
+}
+
+export interface PicoConfig {
+  announceSecret?: string;
 }

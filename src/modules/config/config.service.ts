@@ -7,6 +7,7 @@ import {
   DocsConfig,
   EnvironmentVariables,
   LogsConfig,
+  PicoConfig,
   SQLiteConfig,
   SecurityConfig,
   ServerConfig,
@@ -109,6 +110,10 @@ export class CustomConfigService {
       dir,
       imageDir: path.join(dir, 'images'),
     };
+  }
+
+  get pico(): PicoConfig {
+    return { announceSecret: this.configService.get('PICO_ANNOUNCE_SECRET') };
   }
 
   is(env: NodeEnvironments): boolean {

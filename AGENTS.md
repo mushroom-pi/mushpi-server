@@ -99,7 +99,8 @@ swagger/      — OpenAPI setup with global error schemas
 
 | Method | Path | Notes |
 |--------|------|-------|
-| GET/POST | `/pico-units` | List (paginated) / Register (upsert, called by Pico on boot) |
+| GET/POST | `/pico-units` | List (paginated) / Manual create (verify reachability via mDNS, then create) |
+| POST | `/pico-units/announce` | Pico hardware announcement (upsert by handle, requires `X-Pico-Secret` header) |
 | GET/PATCH/DELETE | `/pico-units/:picoUnitId` | CRUD |
 | GET | `/pico-units/:picoUnitId/ping` | Proxy → Pico `/` |
 | PUT | `/pico-units/:picoUnitId/setpoints` | Proxy → Pico `/setpoints` |
@@ -127,9 +128,12 @@ swagger/      — OpenAPI setup with global error schemas
 
 - `IsPicoUnitEnabledGuard` (410 Gone for disabled units) — used via `@OnlyEnabledPicoUnits()` decorator
 - `IsControlLoopEnabledGuard` (409 Conflict when control loop active, prevents manual output changes) — used via `@OnlyEnabledPicoUnitsWithControlLoop()`
+- `PicoAnnounceSecretGuard` (401 Unauthorized, validates `X-Pico-Secret` header against `PICO_ANNOUNCE_SECRET`) — used via `@PicoAnnounceSecret()` composite decorator
 - `TooManyRequestsGuard` — `@nestjs/throttler` rate limiting
 - `AppSecretBearerMiddleware` — optional Bearer token auth from `APP_SECRET`
 - `ProtectEventLoopMiddleware` — toobusy-js overload rejection
+
+Every guard must be bundled with its Swagger error responses into a composite decorator under `src/common/decorators/docs/`, regardless of how many methods use it. The extraction criterion is "guard + Swagger bundle" — not reuse count. This keeps controllers pure (endpoint definitions and Swagger docs only, no guard wiring scattered inline). For reference: `@OnlyEnabledPicoUnitsWithControlLoop()` is single-use yet still extracted.
 
 ## Environment Variables
 
@@ -140,8 +144,13 @@ swagger/      — OpenAPI setup with global error schemas
 | `SQLITE_PATH` | `./data/app.sqlite` | DB path |
 | `CLIENT_URL` | — | CORS allowed origin |
 | `APP_SECRET` | — | Bearer token (required in prod) |
+| `PICO_ANNOUNCE_SECRET` | `mushpi-dev-secret` | Shared secret for `POST /pico-units/announce` (required in prod, min 6 chars) |
 | `DOCS_ENDPOINT` | — | Swagger UI path |
 | `LOGS_LEVEL` | `info` | Pino level |
+
+## Config
+
+`CustomConfigService` exposes typed getters grouped by **domain area** — not by "what kind of value" (string, secret, etc.). The `security` getter is reserved for **cross-cutting/infra** concerns (global auth, rate limiting, event-loop protection, CORS). Domain-specific secrets belong in their own domain getter (e.g., `pico.announceSecret` for Pico-hardware trust, not `security.picoAnnounceSecret`). This keeps domain concerns colocated and prevents the `security` getter from becoming a grab-bag.
 
 ## E2E Testing Gotchas
 

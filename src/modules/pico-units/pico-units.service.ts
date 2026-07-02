@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -6,16 +10,20 @@ import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import { ILike, MoreThan, Repository } from 'typeorm';
 
+import { PORT_DEFAULT } from 'src/common/constants/hardware.constants';
+import { FailedDependencyException } from 'src/common/exceptions/failed-dependency.exception';
 import { getWithFallback } from 'src/common/utils/http-fallback';
 
 import {
+  AnnouncePicoUnitDto,
+  CreatePicoUnitDto,
   ListPicoUnitsQueryDto,
   UpdatePicoUnitDto,
-  UpsertPicoUnitDto,
 } from './pico-unit.dto';
 import { PicoUnit } from './pico-unit.entity';
 import {
   PICO_UNIT_EVENTS,
+  PicoUnitCreatedEvent,
   PicoUnitDisabledEvent,
   PicoUnitEnabledEvent,
   PicoUnitRegisteredEvent,
@@ -31,7 +39,7 @@ export class PicoUnitsService {
     axiosRetry(axios, { retryDelay: axiosRetry.exponentialDelay });
   }
 
-  async upsert(unitDto: UpsertPicoUnitDto): Promise<PicoUnit> {
+  async announce(dto: AnnouncePicoUnitDto): Promise<PicoUnit> {
     const {
       port,
       handle,
@@ -42,7 +50,7 @@ export class PicoUnitsService {
       board_cpu_freq_mhz,
       board_total_fs_byte,
       board_total_mem_byte,
-    } = unitDto;
+    } = dto;
     let unit: Partial<PicoUnit> = await this.picoUnitRepo.findOne({
       where: { handle },
     });
@@ -59,8 +67,12 @@ export class PicoUnitsService {
         board_total_fs_byte: board_total_fs_byte ?? 0,
         board_total_mem_byte: board_total_mem_byte ?? 0,
       };
+    } else if (!ip) {
+      throw new ConflictException(
+        `PicoUnit with handle ${handle} already exists with IP ${unit.ip}. Cannot update IP on existing unit.`,
+      );
     } else {
-      Object.assign(unit, unitDto);
+      Object.assign(unit, dto);
     }
 
     unit.last_seen = new Date();
@@ -71,6 +83,37 @@ export class PicoUnitsService {
       new PicoUnitRegisteredEvent(saved!),
     );
     return saved!;
+  }
+
+  async create(dto: CreatePicoUnitDto): Promise<PicoUnit> {
+    const existing = await this.picoUnitRepo.findOne({
+      where: { handle: dto.handle },
+    });
+    if (existing) {
+      throw new ConflictException(
+        `PicoUnit with handle ${dto.handle} already exists`,
+      );
+    }
+
+    const unit = this.picoUnitRepo.create({
+      handle: dto.handle,
+      port: PORT_DEFAULT,
+    });
+
+    try {
+      await getWithFallback(unit, '/ping', { timeout: 5000 });
+    } catch {
+      throw FailedDependencyException({
+        description: `Pico unit ${dto.handle} is not reachable at http://${dto.handle}.local:${PORT_DEFAULT}/ping`,
+      });
+    }
+
+    const saved = await this.picoUnitRepo.save(unit);
+    this.eventEmitter.emit(
+      PICO_UNIT_EVENTS.CREATED,
+      new PicoUnitCreatedEvent(saved),
+    );
+    return saved;
   }
 
   async getByIdOrThrow(

@@ -23,3 +23,4 @@
 | `SQLITE_PATH` | string | Never | `"data/app.sqlite"` |  |  |
 | `SQLITE_LOG` | boolean | Never | `false` |  |  |
 | `UPLOAD_DIR` | string | Never | `"data"` |  |  |
+| `PICO_ANNOUNCE_SECRET` | any | Never |  |  |  |

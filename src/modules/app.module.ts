@@ -92,13 +92,12 @@ export class AppModule {
     consumer
       .apply(AppSecretBearerMiddleware)
       .forRoutes({ path: '{*splat}', method: RequestMethod.ALL });
-    consumer.apply(PicoUnitByIdMiddleware).forRoutes({
-      path: 'pico-units/:picoUnitId',
-      method: RequestMethod.ALL,
-    });
-    consumer.apply(PicoUnitByIdMiddleware).forRoutes({
-      path: 'pico-units/:picoUnitId/*path',
-      method: RequestMethod.ALL,
-    });
+    consumer
+      .apply(PicoUnitByIdMiddleware)
+      .exclude({ path: 'pico-units/announce', method: RequestMethod.ALL })
+      .forRoutes(
+        { path: 'pico-units/:picoUnitId', method: RequestMethod.ALL },
+        { path: 'pico-units/:picoUnitId/*path', method: RequestMethod.ALL },
+      );
   }
 }

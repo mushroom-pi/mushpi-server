@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import {
+  ApiConflictResponse,
   ApiCreatedResponse,
   ApiNotAcceptableResponse,
   ApiOkResponse,
@@ -7,12 +8,15 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 
+import { ApiFailedDependencyResponse } from 'src/common/decorators/docs/api-failed-dependency-response.decorator';
+import { PicoAnnounceSecret } from 'src/common/decorators/docs/pico-announce-secret.decorator';
 import { ErrorDto } from 'src/common/dto/error.dto';
 
 import {
+  AnnouncePicoUnitDto,
+  CreatePicoUnitDto,
   ListPicoUnitsQueryDto,
   PicoUnitListResponseDto,
-  UpsertPicoUnitDto,
 } from '../pico-unit.dto';
 import { PicoUnit } from '../pico-unit.entity';
 import { PicoUnitsService } from '../pico-units.service';
@@ -28,16 +32,42 @@ export class PicoUnitsController {
 
   @Post()
   @ApiOperation({
-    summary: 'Upsert pico unit',
+    summary: 'Manually add a Pico Unit',
     description:
-      'Create a new pico unit in the database or asses an already existing one',
+      'Register a Pico unit by handle after verifying it is reachable via mDNS.',
   })
   @ApiCreatedResponse({
-    description: 'Pico unit created in the database',
+    description: 'Pico unit created',
     type: PicoUnit,
   })
-  upsert(@Body() upsertPicoUnitDto: UpsertPicoUnitDto) {
-    return this.svc.upsert(upsertPicoUnitDto);
+  @ApiConflictResponse({
+    description: 'A Pico unit with the same handle already exists',
+    type: ErrorDto,
+  })
+  @ApiFailedDependencyResponse({
+    description: 'Pico unit not reachable via mDNS',
+  })
+  create(@Body() dto: CreatePicoUnitDto) {
+    return this.svc.create(dto);
+  }
+
+  @Post('announce')
+  @PicoAnnounceSecret()
+  @ApiOperation({
+    summary: 'Announce a Pico Unit (hardware)',
+    description:
+      'Called by Pico units on boot with hardware/network metadata. Upserts by handle.',
+  })
+  @ApiCreatedResponse({
+    description: 'Pico unit registered/updated',
+    type: PicoUnit,
+  })
+  @ApiConflictResponse({
+    description: 'Existing unit cannot be updated without an IP',
+    type: ErrorDto,
+  })
+  announce(@Body() dto: AnnouncePicoUnitDto) {
+    return this.svc.announce(dto);
   }
 
   @Get()

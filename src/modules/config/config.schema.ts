@@ -41,6 +41,12 @@ const secret = Joi.any().when('NODE_ENV', {
   otherwise: Joi.optional(),
 });
 
+const picoAnnounceSecret = Joi.any().when('NODE_ENV', {
+  is: 'prod',
+  then: Joi.string().min(6).required(),
+  otherwise: Joi.string().min(6).default('mushpi-dev-secret'),
+});
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const generateServiceSchema = (serviceName: Services) => {
   const handle = serviceName.replaceAll('-', '_').toUpperCase();
@@ -91,4 +97,5 @@ export const validationSchema = Joi.object({
   SQLITE_PATH: Joi.string().default('data/app.sqlite'),
   SQLITE_LOG: Joi.boolean().truthy('true').falsy('false').default(false),
   UPLOAD_DIR: Joi.string().default('data'),
+  PICO_ANNOUNCE_SECRET: picoAnnounceSecret,
 });
