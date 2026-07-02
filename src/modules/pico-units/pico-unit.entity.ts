@@ -22,6 +22,9 @@ export class PicoUnit {
   @Column({ type: 'text', nullable: true })
   description?: string;
 
+  @Column({ type: 'text', nullable: true })
+  face_color?: string | null;
+
   @Expose()
   @Transform(({ obj }) => `${obj.handle}.local`)
   @ApiProperty({

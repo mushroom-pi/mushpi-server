@@ -12,6 +12,7 @@ import {
   IsOptional,
   IsString,
   Length,
+  Matches,
   Max,
   Min,
 } from 'class-validator';
@@ -185,6 +186,17 @@ export class UpdatePicoUnitDto {
   @IsOptional()
   @IsBoolean()
   enabled?: boolean;
+
+  @ApiProperty({
+    required: false,
+    type: String,
+    description: 'Cosmetic hex color assigned to the unit (e.g. #4CAF50).',
+    example: '#4CAF50',
+    pattern: '^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$',
+  })
+  @IsOptional()
+  @Matches(/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/)
+  face_color?: string | null;
 }
 
 export class ListPicoUnitsQueryDto {
