@@ -22,6 +22,7 @@ import { ReadingsService } from 'src/modules/readings/readings.service';
 @Injectable()
 export class CronService {
   private readonly logger = new Logger(CronService.name);
+  private lastHandleBatchSyncAt: Date | null = null;
 
   constructor(
     private readonly readingsService: ReadingsService,
@@ -31,7 +32,7 @@ export class CronService {
     this.logger.log('cron!');
   }
 
-  @Cron(CronExpression.EVERY_10_MINUTES)
+  @Cron(CronExpression.EVERY_MINUTE)
   async handleReadings() {
     this.logger.log('Polling readings from pico units');
     await this.readingsService.pollReadingsFromAllEnabled();
@@ -39,16 +40,22 @@ export class CronService {
   }
 
   async handleBatchSync() {
+    const now = new Date();
+    const since =
+      this.lastHandleBatchSyncAt ?? new Date(now.getTime() - 60_000);
+
     const activeBatches = await this.batchesService.findAllInProgress();
     for (const batch of activeBatches) {
       await this.applyBatchSettingsSafe(batch);
     }
 
     const finishedUnits =
-      await this.batchesService.findUnitsWithFinishedBatch();
+      await this.batchesService.findUnitsWithFinishedBatch(since);
     for (const unit of finishedUnits) {
       await this.applyControlLoopDisableSafe(unit);
     }
+
+    this.lastHandleBatchSyncAt = now;
   }
 
   @OnEvent(BATCH_EVENTS.STARTED)

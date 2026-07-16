@@ -11,7 +11,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { IsNull, LessThan, MoreThan, Repository } from 'typeorm';
+import { Between, IsNull, LessThan, MoreThan, Repository } from 'typeorm';
 
 import { deleteImageFile } from 'src/common/utils/image-file.util';
 import { buildImageUrls } from 'src/common/utils/image-url.util';
@@ -241,19 +241,19 @@ export class BatchesService {
     return batch ? this.withImageUrl(batch) : null;
   }
 
-  async findUnitsWithFinishedBatch(): Promise<PicoUnit[]> {
+  async findUnitsWithFinishedBatch(since: Date): Promise<PicoUnit[]> {
     const now = new Date();
 
     const activeBatches = await this.findAllInProgress();
     const activeUnitIds = new Set(activeBatches.map((b) => b.pico_unit_id));
 
-    const finishedBatches = await this.batchRepo.find({
-      where: { finish_at: LessThan(now) },
+    const recentlyFinished = await this.batchRepo.find({
+      where: { finish_at: Between(since, now) },
       relations: ['pico_unit'],
     });
 
     const unitMap = new Map<number, PicoUnit>();
-    for (const batch of finishedBatches) {
+    for (const batch of recentlyFinished) {
       if (!activeUnitIds.has(batch.pico_unit_id) && batch.pico_unit?.enabled) {
         unitMap.set(batch.pico_unit_id, batch.pico_unit);
       }

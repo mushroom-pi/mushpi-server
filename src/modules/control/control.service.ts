@@ -137,7 +137,9 @@ export class ControlService {
 
   async applyControlLoopDisable(picoUnit: PicoUnit): Promise<boolean> {
     const latest = await this.readingsService.latestForUnit(picoUnit.id);
-    if (!latest?.control_loop_enabled) return false;
+    if (!latest?.control_loop_enabled) {
+      return false;
+    }
 
     await this.callSilent(picoUnit, '/control', {
       enabled: false,
