@@ -9,6 +9,7 @@ import {
   IsBoolean,
   IsIP,
   IsInt,
+  IsMACAddress,
   IsOptional,
   IsString,
   Length,
@@ -139,6 +140,15 @@ export class AnnouncePicoUnitDto {
   @IsInt()
   @IsOptional()
   board_cpu_freq_mhz?: number;
+
+  @ApiPropertyOptional({
+    type: String,
+    description: 'Physical MAC address of the unit',
+    examples: ['2c:cf:67:be:95:30'],
+  })
+  @IsMACAddress()
+  @IsOptional()
+  mac?: string;
 }
 
 export class CreatePicoUnitDto {

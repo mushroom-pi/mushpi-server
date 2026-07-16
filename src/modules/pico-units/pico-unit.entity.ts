@@ -38,6 +38,9 @@ export class PicoUnit {
   @Column({ type: 'text', nullable: true })
   ip?: string;
 
+  @Column({ type: 'text', nullable: true })
+  mac?: string;
+
   @Column({ type: 'integer', default: 5000 })
   port!: number;
 

@@ -50,6 +50,7 @@ export class PicoUnitsService {
       board_cpu_freq_mhz,
       board_total_fs_byte,
       board_total_mem_byte,
+      mac,
     } = dto;
     let unit: Partial<PicoUnit> = await this.picoUnitRepo.findOne({
       where: { handle },
@@ -66,6 +67,7 @@ export class PicoUnitsService {
         board_cpu_freq_mhz: board_cpu_freq_mhz ?? 0,
         board_total_fs_byte: board_total_fs_byte ?? 0,
         board_total_mem_byte: board_total_mem_byte ?? 0,
+        mac: mac ?? null,
       };
     } else if (!ip) {
       throw new ConflictException(
@@ -220,9 +222,13 @@ export class PicoUnitsService {
     return this.picoUnitRepo.save(unit);
   }
 
-  async touchAndResetFailedCalls(unit: PicoUnit): Promise<PicoUnit> {
+  async touchAndResetFailedCalls(
+    unit: PicoUnit,
+    mac?: string,
+  ): Promise<PicoUnit> {
     unit.last_seen = new Date();
     unit.failed_calls = 0;
+    if (mac && !unit.mac) unit.mac = mac;
     return this.picoUnitRepo.save(unit);
   }
 }

@@ -21,7 +21,7 @@ yarn start   # Must boot without exceptions
 
 ### Column/property naming convention
 
-All stored columns use **snake_case property names** (e.g. `last_seen`, `micropython_version`, `face_color`) that match the database column name directly — no `@Column({ name })` overrides needed. This is the convention across the SQL entity definitions. Computed `@Expose()` getters use camelCase (e.g. `host`, `address`, `ipAddress`).
+All stored columns use **snake_case property names** (e.g. `last_seen`, `micropython_version`, `face_color`, `mac`) that match the database column name directly — no `@Column({ name })` overrides needed. This is the convention across the SQL entity definitions. Computed `@Expose()` getters use camelCase (e.g. `host`, `address`, `ipAddress`).
 
 ### DTO partial-update contract
 
@@ -145,6 +145,8 @@ swagger/      — OpenAPI setup with global error schemas
 ## Cron Polling
 
 `CronService` polls all **enabled** PicoUnits every minute: `GET /` → creates `Readings` → updates `last_seen` + `failed_calls` + board metadata. Failed units increment `failed_calls` but are not auto-disabled. Uses error-safe wrappers (`applyBatchSettingsSafe`) to avoid crashing the cron job.
+
+The Pico's `system.wifi.mac` is also captured during polling and persisted to `PicoUnit.mac` (nullable text). **MAC is set only once** (first successful poll) and never overwritten — it is immutable hardware identity. The client uses it to derive the AP provisioning SSID.
 
 ## Guards
 

@@ -115,7 +115,8 @@ export class ReadingsService {
         unit,
         '/?force=1',
       );
-      await this.picoUnitsService.touchAndResetFailedCalls(unit);
+      const mac = response?.system?.wifi?.mac;
+      await this.picoUnitsService.touchAndResetFailedCalls(unit, mac);
       const reading = await this.createFromDeviceResponse(
         unit,
         response,
