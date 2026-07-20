@@ -95,5 +95,10 @@ export class PicoUnit {
   @OneToMany(() => Readings, (r) => r.pico_unit)
   readings?: Readings[];
 
+  @ApiProperty({
+    type: Readings,
+    nullable: true,
+    description: 'Latest reading row for this unit (computed, not stored)',
+  })
   latest_reading?: Readings;
 }

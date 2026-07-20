@@ -47,7 +47,7 @@ const pipeline = promisify(pipelineCb);
 @Injectable()
 export class ReadingsService {
   private readonly logger = new Logger(ReadingsService.name);
-  private isPolling: boolean = false;
+  private readonly pollingUnits = new Set<number>();
 
   constructor(
     @InjectRepository(Readings) private readingsRepo: Repository<Readings>,
@@ -103,13 +103,13 @@ export class ReadingsService {
   }
 
   async pollReadingsFromUnit(unit: PicoUnit) {
-    if (this.isPolling)
+    if (this.pollingUnits.has(unit.id))
       throw LockedException({
-        description: 'The system is already polling records from a Pico Unit',
+        description: `This Pico unit (${unit.id}) is already being polled`,
       });
 
+    this.pollingUnits.add(unit.id);
     try {
-      this.isPolling = true;
       this.logger.log(`Polling data from pico unit ${unit.id}`);
       const { response, durationMs } = await this.fetchAndValidateReading(
         unit,
@@ -128,8 +128,8 @@ export class ReadingsService {
       await this.picoUnitsService.addFailedCall(unit);
       throw e;
     } finally {
-      // Whatever happens, remember that isPolling has to be left as false
-      this.isPolling = false;
+      // Whatever happens, remove this unit from the polling set
+      this.pollingUnits.delete(unit.id);
     }
   }
 

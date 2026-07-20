@@ -5,6 +5,7 @@ NestJS 11 backend for mushroom growing control system. Runs on Raspberry Pi, pol
 ## External Relationships
 
 - **mushpi-grow** (Pico units): each unit runs a MicroPython HTTP server on `handle.local:port`. Server proxies calls (`/sensors`, `/setpoints`, `/outputs`, `/setup`, `/control`) via mDNS → IP fallback using `src/common/utils/http-fallback.ts` (`getWithFallback`/`postWithFallback`). Units self-register on boot via `POST /pico-units`.
+  - **Pico response validation**: `validateDeviceResponse()` in `readings.service.ts` validates the Pico `GET /` response against `DeviceResponseDto` with `whitelist: true` + `forbidNonWhitelisted: false`. Any key the Pico emits that is not decorated on the DTO is **silently dropped** — no error, no warning, no `failed_calls` increment. Firmware field names must match the DTO exactly (e.g. `outputs.heater`, not `outputs.heater_on`).
 - **mushpi-client** (frontend): consumes Swagger JSON at `/<DOCS_ENDPOINT>-json` to regenerate its API client. CORS origin from `CLIENT_URL` env var.
 
 ## Verification Commands
@@ -111,7 +112,7 @@ Upload paths are driven by the `UPLOAD_DIR` env var (default `data`). Access via
 pico-units/   — CRUD + ping proxy
 readings/     — readings storage and time-range queries
 batches/      — batch CRUD + lifecycle rules + recipe linking
-control/      — proxy: setpoints, outputs, setup, control loop toggle
+control/      — proxy: setpoints, outputs, setup, control loop toggle (each triggers an immediate trailing poll via `callPollAndUpdate`)  
 cron/         — scheduled polling of all enabled Pico units
 monitoring/   — /ping, /health
 swagger/      — OpenAPI setup with global error schemas
@@ -129,6 +130,7 @@ swagger/      — OpenAPI setup with global error schemas
 | PUT              | `/pico-units/:picoUnitId/setup`           | Proxy → Pico `/setup`                                                          |
 | PUT              | `/pico-units/:picoUnitId/outputs`         | Proxy → Pico `/outputs`                                                        |
 | POST/DELETE      | `/pico-units/:picoUnitId/control`         | Proxy → Pico `/control` toggle                                                 |
+| POST             | `/pico-units/:picoUnitId/poll`            | On-demand Pico poll → store reading → return PicoUnit with `latest_reading`    |
 | GET              | `/pico-units/:picoUnitId/readings`        | Filterable by time range + limit                                               |
 | GET              | `/pico-units/:picoUnitId/batches`         | + `/current`                                                                   |
 | GET/POST         | `/batches`                                | List (paginated) / Create                                                      |
@@ -149,6 +151,10 @@ swagger/      — OpenAPI setup with global error schemas
 The Pico's `system.wifi.mac` is also captured during polling and persisted to `PicoUnit.mac` (nullable text). **MAC is set only once** (first successful poll) and never overwritten — it is immutable hardware identity. The client uses it to derive the AP provisioning SSID.
 
 Cron-side state changes that are time-anchored (e.g. disabling the control loop after a batch finishes) should use a time-windowed query so the action is naturally self-limiting. For batch-finish auto-disable, `findUnitsWithFinishedBatch()` only considers batches that finished in the last 60s — they fall out of the window and are never re-disabled. The `BATCH_EVENTS.FINISHED` event handler handles the primary synchronous path.
+
+### State-visibility split: proxy vs. batch-orchestrated changes
+
+Control-proxy endpoints (`setpoints`, `outputs`, `setup`, `control`) use `callPollAndUpdate` which POSTs to the Pico then immediately polls, so `latest_reading` reflects the new state right away. Batch-orchestrated changes (`applyBatchSettings`, `applyControlLoopDisable`, `applyUnitDisabled`) use `callSilent` — the Pico is updated but **no trailing poll** occurs. The server's `latest_reading` therefore lags the Pico's actual state by up to 60 s (the next cron tick). This is intentional: batch-driven changes are bulk operations where a per-unit poll would serialize and block the cron loop. The `POST /pico-units/:picoUnitId/poll` endpoint exists for the frontend to force an immediate poll when needed.
 
 ## Guards
 
@@ -218,3 +224,5 @@ Schema changes for production (`NODE_ENV=prod`, where `synchronize: false`) requ
   ```
 - `ClassSerializerInterceptor` must be registered in `createTestApp()` or `@Expose()` virtual getters are omitted.
 - Each test suite uses unique `host:port` for PicoUnit seeds (unique constraint). Call `clearX()` for every touched entity in `beforeEach`.
+- **IP fallback double-mock**: When a unit has an `ip` and the test simulates a network error (`isAxiosError: true` with `.request`, no `.response`), `getWithFallback` retries against the IP URL — the mock must reject **twice** (mDNS then IP). If the error has a `.response` (e.g. HTTP 500 from Pico), no fallback occurs — mock only once.
+- **POST endpoints return 201 by default** unless `@HttpCode()` is specified. Test assertions expecting 200 must either add the decorator or assert 201.

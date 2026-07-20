@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { BatchesModule } from 'src/modules/batches/batches.module';
@@ -12,8 +12,8 @@ import { ReadingsService } from './readings.service';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Readings]),
-    PicoUnitsModule,
-    BatchesModule,
+    forwardRef(() => PicoUnitsModule),
+    forwardRef(() => BatchesModule),
   ],
   providers: [ReadingsService],
   controllers: [PicoUnitIdReadingsController, BatchIdReadingsController],

@@ -1,18 +1,11 @@
 import { Controller, Get, Query, Res } from '@nestjs/common';
-import {
-  ApiOkResponse,
-  ApiOperation,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { Response } from 'express';
 
 import { ApiPicoUnit } from 'src/common/decorators/docs/api-pico-unit.decorator';
 import { ApiInvalidTimeFrame } from 'src/common/decorators/docs/invalid-time-frame.decorator';
-import { OnlyEnabledPicoUnits } from 'src/common/decorators/docs/only-enabled-pico-unit.decorator';
 import { GetPicoUnit } from 'src/common/decorators/get-pico-unit.decorator';
-import { ErrorDto } from 'src/common/dto/error.dto';
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
 
 import {
@@ -20,7 +13,6 @@ import {
   ReadingsListResponseDto,
   TimeLimitsQueryDto,
 } from '../readings.dto';
-import { Readings } from '../readings.entity';
 import { ReadingsService } from '../readings.service';
 
 @ApiTags('readings')
@@ -28,25 +20,6 @@ import { ReadingsService } from '../readings.service';
 @ApiPicoUnit()
 export class PicoUnitIdReadingsController {
   constructor(private readonly svc: ReadingsService) {}
-
-  @ApiTags('proxy')
-  @OnlyEnabledPicoUnits()
-  @Get('poll')
-  @ApiOperation({
-    summary: 'Exctract live reading',
-    description:
-      'Connect with the Pico Unit, exctract a current reading from it and, if successful, save it to the database',
-  })
-  @ApiOkResponse({ type: Readings })
-  @ApiResponse({
-    description:
-      'The system is alrady polling and saving content from a different unit',
-    status: 423,
-    type: ErrorDto,
-  })
-  poll(@GetPicoUnit() unit: PicoUnit) {
-    return this.svc.pollReadingsFromUnit(unit);
-  }
 
   @Get()
   @ApiOperation({

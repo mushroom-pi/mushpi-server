@@ -27,7 +27,7 @@ import { PicoUnitIdBatchesController } from './controllers/pico-unit-id-batches.
 @Module({
   imports: [
     TypeOrmModule.forFeature([Batch]),
-    PicoUnitsModule,
+    forwardRef(() => PicoUnitsModule),
     forwardRef(() => RecipesModule),
   ],
   providers: [BatchesService],
