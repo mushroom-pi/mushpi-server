@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
@@ -20,7 +20,7 @@ import {
 import { ReadingsService } from 'src/modules/readings/readings.service';
 
 @Injectable()
-export class CronService {
+export class CronService implements OnApplicationBootstrap {
   private readonly logger = new Logger(CronService.name);
   private lastHandleBatchSyncAt: Date | null = null;
 
@@ -34,6 +34,19 @@ export class CronService {
 
   @Cron(CronExpression.EVERY_MINUTE)
   async handleReadings() {
+    await this.runReadingsSweep();
+  }
+
+  async onApplicationBootstrap(): Promise<void> {
+    this.logger.log(
+      'Startup sweep — polling all enabled pico units immediately',
+    );
+    void this.runReadingsSweep().catch((error) => {
+      this.logger.error(`Startup sweep failed: ${JSON.stringify(error)}`);
+    });
+  }
+
+  private async runReadingsSweep(): Promise<void> {
     this.logger.log('Polling readings from pico units');
     await this.readingsService.pollReadingsFromAllEnabled();
     await this.handleBatchSync();
