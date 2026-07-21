@@ -127,8 +127,48 @@ batches/      — batch CRUD + lifecycle rules + recipe linking
 control/      — proxy: setpoints, outputs, setup, control loop toggle (each triggers an immediate trailing poll via `callPollAndUpdate`)  
 cron/         — scheduled polling of all enabled Pico units
 monitoring/   — /ping, /health
-swagger/      — OpenAPI setup with global error schemas
+swagger/      — OpenAPI setup with global error schemas; provider registered in AppModule, invoked manually in main.ts; also powers spec:export
 ```
+
+## API Specification Tooling
+
+The server code (NestJS decorators) is the **source of truth** for the REST API. The OpenAPI spec and Bruno collection are derived artifacts generated via scripts:
+
+```bash
+yarn spec:export   # Generates spec/openapi.json + spec/openapi.yaml (in-process, no HTTP server)
+yarn spec:bruno    # Converts spec/openapi.json → spec/bruno/ Bruno collection (.bru directory)
+yarn spec:all      # Both (runs spec:export then spec:bruno)
+```
+
+### Generated files
+
+| Path | Committed? | Purpose |
+|------|-----------|---------|
+| `spec/openapi.json` | Yes | Canonical API contract — consumed by mushpi-client's `yarn gen:all:remote` |
+| `spec/openapi.yaml` | Yes | Human-readable YAML version of the same contract |
+| `spec/bruno/` | No (gitignored) | Bruno collection — directory of `.bru` files + `bruno.json`, fully regenerable |
+
+### Pre-commit hook
+
+Husky detects `src/` changes and automatically runs `yarn spec:all`, then stages `spec/openapi.json` and `spec/openapi.yaml`. No `src/` changes → skipped. This keeps the committed spec in lockstep with the code.
+
+### `setupSwagger()` at runtime vs spec export
+
+`SwaggerModule.setupSwagger()` calls `buildOpenApiDocument()` with `appendEnvSuffix: true` to produce the title `"mushpi-server LOCAL"` (or DEV/PROD). The `spec:export` script calls it with `appendEnvSuffix: false` to produce a deterministic title (`"mushpi-server"`) suitable for committed output.
+
+### SwaggerModule dual wiring
+
+`SwaggerModule` is registered as a **provider in `AppModule`** but invoked **manually in `main.ts`** (not via DI in a controller). This exists because `setupSwagger()` needs the `INestApplication` instance before the server starts. The `spec:export` script (`spec/generators/openapi.generator.ts`) gets it via `app.get(SwaggerModule)` after booting a lightweight `NestFactory.createApplicationContext()` (no HTTP listener).
+
+### Script conventions (ts-node)
+
+Scripts that import TypeScript source using `src/*` path aliases (e.g. `spec/generators/`, `docs/`) must be invoked with:
+
+```bash
+ts-node -r tsconfig-paths/register <script.ts>
+```
+
+This is the established pattern (also used by the `typeorm` CLI script). Without `tsconfig-paths/register`, the path aliases configured in `tsconfig.json` won't resolve.
 
 ## REST API
 

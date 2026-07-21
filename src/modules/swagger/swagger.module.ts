@@ -95,11 +95,16 @@ export class SwaggerModule {
     };
   }
 
-  setupSwagger(
+  public buildOpenApiDocument(
     app: INestApplication,
     documentDescriptor?: DocumentDescriptor,
-    endpoint?: string,
-  ) {
+    opts?: { appendEnvSuffix?: boolean },
+  ): OpenAPIObject {
+    const appendEnvSuffix = opts?.appendEnvSuffix ?? true;
+    const title = appendEnvSuffix
+      ? `${documentDescriptor?.name || name} ${this.configService.server.nodeEnv?.toUpperCase()}`
+      : documentDescriptor?.name || name;
+
     const swaggerConfig = new DocumentBuilder()
       .addSecurity('secret', {
         type: 'http',
@@ -107,9 +112,7 @@ export class SwaggerModule {
         in: 'header',
         name: 'authorization',
       })
-      .setTitle(
-        `${documentDescriptor?.name || name} ${this.configService.server.nodeEnv?.toUpperCase()}`,
-      )
+      .setTitle(title)
       .setDescription(documentDescriptor?.description || description)
       .setVersion(documentDescriptor?.version || version)
       .addTag(
@@ -145,6 +148,18 @@ export class SwaggerModule {
       .forEach((errorResponse) =>
         this.errorResponseFactory(errorResponse)(document),
       );
+
+    return document;
+  }
+
+  setupSwagger(
+    app: INestApplication,
+    documentDescriptor?: DocumentDescriptor,
+    endpoint?: string,
+  ) {
+    const document = this.buildOpenApiDocument(app, documentDescriptor, {
+      appendEnvSuffix: true,
+    });
 
     NestSwaggerModule.setup(
       endpoint || this.configService.docs.endpoint,

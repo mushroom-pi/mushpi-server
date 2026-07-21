@@ -14,3 +14,13 @@ if git diff --cached --name-only | grep -q 'src/modules/config/config.schema.ts'
 else
   echo "⏩ No changes to config schema - skipping documentation update"
 fi
+
+# Regenerate OpenAPI spec + Bruno collection when source changes
+if git diff --cached --name-only | grep -qE '^src/'; then
+  echo "🔄 src/ changed - regenerating OpenAPI spec and Bruno collection"
+  yarn spec:all
+  git add spec/openapi.json spec/openapi.yaml
+  echo "✅ Refreshed spec files staged"
+else
+  echo "⏩ No src/ changes - skipping spec regeneration"
+fi
