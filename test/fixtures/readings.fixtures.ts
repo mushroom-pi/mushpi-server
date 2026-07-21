@@ -97,3 +97,16 @@ export const sampleDeviceResponse = {
     },
   },
 };
+
+/**
+ * Clone `sampleDeviceResponse` with overridden DHT sensor values.
+ * Useful for testing zero-reading filters, null sensors, etc.
+ */
+export function withSensorOverrides(overrides: {
+  temperature?: number;
+  humidity?: number;
+}) {
+  const clone = structuredClone(sampleDeviceResponse);
+  Object.assign(clone.sensors.dht, overrides);
+  return clone;
+}

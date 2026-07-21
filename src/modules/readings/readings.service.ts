@@ -102,7 +102,7 @@ export class ReadingsService {
     return this.readingsRepo.save(created);
   }
 
-  async pollReadingsFromUnit(unit: PicoUnit) {
+  async pollReadingsFromUnit(unit: PicoUnit): Promise<Readings | null> {
     if (this.pollingUnits.has(unit.id))
       throw LockedException({
         description: `This Pico unit (${unit.id}) is already being polled`,
@@ -117,6 +117,18 @@ export class ReadingsService {
       );
       const mac = response?.system?.wifi?.mac;
       await this.picoUnitsService.touchAndResetFailedCalls(unit, mac);
+
+      // Skip zero-value sensor readings (sensor glitch / warmup noise)
+      const rawTemp = response?.sensors?.dht?.temperature;
+      const rawHum = response?.sensors?.dht?.humidity;
+      if (rawTemp === 0 || rawHum === 0) {
+        this.logger.warn(
+          `Skipping zero-value sensor reading for unit ${unit.id} ` +
+            `(temp=${rawTemp}, humidity=${rawHum}) — treated as sensor noise`,
+        );
+        return null;
+      }
+
       const reading = await this.createFromDeviceResponse(
         unit,
         response,

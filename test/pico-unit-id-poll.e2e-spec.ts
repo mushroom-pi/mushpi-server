@@ -8,7 +8,10 @@ import { Repository } from 'typeorm';
 import { PicoUnit } from '../src/modules/pico-units/pico-unit.entity';
 import { Readings } from '../src/modules/readings/readings.entity';
 import { clearPicoUnits, seedPicoUnit } from './fixtures/pico-units.fixtures';
-import { sampleDeviceResponse } from './fixtures/readings.fixtures';
+import {
+  sampleDeviceResponse,
+  withSensorOverrides,
+} from './fixtures/readings.fixtures';
 import { closeTestApp, createTestApp } from './test-setup';
 
 jest.mock('axios');
@@ -306,5 +309,106 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
 
     const readingCount = await readingsRepo.count();
     expect(readingCount).toBe(1);
+  });
+
+  describe('zero-reading filter', () => {
+    it('skips persisting when temperature is 0 and humidity is valid', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-zero-temp',
+        port: 5110,
+      });
+
+      mockedAxios.get.mockResolvedValueOnce({
+        data: withSensorOverrides({ temperature: 0, humidity: 45 }),
+        status: 200,
+      });
+
+      const res = await request(app.getHttpServer())
+        .post(`/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      // No reading persisted
+      const readingCount = await readingsRepo.count();
+      expect(readingCount).toBe(0);
+
+      // latest_reading should be absent (no reading stored)
+      expect(res.body.latest_reading).toBeUndefined();
+
+      // last_seen is still updated (touchAndResetFailedCalls runs before filter)
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      expect(updated!.last_seen).not.toBeNull();
+      expect(updated!.failed_calls).toBe(0);
+    });
+
+    it('skips persisting when humidity is 0 and temperature is valid', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-zero-hum',
+        port: 5111,
+      });
+
+      mockedAxios.get.mockResolvedValueOnce({
+        data: withSensorOverrides({ temperature: 22, humidity: 0 }),
+        status: 200,
+      });
+
+      const res = await request(app.getHttpServer())
+        .post(`/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      const readingCount = await readingsRepo.count();
+      expect(readingCount).toBe(0);
+      expect(res.body.latest_reading).toBeUndefined();
+
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      expect(updated!.last_seen).not.toBeNull();
+      expect(updated!.failed_calls).toBe(0);
+    });
+
+    it('skips persisting when both temperature and humidity are 0', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-zero-both',
+        port: 5112,
+      });
+
+      mockedAxios.get.mockResolvedValueOnce({
+        data: withSensorOverrides({ temperature: 0, humidity: 0 }),
+        status: 200,
+      });
+
+      const res = await request(app.getHttpServer())
+        .post(`/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      const readingCount = await readingsRepo.count();
+      expect(readingCount).toBe(0);
+      expect(res.body.latest_reading).toBeUndefined();
+
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      expect(updated!.last_seen).not.toBeNull();
+      expect(updated!.failed_calls).toBe(0);
+    });
+
+    it('persists reading when both temperature and humidity are non-zero', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-nonzero',
+        port: 5113,
+      });
+
+      mockedAxios.get.mockResolvedValueOnce({
+        data: withSensorOverrides({ temperature: 23, humidity: 55 }),
+        status: 200,
+      });
+
+      const res = await request(app.getHttpServer())
+        .post(`/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      const readingCount = await readingsRepo.count();
+      expect(readingCount).toBe(1);
+
+      expect(res.body.latest_reading).toBeDefined();
+      expect(res.body.latest_reading.temperature).toBe(23);
+      expect(res.body.latest_reading.humidity).toBe(55);
+    });
   });
 });
