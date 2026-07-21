@@ -10,13 +10,25 @@ NestJS 11 backend for mushroom growing control system. Runs on Raspberry Pi, pol
 
 ## Verification Commands
 
-Run these after every change batch without asking:
+Run these after every feature delivery without asking:
 
 ```bash
-yarn build   # Must exit 0
-yarn lint    # Must have no new errors
-yarn start   # Must boot without exceptions
+yarn build     # Must exit 0
+yarn lint      # Must have no new errors
+yarn test      # Unit tests — must all pass
+yarn test:e2e  # E2E tests — must all pass
+yarn start     # Must boot without exceptions
 ```
+
+## E2E Test Conventions
+
+When new functionality is added, **propose and write e2e tests** that cover the new behavior. At minimum, consider:
+
+- **Happy path**: the expected outcome when all conditions are met
+- **Boundary/edge**: time windows, empty inputs, missing relations, null fields
+- **State persistence**: any accumulated state (e.g. `lastHandleBatchSyncAt`) that persists across test cases — reset it in `beforeEach` to avoid cross-test contamination
+
+Tests that exercise time-windowed queries must use `finish_at` / `start_at` timestamps that fall within the window the production code actually computes (e.g. within the last 60 seconds for `handleBatchSync()`), or explicitly pass a `since` argument wide enough to cover the seeded data.
 
 ## Project-Specific Domain Rules
 

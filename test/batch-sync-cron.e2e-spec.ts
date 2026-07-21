@@ -44,6 +44,7 @@ describe('CronService.handleBatchSync() (e2e)', () => {
     await readingsRepo.clear();
     await clearBatches(app);
     await clearPicos(app);
+    (cronService as any).lastHandleBatchSyncAt = null;
   });
 
   it('does nothing when there are no batches', async () => {
@@ -192,7 +193,10 @@ describe('CronService.handleBatchSync() (e2e)', () => {
   describe('finished batch — control loop management', () => {
     it('disables control loop when the unit has a finished batch and loop is on', async () => {
       const pico = await seedPicoUnit(app, { handle: 'u7030', port: 7030 });
-      await seedBatch(app, pico.id, { start_at: farPast, finish_at: past });
+      await seedBatch(app, pico.id, {
+        start_at: new Date(Date.now() - 120_000),
+        finish_at: new Date(Date.now() - 30_000),
+      });
       await seedReadingForUnit(app, pico, { control_loop_enabled: true });
 
       await cronService.handleBatchSync();
@@ -206,7 +210,10 @@ describe('CronService.handleBatchSync() (e2e)', () => {
 
     it('does not push when control loop is already off', async () => {
       const pico = await seedPicoUnit(app, { handle: 'u7031', port: 7031 });
-      await seedBatch(app, pico.id, { start_at: farPast, finish_at: past });
+      await seedBatch(app, pico.id, {
+        start_at: new Date(Date.now() - 120_000),
+        finish_at: new Date(Date.now() - 30_000),
+      });
       await seedReadingForUnit(app, pico, { control_loop_enabled: false });
 
       await cronService.handleBatchSync();
@@ -217,6 +224,10 @@ describe('CronService.handleBatchSync() (e2e)', () => {
     it('does not disable control loop for a unit with an active batch', async () => {
       const pico = await seedPicoUnit(app, { handle: 'u7032', port: 7032 });
       await seedBatch(app, pico.id, { start_at: past, finish_at: null });
+      await seedBatch(app, pico.id, {
+        start_at: new Date(Date.now() - 120_000),
+        finish_at: new Date(Date.now() - 30_000),
+      });
       await seedReadingForUnit(app, pico, {
         control_loop_enabled: true,
         temperature_set: 25,
@@ -234,6 +245,19 @@ describe('CronService.handleBatchSync() (e2e)', () => {
         'http://u7032.local:7032/control',
         { enabled: false },
       );
+    });
+
+    it('does not disable control loop for unit whose batch finished outside the cron window', async () => {
+      const pico = await seedPicoUnit(app, { handle: 'u7033', port: 7033 });
+      await seedBatch(app, pico.id, {
+        start_at: new Date(Date.now() - 180_000),
+        finish_at: new Date(Date.now() - 120_000),
+      });
+      await seedReadingForUnit(app, pico, { control_loop_enabled: true });
+
+      await cronService.handleBatchSync();
+
+      expect(mockedAxios.post).not.toHaveBeenCalled();
     });
   });
 
