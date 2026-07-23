@@ -8,6 +8,7 @@ import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsIP,
+  IsIn,
   IsInt,
   IsMACAddress,
   IsOptional,
@@ -40,6 +41,8 @@ import {
 import { PaginatedDto } from 'src/common/dto/paginated-response.dto';
 
 import { PicoUnit } from './pico-unit.entity';
+import { RebootType } from './pico-unit.type';
+import { reboot } from './pico-units.constant';
 
 export class AnnouncePicoUnitDto {
   @ApiProperty({
@@ -245,3 +248,22 @@ export class ListPicoUnitsQueryDto {
 
 @ApiExtraModels(PicoUnit) // ensures PicoUnit schema is available for $ref
 export class PicoUnitListResponseDto extends PaginatedDto(PicoUnit) {}
+
+export class RebootDto {
+  @ApiProperty({
+    enum: reboot,
+    example: 'soft',
+    description:
+      'soft = machine.soft_reset() (preserves cumulative uptime); hard = machine.reset() (full power-cycle, uptime resets)',
+  })
+  @IsIn(reboot)
+  type!: RebootType;
+}
+
+export class RebootResponseDto {
+  @ApiProperty({ example: 'Reboot initiated' })
+  message!: string;
+
+  @ApiProperty({ enum: reboot, example: 'soft' })
+  type!: RebootType;
+}

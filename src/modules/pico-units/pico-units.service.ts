@@ -12,12 +12,17 @@ import { ILike, MoreThan, Repository } from 'typeorm';
 
 import { PORT_DEFAULT } from 'src/common/constants/hardware.constants';
 import { FailedDependencyException } from 'src/common/exceptions/failed-dependency.exception';
-import { getWithFallback } from 'src/common/utils/http-fallback';
+import {
+  getWithFallback,
+  postWithFallback,
+} from 'src/common/utils/http-fallback';
 
 import {
   AnnouncePicoUnitDto,
   CreatePicoUnitDto,
   ListPicoUnitsQueryDto,
+  RebootDto,
+  RebootResponseDto,
   UpdatePicoUnitDto,
 } from './pico-unit.dto';
 import { PicoUnit } from './pico-unit.entity';
@@ -215,6 +220,22 @@ export class PicoUnitsService {
       await this.addFailedCall(unit);
       throw error;
     }
+  }
+
+  async reboot(unit: PicoUnit, dto: RebootDto): Promise<RebootResponseDto> {
+    try {
+      await postWithFallback(unit, '/reboot', dto, { timeout: 5000 });
+    } catch (error) {
+      // Pico reboots and drops the connection mid-response: if a request was
+      // dispatched, treat it as success (the reboot command was sent).
+      if (axios.isAxiosError(error) && !(error as any).response) {
+        // network drop / timeout after the request left — expected
+      } else {
+        await this.addFailedCall(unit);
+        throw error;
+      }
+    }
+    return { message: 'Reboot initiated', type: dto.type };
   }
 
   async addFailedCall(unit: PicoUnit): Promise<PicoUnit> {

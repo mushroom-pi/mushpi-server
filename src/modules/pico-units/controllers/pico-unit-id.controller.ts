@@ -3,11 +3,15 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
+  Put,
 } from '@nestjs/common';
 import {
+  ApiAcceptedResponse,
   ApiConflictResponse,
   ApiOkResponse,
   ApiOperation,
@@ -23,7 +27,11 @@ import { GetPicoUnit } from 'src/common/decorators/get-pico-unit.decorator';
 import { ErrorDto } from 'src/common/dto/error.dto';
 import { ReadingsService } from 'src/modules/readings/readings.service';
 
-import { UpdatePicoUnitDto } from '../pico-unit.dto';
+import {
+  RebootDto,
+  RebootResponseDto,
+  UpdatePicoUnitDto,
+} from '../pico-unit.dto';
 import { PicoUnit } from '../pico-unit.entity';
 import { PicoUnitsService } from '../pico-units.service';
 
@@ -91,5 +99,23 @@ export class PicoUnitIdController {
   async poll(@GetPicoUnit() unit: PicoUnit) {
     await this.readingsService.pollReadingsFromUnit(unit);
     return this.readingsService.getPicoUnitWithLatestReadingById(unit.id);
+  }
+
+  @ApiTags('proxy')
+  @OnlyEnabledPicoUnits()
+  @Put('reboot')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({
+    summary: 'Reboot the Pico Unit',
+    description:
+      'Proxies a reboot command to the Pico Unit. `soft` performs machine.soft_reset() (preserves cumulative uptime); `hard` performs machine.reset() (full power-cycle, uptime resets). Responds 202 Accepted because the unit becomes unreachable while rebooting.',
+  })
+  @ApiAcceptedResponse({
+    description: 'Reboot command accepted',
+    type: RebootResponseDto,
+  })
+  @ApiAxiosErrorResponses()
+  reboot(@GetPicoUnit() unit: PicoUnit, @Body() body: RebootDto) {
+    return this.svc.reboot(unit, body);
   }
 }

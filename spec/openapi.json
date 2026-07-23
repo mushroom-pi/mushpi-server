@@ -1943,6 +1943,233 @@
         ]
       }
     },
+    "/pico-units/{picoUnitId}/reboot": {
+      "put": {
+        "description": "Proxies a reboot command to the Pico Unit. `soft` performs machine.soft_reset() (preserves cumulative uptime); `hard` performs machine.reset() (full power-cycle, uptime resets). Responds 202 Accepted because the unit becomes unreachable while rebooting.",
+        "operationId": "PicoUnitIdController_reboot",
+        "parameters": [
+          {
+            "name": "picoUnitId",
+            "required": true,
+            "in": "path",
+            "description": "Pico unit ID",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "example": 42
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RebootDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Reboot command accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RebootResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PicoUnit not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDto"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Database-related error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDto"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "This action can only be implemented with enabled Pico Units",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDto"
+                }
+              }
+            }
+          },
+          "417": {
+            "description": "A service returned an error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 422
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Unprocessable Entity"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": [
+                        "propertyA has wrong value \"...\", [constrains]",
+                        "propertyB has wrong value \"...\", [constrains]",
+                        "..."
+                      ],
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "424": {
+            "description": "Axios produced an error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic unknown error produced by an unidentified exception",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 500
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Internal Server Error"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Internal server error",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "A request was made but no response was received",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The event loop is lagging and no more requests can be attended right now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 503
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Service Unavailable"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Server is too busy",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Reboot the Pico Unit",
+        "tags": [
+          "pico-units",
+          "proxy"
+        ]
+      }
+    },
     "/pico-units/{picoUnitId}/readings": {
       "get": {
         "description": "Extracts requested readings from the database (without calling the Pico Unit) and displays them chronologically. Results can be framed by time.",
@@ -7613,6 +7840,44 @@
             "pattern": "^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$"
           }
         }
+      },
+      "RebootDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "hard",
+              "soft"
+            ],
+            "example": "soft",
+            "description": "soft = machine.soft_reset() (preserves cumulative uptime); hard = machine.reset() (full power-cycle, uptime resets)"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "RebootResponseDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "Reboot initiated"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "hard",
+              "soft"
+            ],
+            "example": "soft"
+          }
+        },
+        "required": [
+          "message",
+          "type"
+        ]
       },
       "ReadingsListResponseDto": {
         "type": "object",

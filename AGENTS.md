@@ -183,6 +183,7 @@ This is the established pattern (also used by the `typeorm` CLI script). Without
 | PUT              | `/pico-units/:picoUnitId/outputs`         | Proxy → Pico `/outputs`                                                        |
 | POST/DELETE      | `/pico-units/:picoUnitId/control`         | Proxy → Pico `/control` toggle                                                 |
 | POST             | `/pico-units/:picoUnitId/poll`            | On-demand Pico poll → store reading → return PicoUnit with `latest_reading`    |
+| PUT              | `/pico-units/:picoUnitId/reboot`          | Proxy → Pico POST /reboot (soft/hard reset); returns 202                       |
 | GET              | `/pico-units/:picoUnitId/readings`        | Filterable by time range + limit                                               |
 | GET              | `/pico-units/:picoUnitId/batches`         | + `/current`                                                                   |
 | GET/POST         | `/batches`                                | List (paginated) / Create                                                      |
