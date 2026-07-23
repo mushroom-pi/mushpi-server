@@ -24,7 +24,7 @@ import { RecipesService } from '../recipes.service';
   description: 'Database-related error',
   type: ErrorDto,
 })
-export class RecipesController {
+export class RecipesV1Controller {
   constructor(private readonly svc: RecipesService) {}
 
   @Post()

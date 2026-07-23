@@ -24,7 +24,7 @@ import { ReadingsService } from '../readings.service';
 @ApiTags('readings')
 @Controller('batches/:batchId/readings')
 @ApiBatch()
-export class BatchIdReadingsController {
+export class BatchIdReadingsV1Controller {
   constructor(private readonly svc: ReadingsService) {}
 
   @Get()

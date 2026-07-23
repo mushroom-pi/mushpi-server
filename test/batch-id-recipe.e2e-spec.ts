@@ -7,7 +7,7 @@ import { clearPicos, seedPicoUnit } from './fixtures/pico-units.fixtures';
 import { clearRecipes, getRecipeRepo } from './fixtures/recipes.fixtures';
 import { closeTestApp, createTestApp } from './test-setup';
 
-describe('BatchIdRecipeController (e2e)', () => {
+describe('BatchIdRecipeV1Controller (e2e)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
@@ -43,7 +43,7 @@ describe('BatchIdRecipeController (e2e)', () => {
       });
 
       const res = await request(app.getHttpServer())
-        .post(`/batches/${batch.id}/recipe`)
+        .post(`/v1/batches/${batch.id}/recipe`)
         .send({ name: 'oyster-standard' })
         .expect(201);
 
@@ -75,7 +75,7 @@ describe('BatchIdRecipeController (e2e)', () => {
       });
 
       const res = await request(app.getHttpServer())
-        .post(`/batches/${batch.id}/recipe`)
+        .post(`/v1/batches/${batch.id}/recipe`)
         .send({ name: 'shiitake-winter', notes: 'good grow, low ambient temp' })
         .expect(201);
 
@@ -97,7 +97,7 @@ describe('BatchIdRecipeController (e2e)', () => {
       });
 
       const res = await request(app.getHttpServer())
-        .post(`/batches/${batch.id}/recipe`)
+        .post(`/v1/batches/${batch.id}/recipe`)
         .send({ name: 'lion-mane-short' })
         .expect(201);
 
@@ -119,7 +119,7 @@ describe('BatchIdRecipeController (e2e)', () => {
       }); // finish_at is null → in-progress
 
       const res = await request(app.getHttpServer())
-        .post(`/batches/${batch.id}/recipe`)
+        .post(`/v1/batches/${batch.id}/recipe`)
         .send({ name: 'will-fail' })
         .expect(422);
 
@@ -139,7 +139,7 @@ describe('BatchIdRecipeController (e2e)', () => {
       });
 
       await request(app.getHttpServer())
-        .post(`/batches/${batch.id}/recipe`)
+        .post(`/v1/batches/${batch.id}/recipe`)
         .send({ name: 'no-species' })
         .expect(422);
     });
@@ -157,7 +157,7 @@ describe('BatchIdRecipeController (e2e)', () => {
       });
 
       await request(app.getHttpServer())
-        .post(`/batches/${batch.id}/recipe`)
+        .post(`/v1/batches/${batch.id}/recipe`)
         .send({ name: 'no-temp' })
         .expect(422);
     });
@@ -175,7 +175,7 @@ describe('BatchIdRecipeController (e2e)', () => {
       });
 
       await request(app.getHttpServer())
-        .post(`/batches/${batch.id}/recipe`)
+        .post(`/v1/batches/${batch.id}/recipe`)
         .send({ name: 'no-humid' })
         .expect(422);
     });
@@ -194,7 +194,7 @@ describe('BatchIdRecipeController (e2e)', () => {
       });
 
       await request(app.getHttpServer())
-        .post(`/batches/${batch.id}/recipe`)
+        .post(`/v1/batches/${batch.id}/recipe`)
         .send({})
         .expect(422);
     });
@@ -214,13 +214,13 @@ describe('BatchIdRecipeController (e2e)', () => {
 
       // First creation succeeds
       await request(app.getHttpServer())
-        .post(`/batches/${batch.id}/recipe`)
+        .post(`/v1/batches/${batch.id}/recipe`)
         .send({ name: 'duplicate-recipe' })
         .expect(201);
 
       // Second with same name returns 409
       await request(app.getHttpServer())
-        .post(`/batches/${batch.id}/recipe`)
+        .post(`/v1/batches/${batch.id}/recipe`)
         .send({ name: 'duplicate-recipe' })
         .expect(409);
     });

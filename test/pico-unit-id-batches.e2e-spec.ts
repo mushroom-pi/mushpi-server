@@ -7,7 +7,7 @@ import { clearPicos, seedPicoUnit } from './fixtures/pico-units.fixtures';
 import { clearRecipes, seedRecipe } from './fixtures/recipes.fixtures';
 import { closeTestApp, createTestApp } from './test-setup';
 
-describe('PicoUnitIdBatchesController (e2e)', () => {
+describe('PicoUnitIdBatchesV1Controller (e2e)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
@@ -64,7 +64,7 @@ describe('PicoUnitIdBatchesController (e2e)', () => {
 
       // request list for picoA with pagination limit=2 -> should get first 2 of picoA
       const res1 = await request(app.getHttpServer())
-        .get(`/pico-units/${picoA.id}/batches`)
+        .get(`/v1/pico-units/${picoA.id}/batches`)
         .query({ page: 1, limit: 2 })
         .expect(200);
 
@@ -77,7 +77,7 @@ describe('PicoUnitIdBatchesController (e2e)', () => {
 
       // page 2 should contain the remaining one for picoA
       const res2 = await request(app.getHttpServer())
-        .get(`/pico-units/${picoA.id}/batches`)
+        .get(`/v1/pico-units/${picoA.id}/batches`)
         .query({ page: 2, limit: 2 })
         .expect(200);
 
@@ -121,7 +121,7 @@ describe('PicoUnitIdBatchesController (e2e)', () => {
 
       // Query in-progress for this pico unit
       const resIn = await request(app.getHttpServer())
-        .get(`/pico-units/${pico.id}/batches`)
+        .get(`/v1/pico-units/${pico.id}/batches`)
         .query({ status: 'in-progress' })
         .expect(200);
 
@@ -134,7 +134,7 @@ describe('PicoUnitIdBatchesController (e2e)', () => {
 
       // Query finished
       const resFin = await request(app.getHttpServer())
-        .get(`/pico-units/${pico.id}/batches`)
+        .get(`/v1/pico-units/${pico.id}/batches`)
         .query({ status: 'finished' })
         .expect(200);
 
@@ -160,7 +160,7 @@ describe('PicoUnitIdBatchesController (e2e)', () => {
       await seedBatch(app, pico.id, { notes: 'no-recipe' });
 
       const res = await request(app.getHttpServer())
-        .get(`/pico-units/${pico.id}/batches`)
+        .get(`/v1/pico-units/${pico.id}/batches`)
         .expect(200);
 
       expect(res.body.items.length).toBe(2);
@@ -207,7 +207,7 @@ describe('PicoUnitIdBatchesController (e2e)', () => {
       });
 
       const res = await request(app.getHttpServer())
-        .get(`/pico-units/${pico.id}/batches/current`)
+        .get(`/v1/pico-units/${pico.id}/batches/current`)
         .expect(200);
 
       // Should return the active batch object
@@ -237,7 +237,7 @@ describe('PicoUnitIdBatchesController (e2e)', () => {
       });
 
       const res = await request(app.getHttpServer())
-        .get(`/pico-units/${pico.id}/batches/current`)
+        .get(`/v1/pico-units/${pico.id}/batches/current`)
         .expect(200);
 
       expect(res.body).not.toBeNull();
@@ -259,7 +259,7 @@ describe('PicoUnitIdBatchesController (e2e)', () => {
       });
 
       await request(app.getHttpServer())
-        .get(`/pico-units/${pico.id}/batches/current`)
+        .get(`/v1/pico-units/${pico.id}/batches/current`)
         .expect(404);
     });
   });

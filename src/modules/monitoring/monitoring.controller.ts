@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, VERSION_NEUTRAL } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOkResponse,
@@ -11,7 +11,7 @@ import { MonitoringService } from './monitoring.service';
 
 @ApiTags('monitoring')
 @ApiBearerAuth('secret')
-@Controller()
+@Controller({ version: VERSION_NEUTRAL })
 export class MonitoringController {
   constructor(private readonly monitoringService: MonitoringService) {}
 

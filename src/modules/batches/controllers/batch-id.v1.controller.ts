@@ -13,7 +13,7 @@ import { BatchesService } from '../batches.service';
 @ApiTags('batches')
 @Controller('batches/:batchId')
 @ApiBatch()
-export class BatchIdController {
+export class BatchIdV1Controller {
   constructor(private readonly svc: BatchesService) {}
 
   @Get()

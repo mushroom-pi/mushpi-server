@@ -46,7 +46,7 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
 
   it('returns 404 when unit does not exist', async () => {
     await request(app.getHttpServer())
-      .post('/pico-units/9999/poll')
+      .post('/v1/pico-units/9999/poll')
       .expect(404);
   });
 
@@ -58,7 +58,7 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
     });
 
     await request(app.getHttpServer())
-      .post(`/pico-units/${unit.id}/poll`)
+      .post(`/v1/pico-units/${unit.id}/poll`)
       .expect(410);
 
     expect(mockedAxios.get).not.toHaveBeenCalled();
@@ -80,7 +80,7 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
     const before = (await picoRepo.findOneBy({ id: unit.id }))!.last_seen;
 
     const res = await request(app.getHttpServer())
-      .post(`/pico-units/${unit.id}/poll`)
+      .post(`/v1/pico-units/${unit.id}/poll`)
       .expect(201);
 
     expect(res.body.id).toBe(unit.id);
@@ -123,7 +123,7 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
     });
 
     await request(app.getHttpServer())
-      .post(`/pico-units/${unit.id}/poll`)
+      .post(`/v1/pico-units/${unit.id}/poll`)
       .expect(201);
 
     const updated = (await picoRepo.findOneBy({ id: unit.id }))!;
@@ -142,7 +142,7 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
     });
 
     await request(app.getHttpServer())
-      .post(`/pico-units/${unit.id}/poll`)
+      .post(`/v1/pico-units/${unit.id}/poll`)
       .expect(412);
 
     const readingCount = await readingsRepo.count();
@@ -169,7 +169,7 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
       .mockRejectedValueOnce(networkError as AxiosError);
 
     await request(app.getHttpServer())
-      .post(`/pico-units/${unit.id}/poll`)
+      .post(`/v1/pico-units/${unit.id}/poll`)
       .expect(502);
 
     const readingCount = await readingsRepo.count();
@@ -198,7 +198,7 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
       .mockResolvedValueOnce({ data: sampleDeviceResponse, status: 200 });
 
     const res = await request(app.getHttpServer())
-      .post(`/pico-units/${unit.id}/poll`)
+      .post(`/v1/pico-units/${unit.id}/poll`)
       .expect(201);
 
     expect(res.body.latest_reading).toBeDefined();
@@ -227,7 +227,7 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
     mockedAxios.get.mockRejectedValueOnce(serverError as AxiosError);
 
     await request(app.getHttpServer())
-      .post(`/pico-units/${unit.id}/poll`)
+      .post(`/v1/pico-units/${unit.id}/poll`)
       .expect(417);
 
     const readingCount = await readingsRepo.count();
@@ -256,8 +256,8 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
     );
 
     const results = await Promise.all([
-      request(app.getHttpServer()).post(`/pico-units/${unit.id}/poll`),
-      request(app.getHttpServer()).post(`/pico-units/${unit.id}/poll`),
+      request(app.getHttpServer()).post(`/v1/pico-units/${unit.id}/poll`),
+      request(app.getHttpServer()).post(`/v1/pico-units/${unit.id}/poll`),
     ]);
 
     const statuses = results.map((r) => r.status).sort();
@@ -291,7 +291,7 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
       .mockRejectedValueOnce(networkError as AxiosError);
 
     const first = await request(app.getHttpServer()).post(
-      `/pico-units/${unit.id}/poll`,
+      `/v1/pico-units/${unit.id}/poll`,
     );
 
     // Second poll: success
@@ -301,7 +301,7 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
     });
 
     const second = await request(app.getHttpServer()).post(
-      `/pico-units/${unit.id}/poll`,
+      `/v1/pico-units/${unit.id}/poll`,
     );
 
     const statuses = [first.status, second.status];
@@ -324,7 +324,7 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
       });
 
       const res = await request(app.getHttpServer())
-        .post(`/pico-units/${unit.id}/poll`)
+        .post(`/v1/pico-units/${unit.id}/poll`)
         .expect(201);
 
       // No reading persisted
@@ -352,7 +352,7 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
       });
 
       const res = await request(app.getHttpServer())
-        .post(`/pico-units/${unit.id}/poll`)
+        .post(`/v1/pico-units/${unit.id}/poll`)
         .expect(201);
 
       const readingCount = await readingsRepo.count();
@@ -376,7 +376,7 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
       });
 
       const res = await request(app.getHttpServer())
-        .post(`/pico-units/${unit.id}/poll`)
+        .post(`/v1/pico-units/${unit.id}/poll`)
         .expect(201);
 
       const readingCount = await readingsRepo.count();
@@ -400,7 +400,7 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
       });
 
       const res = await request(app.getHttpServer())
-        .post(`/pico-units/${unit.id}/poll`)
+        .post(`/v1/pico-units/${unit.id}/poll`)
         .expect(201);
 
       const readingCount = await readingsRepo.count();

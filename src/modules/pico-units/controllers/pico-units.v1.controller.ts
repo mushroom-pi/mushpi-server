@@ -27,7 +27,7 @@ import { PicoUnitsService } from '../pico-units.service';
   description: 'Database-related error',
   type: ErrorDto,
 })
-export class PicoUnitsController {
+export class PicoUnitsV1Controller {
   constructor(private readonly svc: PicoUnitsService) {}
 
   @Post()

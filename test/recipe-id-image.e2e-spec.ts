@@ -17,7 +17,7 @@ import { closeTestApp, createTestApp } from './test-setup';
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
-describe('RecipeIdImageController (e2e)', () => {
+describe('RecipeIdImageV1Controller (e2e)', () => {
   let app: INestApplication;
   let recipeImageUploadDir: string;
 
@@ -53,18 +53,20 @@ describe('RecipeIdImageController (e2e)', () => {
 
   describe('middleware validation', () => {
     it('returns 422 for a non-numeric id on PUT', async () => {
-      await request(app.getHttpServer()).put('/recipes/abc/image').expect(422);
+      await request(app.getHttpServer())
+        .put('/v1/recipes/abc/image')
+        .expect(422);
     });
 
     it('returns 404 when the recipe does not exist on PUT', async () => {
       await request(app.getHttpServer())
-        .put('/recipes/99999/image')
+        .put('/v1/recipes/99999/image')
         .expect(404);
     });
 
     it('returns 404 when the recipe does not exist on DELETE', async () => {
       await request(app.getHttpServer())
-        .delete('/recipes/99999/image')
+        .delete('/v1/recipes/99999/image')
         .expect(404);
     });
   });
@@ -78,7 +80,7 @@ describe('RecipeIdImageController (e2e)', () => {
       const imageBuffer = Buffer.from('fake-jpeg-data', 'utf-8');
 
       const res = await request(app.getHttpServer())
-        .put(`/recipes/${recipe.id}/image`)
+        .put(`/v1/recipes/${recipe.id}/image`)
         .attach('image', imageBuffer, 'test.jpg')
         .expect(200);
 
@@ -103,7 +105,7 @@ describe('RecipeIdImageController (e2e)', () => {
       const imageBuffer = Buffer.from('fake-png-data', 'utf-8');
 
       const res = await request(app.getHttpServer())
-        .put(`/recipes/${recipe.id}/image`)
+        .put(`/v1/recipes/${recipe.id}/image`)
         .attach('image', imageBuffer, 'test.png')
         .expect(200);
 
@@ -126,7 +128,7 @@ describe('RecipeIdImageController (e2e)', () => {
       } as any);
 
       const res = await request(app.getHttpServer())
-        .put(`/recipes/${recipe.id}/image`)
+        .put(`/v1/recipes/${recipe.id}/image`)
         .send({ url: 'https://example.com/image.jpg' })
         .expect(200);
 
@@ -152,7 +154,7 @@ describe('RecipeIdImageController (e2e)', () => {
       } as any);
 
       const res = await request(app.getHttpServer())
-        .put(`/recipes/${recipe.id}/image`)
+        .put(`/v1/recipes/${recipe.id}/image`)
         .send({ url: 'https://example.com/not-found.jpg' })
         .expect(406);
 
@@ -169,7 +171,7 @@ describe('RecipeIdImageController (e2e)', () => {
       } as any);
 
       const res = await request(app.getHttpServer())
-        .put(`/recipes/${recipe.id}/image`)
+        .put(`/v1/recipes/${recipe.id}/image`)
         .send({ url: 'https://example.com/page.html' })
         .expect(406);
 
@@ -183,7 +185,7 @@ describe('RecipeIdImageController (e2e)', () => {
       mockedAxios.head.mockRejectedValueOnce(new Error('ECONNREFUSED'));
 
       const res = await request(app.getHttpServer())
-        .put(`/recipes/${recipe.id}/image`)
+        .put(`/v1/recipes/${recipe.id}/image`)
         .send({ url: 'https://example.com/image.jpg' })
         .expect(406);
 
@@ -194,7 +196,7 @@ describe('RecipeIdImageController (e2e)', () => {
       const recipe = await seedRecipe(app, { name: 'no-image' });
 
       const res = await request(app.getHttpServer())
-        .put(`/recipes/${recipe.id}/image`)
+        .put(`/v1/recipes/${recipe.id}/image`)
         .send({})
         .expect(400);
 
@@ -208,7 +210,7 @@ describe('RecipeIdImageController (e2e)', () => {
       const imageBuffer = Buffer.from('fake-gif-data', 'utf-8');
 
       const res = await request(app.getHttpServer())
-        .put(`/recipes/${recipe.id}/image`)
+        .put(`/v1/recipes/${recipe.id}/image`)
         .attach('image', imageBuffer, 'test.gif')
         .expect(400);
 
@@ -221,7 +223,7 @@ describe('RecipeIdImageController (e2e)', () => {
 
       const imageBuffer1 = Buffer.from('fake-jpeg-1', 'utf-8');
       await request(app.getHttpServer())
-        .put(`/recipes/${recipe.id}/image`)
+        .put(`/v1/recipes/${recipe.id}/image`)
         .attach('image', imageBuffer1, 'test1.jpg')
         .expect(200);
 
@@ -230,7 +232,7 @@ describe('RecipeIdImageController (e2e)', () => {
 
       const imageBuffer2 = Buffer.from('fake-png-2', 'utf-8');
       const res = await request(app.getHttpServer())
-        .put(`/recipes/${recipe.id}/image`)
+        .put(`/v1/recipes/${recipe.id}/image`)
         .attach('image', imageBuffer2, 'test2.png')
         .expect(200);
 
@@ -251,13 +253,13 @@ describe('RecipeIdImageController (e2e)', () => {
       } as any);
 
       await request(app.getHttpServer())
-        .put(`/recipes/${recipe.id}/image`)
+        .put(`/v1/recipes/${recipe.id}/image`)
         .send({ url: 'https://example.com/old.jpg' })
         .expect(200);
 
       const imageBuffer = Buffer.from('fake-png', 'utf-8');
       const res = await request(app.getHttpServer())
-        .put(`/recipes/${recipe.id}/image`)
+        .put(`/v1/recipes/${recipe.id}/image`)
         .attach('image', imageBuffer, 'new.png')
         .expect(200);
 
@@ -274,7 +276,7 @@ describe('RecipeIdImageController (e2e)', () => {
 
       const imageBuffer = Buffer.from('fake-jpeg-data', 'utf-8');
       await request(app.getHttpServer())
-        .put(`/recipes/${recipe.id}/image`)
+        .put(`/v1/recipes/${recipe.id}/image`)
         .attach('image', imageBuffer, 'test.jpg')
         .expect(200);
 
@@ -282,7 +284,7 @@ describe('RecipeIdImageController (e2e)', () => {
       expect(fs.existsSync(filePath)).toBe(true);
 
       await request(app.getHttpServer())
-        .delete(`/recipes/${recipe.id}/image`)
+        .delete(`/v1/recipes/${recipe.id}/image`)
         .expect(204);
 
       expect(fs.existsSync(filePath)).toBe(false);
@@ -301,12 +303,12 @@ describe('RecipeIdImageController (e2e)', () => {
       } as any);
 
       await request(app.getHttpServer())
-        .put(`/recipes/${recipe.id}/image`)
+        .put(`/v1/recipes/${recipe.id}/image`)
         .send({ url: 'https://example.com/image.jpg' })
         .expect(200);
 
       await request(app.getHttpServer())
-        .delete(`/recipes/${recipe.id}/image`)
+        .delete(`/v1/recipes/${recipe.id}/image`)
         .expect(204);
 
       const repo = await getRecipeRepo(app);
@@ -318,7 +320,7 @@ describe('RecipeIdImageController (e2e)', () => {
       const recipe = await seedRecipe(app, { name: 'no-image' });
 
       const res = await request(app.getHttpServer())
-        .delete(`/recipes/${recipe.id}/image`)
+        .delete(`/v1/recipes/${recipe.id}/image`)
         .expect(404);
 
       expect(res.body).toHaveProperty('statusCode', 404);
@@ -336,7 +338,7 @@ describe('RecipeIdImageController (e2e)', () => {
 
       const imageBuffer = Buffer.from('fake-jpeg-data', 'utf-8');
       await request(app.getHttpServer())
-        .put(`/recipes/${recipe.id}/image`)
+        .put(`/v1/recipes/${recipe.id}/image`)
         .attach('image', imageBuffer, 'test.jpg')
         .expect(200);
 
@@ -344,7 +346,7 @@ describe('RecipeIdImageController (e2e)', () => {
       expect(fs.existsSync(filePath)).toBe(true);
 
       await request(app.getHttpServer())
-        .delete(`/recipes/${recipe.id}`)
+        .delete(`/v1/recipes/${recipe.id}`)
         .expect(204);
 
       expect(fs.existsSync(filePath)).toBe(false);
@@ -354,7 +356,7 @@ describe('RecipeIdImageController (e2e)', () => {
       const recipe = await seedRecipe(app, { name: 'delete-recipe-no-image' });
 
       await request(app.getHttpServer())
-        .delete(`/recipes/${recipe.id}`)
+        .delete(`/v1/recipes/${recipe.id}`)
         .expect(204);
     });
   });

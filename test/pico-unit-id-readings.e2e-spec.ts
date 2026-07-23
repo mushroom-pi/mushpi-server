@@ -57,7 +57,7 @@ describe('Readings endpoints (e2e)', () => {
 
       // ask page 1 limit 2 -> should return oldest two (a,b)
       const res = await request(app.getHttpServer())
-        .get(`/pico-units/${unit.id}/readings`)
+        .get(`/v1/pico-units/${unit.id}/readings`)
         .query({ page: 1, limit: 2 })
         .expect(200);
 
@@ -77,7 +77,7 @@ describe('Readings endpoints (e2e)', () => {
 
       // page 2 should return the last (c)
       const res2 = await request(app.getHttpServer())
-        .get(`/pico-units/${unit.id}/readings`)
+        .get(`/v1/pico-units/${unit.id}/readings`)
         .query({ page: 2, limit: 2 })
         .expect(200);
 
@@ -92,7 +92,7 @@ describe('Readings endpoints (e2e)', () => {
       });
 
       const res = await request(app.getHttpServer())
-        .get(`/pico-units/${unit.id}/readings`)
+        .get(`/v1/pico-units/${unit.id}/readings`)
         .expect(200);
       expect(res.body.items).toEqual([]);
       expect(res.body.total).toBe(0);
@@ -130,7 +130,7 @@ describe('Readings endpoints (e2e)', () => {
         // start at b.ts -> should return b and c
         const startIso = b.ts.toISOString();
         const res = await request(app.getHttpServer())
-          .get(`/pico-units/${unit.id}/readings`)
+          .get(`/v1/pico-units/${unit.id}/readings`)
           .query({ start: startIso })
           .expect(200);
 
@@ -143,7 +143,7 @@ describe('Readings endpoints (e2e)', () => {
         // end at b.ts -> should return a and b
         const endIso = b.ts.toISOString();
         const res = await request(app.getHttpServer())
-          .get(`/pico-units/${unit.id}/readings`)
+          .get(`/v1/pico-units/${unit.id}/readings`)
           .query({ end: endIso })
           .expect(200);
 
@@ -158,7 +158,7 @@ describe('Readings endpoints (e2e)', () => {
         const endBetween = new Date(b.ts.getTime() + 5000).toISOString(); // b + 5s
 
         const res = await request(app.getHttpServer())
-          .get(`/pico-units/${unit.id}/readings`)
+          .get(`/v1/pico-units/${unit.id}/readings`)
           .query({ start: startBetween, end: endBetween })
           .expect(200);
 
@@ -173,7 +173,7 @@ describe('Readings endpoints (e2e)', () => {
         const endAfter = new Date(c.ts.getTime() + 2000).toISOString();
 
         const res = await request(app.getHttpServer())
-          .get(`/pico-units/${unit.id}/readings`)
+          .get(`/v1/pico-units/${unit.id}/readings`)
           .query({ start: startAfter, end: endAfter })
           .expect(200);
 
@@ -183,7 +183,7 @@ describe('Readings endpoints (e2e)', () => {
 
       it('returns 422 for invalid date format', async () => {
         await request(app.getHttpServer())
-          .get(`/pico-units/${unit.id}/readings`)
+          .get(`/v1/pico-units/${unit.id}/readings`)
           .query({ start: 'not-a-date' })
           .expect(422);
       });
@@ -193,7 +193,7 @@ describe('Readings endpoints (e2e)', () => {
         const e = new Date(now - 20000).toISOString(); // end earlier than start
 
         const res = await request(app.getHttpServer())
-          .get(`/pico-units/${unit.id}/readings`)
+          .get(`/v1/pico-units/${unit.id}/readings`)
           .query({ start: s, end: e })
           .expect(400);
 

@@ -9,9 +9,7 @@ import * as path from 'path';
 import { DataSource } from 'typeorm';
 
 import { TooManyRequestsGuard } from 'src/common/guards/too-many-requests.guard';
-import { AppSecretBearerMiddleware } from 'src/common/middleware/app-secret-bearer.middleware';
 import { PicoUnitByIdMiddleware } from 'src/common/middleware/pico-unit-by-id.middleware';
-import { ProtectEventLoopMiddleware } from 'src/common/middleware/protect-event-loop.middleware';
 
 import { BatchesModule } from './batches/batches.module';
 import { CustomConfigModule } from './config/config.module';
@@ -87,17 +85,11 @@ export class AppModule {
 
   configure(consumer: MiddlewareConsumer) {
     consumer
-      .apply(ProtectEventLoopMiddleware)
-      .forRoutes({ path: '{*splat}', method: RequestMethod.ALL });
-    consumer
-      .apply(AppSecretBearerMiddleware)
-      .forRoutes({ path: '{*splat}', method: RequestMethod.ALL });
-    consumer
       .apply(PicoUnitByIdMiddleware)
-      .exclude({ path: 'pico-units/announce', method: RequestMethod.ALL })
+      .exclude({ path: 'v1/pico-units/announce', method: RequestMethod.ALL })
       .forRoutes(
-        { path: 'pico-units/:picoUnitId', method: RequestMethod.ALL },
-        { path: 'pico-units/:picoUnitId/*path', method: RequestMethod.ALL },
+        { path: 'v1/pico-units/:picoUnitId', method: RequestMethod.ALL },
+        { path: 'v1/pico-units/:picoUnitId/*path', method: RequestMethod.ALL },
       );
   }
 }

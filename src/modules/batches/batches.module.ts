@@ -18,11 +18,11 @@ import { RecipesModule } from 'src/modules/recipes/recipes.module';
 
 import { Batch } from './batches.entity';
 import { BatchesService } from './batches.service';
-import { BatchIdImagesController } from './controllers/batch-id-images.controller';
-import { BatchIdRecipeController } from './controllers/batch-id-recipe.controller';
-import { BatchIdController } from './controllers/batch-id.controller';
-import { BatchesController } from './controllers/batches.controller';
-import { PicoUnitIdBatchesController } from './controllers/pico-unit-id-batches.controller';
+import { BatchIdImagesV1Controller } from './controllers/batch-id-images.v1.controller';
+import { BatchIdRecipeV1Controller } from './controllers/batch-id-recipe.v1.controller';
+import { BatchIdV1Controller } from './controllers/batch-id.v1.controller';
+import { BatchesV1Controller } from './controllers/batches.v1.controller';
+import { PicoUnitIdBatchesV1Controller } from './controllers/pico-unit-id-batches.v1.controller';
 
 @Module({
   imports: [
@@ -33,11 +33,11 @@ import { PicoUnitIdBatchesController } from './controllers/pico-unit-id-batches.
   providers: [BatchesService],
   exports: [BatchesService, TypeOrmModule.forFeature([Batch])],
   controllers: [
-    BatchesController,
-    BatchIdController,
-    BatchIdImagesController,
-    BatchIdRecipeController,
-    PicoUnitIdBatchesController,
+    BatchesV1Controller,
+    BatchIdV1Controller,
+    BatchIdImagesV1Controller,
+    BatchIdRecipeV1Controller,
+    PicoUnitIdBatchesV1Controller,
   ],
 })
 export class BatchesModule implements NestModule, OnModuleInit {
@@ -53,11 +53,11 @@ export class BatchesModule implements NestModule, OnModuleInit {
 
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(BatchByIdMiddleware).forRoutes({
-      path: 'batches/:batchId',
+      path: 'v1/batches/:batchId',
       method: RequestMethod.ALL,
     });
     consumer.apply(BatchByIdMiddleware).forRoutes({
-      path: 'batches/:batchId/*path',
+      path: 'v1/batches/:batchId/*path',
       method: RequestMethod.ALL,
     });
   }

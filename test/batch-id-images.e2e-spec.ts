@@ -13,7 +13,7 @@ import {
 import { clearPicoUnits, seedPicoUnit } from './fixtures/pico-units.fixtures';
 import { closeTestApp, createTestApp } from './test-setup';
 
-describe('BatchIdImagesController (e2e)', () => {
+describe('BatchIdImagesV1Controller (e2e)', () => {
   let app: INestApplication;
   let batchImageUploadDir: string;
 
@@ -45,24 +45,26 @@ describe('BatchIdImagesController (e2e)', () => {
 
   describe('middleware validation', () => {
     it('returns 422 for a non-numeric id on PUT', async () => {
-      await request(app.getHttpServer()).put('/batches/abc/images').expect(422);
+      await request(app.getHttpServer())
+        .put('/v1/batches/abc/images')
+        .expect(422);
     });
 
     it('returns 404 when the batch does not exist on PUT', async () => {
       await request(app.getHttpServer())
-        .put('/batches/99999/images')
+        .put('/v1/batches/99999/images')
         .expect(404);
     });
 
     it('returns 422 for a non-numeric id on DELETE', async () => {
       await request(app.getHttpServer())
-        .delete('/batches/abc/images/1.jpg')
+        .delete('/v1/batches/abc/images/1.jpg')
         .expect(422);
     });
 
     it('returns 404 when the batch does not exist on DELETE', async () => {
       await request(app.getHttpServer())
-        .delete('/batches/99999/images/1.jpg')
+        .delete('/v1/batches/99999/images/1.jpg')
         .expect(404);
     });
   });
@@ -77,7 +79,7 @@ describe('BatchIdImagesController (e2e)', () => {
       const imageBuffer = Buffer.from('fake-jpeg-data', 'utf-8');
 
       const res = await request(app.getHttpServer())
-        .put(`/batches/${batch.id}/images`)
+        .put(`/v1/batches/${batch.id}/images`)
         .attach('images', imageBuffer, 'test.jpg')
         .expect(200);
 
@@ -112,7 +114,7 @@ describe('BatchIdImagesController (e2e)', () => {
       const imageBuffer = Buffer.from('fake-png-data', 'utf-8');
 
       const res = await request(app.getHttpServer())
-        .put(`/batches/${batch.id}/images`)
+        .put(`/v1/batches/${batch.id}/images`)
         .attach('images', imageBuffer, 'test.png')
         .expect(200);
 
@@ -135,7 +137,7 @@ describe('BatchIdImagesController (e2e)', () => {
       const buf3 = Buffer.from('fake-png-3', 'utf-8');
 
       const res = await request(app.getHttpServer())
-        .put(`/batches/${batch.id}/images`)
+        .put(`/v1/batches/${batch.id}/images`)
         .attach('images', buf1, 'a.jpg')
         .attach('images', buf2, 'b.jpg')
         .attach('images', buf3, 'c.png')
@@ -155,14 +157,14 @@ describe('BatchIdImagesController (e2e)', () => {
       // First upload
       const buf1 = Buffer.from('fake-jpeg-1', 'utf-8');
       await request(app.getHttpServer())
-        .put(`/batches/${batch.id}/images`)
+        .put(`/v1/batches/${batch.id}/images`)
         .attach('images', buf1, 'first.jpg')
         .expect(200);
 
       // Second upload
       const buf2 = Buffer.from('fake-png-2', 'utf-8');
       const res = await request(app.getHttpServer())
-        .put(`/batches/${batch.id}/images`)
+        .put(`/v1/batches/${batch.id}/images`)
         .attach('images', buf2, 'second.png')
         .expect(200);
 
@@ -178,7 +180,7 @@ describe('BatchIdImagesController (e2e)', () => {
       const imageBuffer = Buffer.from('fake-gif-data', 'utf-8');
 
       const res = await request(app.getHttpServer())
-        .put(`/batches/${batch.id}/images`)
+        .put(`/v1/batches/${batch.id}/images`)
         .attach('images', imageBuffer, 'test.gif')
         .expect(400);
 
@@ -194,7 +196,7 @@ describe('BatchIdImagesController (e2e)', () => {
       for (let i = 1; i <= 5; i++) {
         const buf = Buffer.from(`fake-data-${i}`, 'utf-8');
         await request(app.getHttpServer())
-          .put(`/batches/${batch.id}/images`)
+          .put(`/v1/batches/${batch.id}/images`)
           .attach('images', buf, `${i}.jpg`)
           .expect(200);
       }
@@ -202,7 +204,7 @@ describe('BatchIdImagesController (e2e)', () => {
       // 6th should fail
       const buf = Buffer.from('fake-data-6', 'utf-8');
       const res = await request(app.getHttpServer())
-        .put(`/batches/${batch.id}/images`)
+        .put(`/v1/batches/${batch.id}/images`)
         .attach('images', buf, '6.jpg')
         .expect(409);
 
@@ -215,7 +217,7 @@ describe('BatchIdImagesController (e2e)', () => {
       const batch = await seedBatch(app, pico.id);
 
       const res = await request(app.getHttpServer())
-        .get(`/batches/${batch.id}`)
+        .get(`/v1/batches/${batch.id}`)
         .expect(200);
 
       expect(res.body.images).toEqual([]);
@@ -232,7 +234,7 @@ describe('BatchIdImagesController (e2e)', () => {
 
       const buf = Buffer.from('fake-jpeg-data', 'utf-8');
       await request(app.getHttpServer())
-        .put(`/batches/${batch.id}/images`)
+        .put(`/v1/batches/${batch.id}/images`)
         .attach('images', buf, 'test.jpg')
         .expect(200);
 
@@ -244,7 +246,7 @@ describe('BatchIdImagesController (e2e)', () => {
       expect(fs.existsSync(filePath)).toBe(true);
 
       await request(app.getHttpServer())
-        .delete(`/batches/${batch.id}/images/1.jpg`)
+        .delete(`/v1/batches/${batch.id}/images/1.jpg`)
         .expect(204);
 
       expect(fs.existsSync(filePath)).toBe(false);
@@ -260,13 +262,13 @@ describe('BatchIdImagesController (e2e)', () => {
 
       // Upload 2 images
       await request(app.getHttpServer())
-        .put(`/batches/${batch.id}/images`)
+        .put(`/v1/batches/${batch.id}/images`)
         .attach('images', Buffer.from('data-1', 'utf-8'), 'a.jpg')
         .attach('images', Buffer.from('data-2', 'utf-8'), 'b.jpg')
         .expect(200);
 
       await request(app.getHttpServer())
-        .delete(`/batches/${batch.id}/images/1.jpg`)
+        .delete(`/v1/batches/${batch.id}/images/1.jpg`)
         .expect(204);
 
       const repo = await getBatchRepo(app);
@@ -279,7 +281,7 @@ describe('BatchIdImagesController (e2e)', () => {
       const batch = await seedBatch(app, pico.id);
 
       const res = await request(app.getHttpServer())
-        .delete(`/batches/${batch.id}/images/nonexistent.jpg`)
+        .delete(`/v1/batches/${batch.id}/images/nonexistent.jpg`)
         .expect(404);
 
       expect(res.body).toHaveProperty('statusCode', 404);
@@ -291,7 +293,7 @@ describe('BatchIdImagesController (e2e)', () => {
       const batch = await seedBatch(app, pico.id);
 
       await request(app.getHttpServer())
-        .delete(`/batches/${batch.id}/images/..%2F..%2Fetc%2Fpasswd`)
+        .delete(`/v1/batches/${batch.id}/images/..%2F..%2Fetc%2Fpasswd`)
         .expect(400);
     });
 
@@ -300,7 +302,7 @@ describe('BatchIdImagesController (e2e)', () => {
       const batch = await seedBatch(app, pico.id);
 
       await request(app.getHttpServer())
-        .delete(`/batches/${batch.id}/images/sub/dir/file.jpg`)
+        .delete(`/v1/batches/${batch.id}/images/sub/dir/file.jpg`)
         .expect(404);
     });
   });
@@ -314,7 +316,7 @@ describe('BatchIdImagesController (e2e)', () => {
 
       // Upload 3 images: slots 1, 2, 3
       await request(app.getHttpServer())
-        .put(`/batches/${batch.id}/images`)
+        .put(`/v1/batches/${batch.id}/images`)
         .attach('images', Buffer.from('d1', 'utf-8'), 'a.jpg')
         .attach('images', Buffer.from('d2', 'utf-8'), 'b.jpg')
         .attach('images', Buffer.from('d3', 'utf-8'), 'c.jpg')
@@ -322,12 +324,12 @@ describe('BatchIdImagesController (e2e)', () => {
 
       // Delete slot 2
       await request(app.getHttpServer())
-        .delete(`/batches/${batch.id}/images/2.jpg`)
+        .delete(`/v1/batches/${batch.id}/images/2.jpg`)
         .expect(204);
 
       // Upload new image → should reuse slot 2
       const res = await request(app.getHttpServer())
-        .put(`/batches/${batch.id}/images`)
+        .put(`/v1/batches/${batch.id}/images`)
         .attach('images', Buffer.from('d4', 'utf-8'), 'd.jpg')
         .expect(200);
 
@@ -346,7 +348,7 @@ describe('BatchIdImagesController (e2e)', () => {
       const batch = await seedBatch(app, pico.id);
 
       await request(app.getHttpServer())
-        .put(`/batches/${batch.id}/images`)
+        .put(`/v1/batches/${batch.id}/images`)
         .attach('images', Buffer.from('d1', 'utf-8'), 'a.jpg')
         .attach('images', Buffer.from('d2', 'utf-8'), 'b.jpg')
         .expect(200);
@@ -355,7 +357,7 @@ describe('BatchIdImagesController (e2e)', () => {
       expect(fs.existsSync(batchDir)).toBe(true);
 
       await request(app.getHttpServer())
-        .delete(`/batches/${batch.id}`)
+        .delete(`/v1/batches/${batch.id}`)
         .expect(204);
 
       expect(fs.existsSync(batchDir)).toBe(false);
@@ -366,7 +368,7 @@ describe('BatchIdImagesController (e2e)', () => {
       const batch = await seedBatch(app, pico.id);
 
       await request(app.getHttpServer())
-        .delete(`/batches/${batch.id}`)
+        .delete(`/v1/batches/${batch.id}`)
         .expect(204);
     });
   });
@@ -379,12 +381,12 @@ describe('BatchIdImagesController (e2e)', () => {
       const batch = await seedBatch(app, pico.id);
 
       await request(app.getHttpServer())
-        .put(`/batches/${batch.id}/images`)
+        .put(`/v1/batches/${batch.id}/images`)
         .attach('images', Buffer.from('d1', 'utf-8'), 'a.jpg')
         .expect(200);
 
       const res = await request(app.getHttpServer())
-        .get(`/batches/${batch.id}`)
+        .get(`/v1/batches/${batch.id}`)
         .expect(200);
 
       expect(res.body.images).toEqual(['1.jpg']);
@@ -401,7 +403,7 @@ describe('BatchIdImagesController (e2e)', () => {
       const batch = await seedBatch(app, pico.id);
 
       const res = await request(app.getHttpServer())
-        .get(`/batches/${batch.id}`)
+        .get(`/v1/batches/${batch.id}`)
         .expect(200);
 
       expect(res.body.images).toEqual([]);

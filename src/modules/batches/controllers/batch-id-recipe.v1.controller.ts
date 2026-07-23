@@ -18,7 +18,7 @@ import { BatchesService } from '../batches.service';
 @ApiTags('batches')
 @Controller('batches/:batchId')
 @ApiBatch()
-export class BatchIdRecipeController {
+export class BatchIdRecipeV1Controller {
   constructor(private readonly svc: BatchesService) {}
 
   @Post('recipe')

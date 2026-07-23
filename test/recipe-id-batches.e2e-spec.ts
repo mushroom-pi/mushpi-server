@@ -7,7 +7,7 @@ import { clearPicos, seedPicoUnit } from './fixtures/pico-units.fixtures';
 import { clearRecipes, seedRecipe } from './fixtures/recipes.fixtures';
 import { closeTestApp, createTestApp } from './test-setup';
 
-describe('RecipeIdBatchesController (e2e)', () => {
+describe('RecipeIdBatchesV1Controller (e2e)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
@@ -30,7 +30,7 @@ describe('RecipeIdBatchesController (e2e)', () => {
       const recipe = await seedRecipe(app, { name: 'empty-recipe' });
 
       const res = await request(app.getHttpServer())
-        .get(`/recipes/${recipe.id}/batches`)
+        .get(`/v1/recipes/${recipe.id}/batches`)
         .expect(200);
 
       expect(res.body).toMatchObject({ items: [], total: 0 });
@@ -51,7 +51,7 @@ describe('RecipeIdBatchesController (e2e)', () => {
       await seedBatch(app, pico.id, { notes: 'no-recipe' });
 
       const res = await request(app.getHttpServer())
-        .get(`/recipes/${recipeA.id}/batches`)
+        .get(`/v1/recipes/${recipeA.id}/batches`)
         .expect(200);
 
       expect(res.body.total).toBe(2);
@@ -76,7 +76,7 @@ describe('RecipeIdBatchesController (e2e)', () => {
       }
 
       const res = await request(app.getHttpServer())
-        .get(`/recipes/${recipe.id}/batches`)
+        .get(`/v1/recipes/${recipe.id}/batches`)
         .query({ page: 1, limit: 2 })
         .expect(200);
 
@@ -85,7 +85,7 @@ describe('RecipeIdBatchesController (e2e)', () => {
       expect(res.body.pages).toBe(3);
 
       const res2 = await request(app.getHttpServer())
-        .get(`/recipes/${recipe.id}/batches`)
+        .get(`/v1/recipes/${recipe.id}/batches`)
         .query({ page: 3, limit: 2 })
         .expect(200);
 
@@ -114,7 +114,7 @@ describe('RecipeIdBatchesController (e2e)', () => {
       });
 
       const res = await request(app.getHttpServer())
-        .get(`/recipes/${recipe.id}/batches`)
+        .get(`/v1/recipes/${recipe.id}/batches`)
         .expect(200);
 
       expect(res.body.items.length).toBe(2);

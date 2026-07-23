@@ -15,7 +15,7 @@ import {
 } from './fixtures/recipes.fixtures';
 import { closeTestApp, createTestApp } from './test-setup';
 
-describe('RecipeIdController (e2e)', () => {
+describe('RecipeIdV1Controller (e2e)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
@@ -38,19 +38,19 @@ describe('RecipeIdController (e2e)', () => {
   describe('middleware validation', () => {
     it('returns 422 for a non-numeric id', async () => {
       const res = await request(app.getHttpServer())
-        .get('/recipes/abc')
+        .get('/v1/recipes/abc')
         .expect(422);
       expect(res.body).toHaveProperty('statusCode', 422);
     });
 
     it('returns 422 for zero or negative id', async () => {
-      await request(app.getHttpServer()).get('/recipes/0').expect(422);
-      await request(app.getHttpServer()).get('/recipes/-5').expect(422);
+      await request(app.getHttpServer()).get('/v1/recipes/0').expect(422);
+      await request(app.getHttpServer()).get('/v1/recipes/-5').expect(422);
     });
 
     it('returns 404 when the recipe does not exist', async () => {
       const res = await request(app.getHttpServer())
-        .get('/recipes/99999')
+        .get('/v1/recipes/99999')
         .expect(404);
       expect(res.body).toHaveProperty('statusCode', 404);
     });
@@ -69,7 +69,7 @@ describe('RecipeIdController (e2e)', () => {
       });
 
       const res = await request(app.getHttpServer())
-        .get(`/recipes/${recipe.id}`)
+        .get(`/v1/recipes/${recipe.id}`)
         .expect(200);
 
       expect(res.body).toHaveProperty('id', recipe.id);
@@ -92,7 +92,7 @@ describe('RecipeIdController (e2e)', () => {
       });
 
       const res = await request(app.getHttpServer())
-        .patch(`/recipes/${recipe.id}`)
+        .patch(`/v1/recipes/${recipe.id}`)
         .send({ species: 'pink oyster', duration_days: 21, notes: 'Updated' })
         .expect(200);
 
@@ -112,12 +112,12 @@ describe('RecipeIdController (e2e)', () => {
       const recipe = await seedRecipe(app, { name: 'patch-invalid' });
 
       await request(app.getHttpServer())
-        .patch(`/recipes/${recipe.id}`)
+        .patch(`/v1/recipes/${recipe.id}`)
         .send({ temperature_target: 99 })
         .expect(422);
 
       await request(app.getHttpServer())
-        .patch(`/recipes/${recipe.id}`)
+        .patch(`/v1/recipes/${recipe.id}`)
         .send({ humidity_target: 10 })
         .expect(422);
     });
@@ -130,11 +130,11 @@ describe('RecipeIdController (e2e)', () => {
       const recipe = await seedRecipe(app, { name: 'to-delete' });
 
       await request(app.getHttpServer())
-        .delete(`/recipes/${recipe.id}`)
+        .delete(`/v1/recipes/${recipe.id}`)
         .expect(204);
 
       await request(app.getHttpServer())
-        .get(`/recipes/${recipe.id}`)
+        .get(`/v1/recipes/${recipe.id}`)
         .expect(404);
 
       const repo = await getRecipeRepo(app);
@@ -155,7 +155,7 @@ describe('RecipeIdController (e2e)', () => {
 
       // delete the recipe
       await request(app.getHttpServer())
-        .delete(`/recipes/${recipe.id}`)
+        .delete(`/v1/recipes/${recipe.id}`)
         .expect(204);
 
       // batch should still exist but recipe_id should be NULL
@@ -167,7 +167,7 @@ describe('RecipeIdController (e2e)', () => {
 
     it('returns 422 for non-numeric id on delete', async () => {
       await request(app.getHttpServer())
-        .delete('/recipes/not-a-number')
+        .delete('/v1/recipes/not-a-number')
         .expect(422);
     });
   });

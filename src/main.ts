@@ -12,7 +12,10 @@ import { Logger } from 'nestjs-pino';
 import toobusy from 'toobusy-js';
 
 import { ExceptionsFilter } from './common/filters/exceptions.filter';
+import { AppSecretBearerMiddleware } from './common/middleware/app-secret-bearer.middleware';
+import { ProtectEventLoopMiddleware } from './common/middleware/protect-event-loop.middleware';
 import { validationPipe } from './common/pipes/validation.pipe';
+import { applyApiVersioning } from './common/utils/api-version';
 import { AppModule } from './modules/app.module';
 import { CustomConfigService } from './modules/config/config.service';
 import { SwaggerModule } from './modules/swagger/swagger.module';
@@ -25,6 +28,8 @@ async function bootstrap() {
 
   const configService: CustomConfigService = app.get(CustomConfigService);
 
+  applyApiVersioning(app);
+
   // Security libraries
   /** CORS-settings */
   const origin = [configService.security.clientUrl];
@@ -36,6 +41,12 @@ async function bootstrap() {
   toobusy.maxLag(configService.security.maxEventLoopDelay);
   app.use(hpp());
   app.use(helmet());
+
+  /** Global Nest middleware — registered via app.use() to bypass route versioning */
+  const protectEventLoop = new ProtectEventLoopMiddleware(configService);
+  const appSecretBearer = new AppSecretBearerMiddleware(configService);
+  app.use(protectEventLoop.use.bind(protectEventLoop));
+  app.use(appSecretBearer.use.bind(appSecretBearer));
 
   // Customized tools
   if (configService.docs.makeDocs) {

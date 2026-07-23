@@ -4,8 +4,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { BatchesModule } from 'src/modules/batches/batches.module';
 import { PicoUnitsModule } from 'src/modules/pico-units/pico-units.module';
 
-import { BatchIdReadingsController } from './controllers/batch-id-readings.controller';
-import { PicoUnitIdReadingsController } from './controllers/pico-unit-id-readings.controller';
+import { BatchIdReadingsV1Controller } from './controllers/batch-id-readings.v1.controller';
+import { PicoUnitIdReadingsV1Controller } from './controllers/pico-unit-id-readings.v1.controller';
 import { Readings } from './readings.entity';
 import { ReadingsService } from './readings.service';
 
@@ -16,7 +16,7 @@ import { ReadingsService } from './readings.service';
     forwardRef(() => BatchesModule),
   ],
   providers: [ReadingsService],
-  controllers: [PicoUnitIdReadingsController, BatchIdReadingsController],
+  controllers: [PicoUnitIdReadingsV1Controller, BatchIdReadingsV1Controller],
   exports: [ReadingsService],
 })
 export class ReadingsModule {}

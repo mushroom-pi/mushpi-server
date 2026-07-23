@@ -25,7 +25,7 @@ import { BatchesService } from '../batches.service';
   description: 'Database-related error',
   type: ErrorDto,
 })
-export class BatchesController {
+export class BatchesV1Controller {
   constructor(private readonly svc: BatchesService) {}
 
   @Post()

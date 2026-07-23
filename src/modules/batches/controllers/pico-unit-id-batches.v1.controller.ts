@@ -16,7 +16,7 @@ import { BatchesService } from '../batches.service';
 @ApiTags('pico-units', 'batches')
 @Controller('pico-units/:picoUnitId/batches')
 @ApiPicoUnit()
-export class PicoUnitIdBatchesController {
+export class PicoUnitIdBatchesV1Controller {
   constructor(private readonly svc: BatchesService) {}
 
   @Get()

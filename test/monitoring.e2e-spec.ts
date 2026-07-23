@@ -100,4 +100,16 @@ describe('AppController (e2e)', () => {
       return request(app.getHttpServer()).get('/metrics').expect(200);
     });
   });
+
+  describe('API versioning regression', () => {
+    it('GET /v1/ping returns 404 (monitoring stays unversioned)', async () => {
+      const res = await request(app.getHttpServer()).get('/v1/ping');
+      expect(res.status).toBe(404);
+    });
+
+    it('GET /v1/health returns 404 (monitoring stays unversioned)', async () => {
+      const res = await request(app.getHttpServer()).get('/v1/health');
+      expect(res.status).toBe(404);
+    });
+  });
 });

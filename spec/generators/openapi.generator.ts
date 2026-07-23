@@ -4,6 +4,7 @@ import { mkdirSync, writeFileSync } from 'fs';
 import yaml from 'js-yaml';
 import { resolve } from 'path';
 
+import { applyApiVersioning } from 'src/common/utils/api-version';
 import { AppModule } from 'src/modules/app.module';
 import { SwaggerModule } from 'src/modules/swagger/swagger.module';
 
@@ -15,6 +16,8 @@ import { SwaggerModule } from 'src/modules/swagger/swagger.module';
     const app = await NestFactory.create(AppModule, {
       logger: false,
     });
+
+    applyApiVersioning(app);
 
     const swagger = app.get(SwaggerModule);
     const doc = swagger.buildOpenApiDocument(app as any, undefined, {

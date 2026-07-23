@@ -121,7 +121,23 @@ export class SwaggerModule {
       )
       .build();
 
-    const document = NestSwaggerModule.createDocument(app, swaggerConfig);
+    const document = NestSwaggerModule.createDocument(app, swaggerConfig, {
+      operationIdFactory: (
+        controllerKey: string,
+        methodKey: string,
+        version?: string,
+      ) => {
+        // Strip V1 suffix from controller class names in operationIds.
+        // Controller files/classes carry V1 for code organisation, but the
+        // generated client contract should not encode it redundantly —
+        // the version is already in the URL path and the _v1 operationId suffix.
+        const cleanKey = controllerKey.replace(/V1(?=Controller)/, '');
+        if (version) {
+          return `${cleanKey}_${methodKey}_${version}`;
+        }
+        return `${cleanKey}_${methodKey}`;
+      },
+    });
 
     globalErrors
       .filter((errorResponse) => {

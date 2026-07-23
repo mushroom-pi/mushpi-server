@@ -12,7 +12,7 @@ import { clearPicos, seedPicoUnit } from './fixtures/pico-units.fixtures';
 import { clearRecipes, seedRecipe } from './fixtures/recipes.fixtures';
 import { closeTestApp, createTestApp } from './test-setup';
 
-describe('BatchIdController (e2e)', () => {
+describe('BatchIdV1Controller (e2e)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
@@ -33,7 +33,7 @@ describe('BatchIdController (e2e)', () => {
   describe('middleware validation', () => {
     it('returns 422 for non-numeric id', async () => {
       const res = await request(app.getHttpServer())
-        .get('/batches/abc')
+        .get('/v1/batches/abc')
         .expect(422);
       // message from UnprocessableEntityException
       expect(res.body).toHaveProperty('statusCode', 422);
@@ -41,13 +41,13 @@ describe('BatchIdController (e2e)', () => {
     });
 
     it('returns 422 for zero or negative id', async () => {
-      await request(app.getHttpServer()).get('/batches/0').expect(422);
-      await request(app.getHttpServer()).get('/batches/-1').expect(422);
+      await request(app.getHttpServer()).get('/v1/batches/0').expect(422);
+      await request(app.getHttpServer()).get('/v1/batches/-1').expect(422);
     });
 
     it('returns 404 when batch does not exist', async () => {
       const res = await request(app.getHttpServer())
-        .get('/batches/99999')
+        .get('/v1/batches/99999')
         .expect(404);
       expect(res.body).toHaveProperty('statusCode', 404);
     });
@@ -62,7 +62,7 @@ describe('BatchIdController (e2e)', () => {
       const batch = await seedBatch(app, pico.id, { notes: 'get-test-batch' });
 
       const res = await request(app.getHttpServer())
-        .get(`/batches/${batch.id}`)
+        .get(`/v1/batches/${batch.id}`)
         .expect(200);
       expect(res.body).toHaveProperty('id', batch.id);
       expect(res.body).toHaveProperty('pico_unit_id', pico.id);
@@ -96,7 +96,7 @@ describe('BatchIdController (e2e)', () => {
       };
 
       const res = await request(app.getHttpServer())
-        .patch(`/batches/${batch.id}`)
+        .patch(`/v1/batches/${batch.id}`)
         .send(payload)
         .expect(200);
 
@@ -126,7 +126,7 @@ describe('BatchIdController (e2e)', () => {
 
       // send invalid date string
       await request(app.getHttpServer())
-        .patch(`/batches/${batch.id}`)
+        .patch(`/v1/batches/${batch.id}`)
         .send({ finish_at: 'not-a-date' })
         .expect(422);
     });
@@ -145,7 +145,7 @@ describe('BatchIdController (e2e)', () => {
       // Attempt to change pico_unit_id (ValidationPipe with whitelist should strip unknown props).
       // But to be safe we assert the pico_unit_id remains unchanged after the PATCH.
       await request(app.getHttpServer())
-        .patch(`/batches/${batch.id}`)
+        .patch(`/v1/batches/${batch.id}`)
         .send({ pico_unit_id: picoB.id, notes: 'still same' })
         .expect(422);
 
@@ -172,7 +172,7 @@ describe('BatchIdController (e2e)', () => {
 
       // Attempt to change start_at
       const res = await request(app.getHttpServer())
-        .patch(`/batches/${batch.id}`)
+        .patch(`/v1/batches/${batch.id}`)
         .send({
           start_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
         })
@@ -200,7 +200,7 @@ describe('BatchIdController (e2e)', () => {
 
       // Modify notes (should succeed)
       const res = await request(app.getHttpServer())
-        .patch(`/batches/${batch.id}`)
+        .patch(`/v1/batches/${batch.id}`)
         .send({ notes: 'updated notes after start' })
         .expect(200);
 
@@ -222,7 +222,7 @@ describe('BatchIdController (e2e)', () => {
 
       // Attempt to modify species (should fail)
       const res = await request(app.getHttpServer())
-        .patch(`/batches/${batch.id}`)
+        .patch(`/v1/batches/${batch.id}`)
         .send({ species: 'shiitake' })
         .expect(412);
 
@@ -253,7 +253,7 @@ describe('BatchIdController (e2e)', () => {
 
       // Modify notes and description (should succeed)
       const res = await request(app.getHttpServer())
-        .patch(`/batches/${batch.id}`)
+        .patch(`/v1/batches/${batch.id}`)
         .send({
           notes: 'updated final notes',
           description: 'updated final desc',
@@ -279,7 +279,7 @@ describe('BatchIdController (e2e)', () => {
 
       // Try to modify both temperature_target (disallowed) and notes (allowed)
       const res = await request(app.getHttpServer())
-        .patch(`/batches/${batch.id}`)
+        .patch(`/v1/batches/${batch.id}`)
         .send({
           temperature_target: 25,
           notes: 'updated notes',
@@ -310,7 +310,7 @@ describe('BatchIdController (e2e)', () => {
 
       // Attempt to set start_at > finish_at
       const res = await request(app.getHttpServer())
-        .patch(`/batches/${batch.id}`)
+        .patch(`/v1/batches/${batch.id}`)
         .send({
           start_at: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
           finish_at: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
@@ -336,7 +336,7 @@ describe('BatchIdController (e2e)', () => {
 
       // Move start_at to after finish_at (only start_at in payload)
       const res = await request(app.getHttpServer())
-        .patch(`/batches/${batch.id}`)
+        .patch(`/v1/batches/${batch.id}`)
         .send({
           start_at: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
         })
@@ -363,7 +363,7 @@ describe('BatchIdController (e2e)', () => {
 
       // delete
       await request(app.getHttpServer())
-        .delete(`/batches/${batch.id}`)
+        .delete(`/v1/batches/${batch.id}`)
         .expect(204);
 
       // ensure removed
@@ -373,13 +373,13 @@ describe('BatchIdController (e2e)', () => {
 
       // subsequent GET returns 404
       await request(app.getHttpServer())
-        .get(`/batches/${batch.id}`)
+        .get(`/v1/batches/${batch.id}`)
         .expect(404);
     });
 
     it('returns 422 for invalid id on delete', async () => {
       await request(app.getHttpServer())
-        .delete('/batches/not-a-number')
+        .delete('/v1/batches/not-a-number')
         .expect(422);
     });
   });
@@ -396,7 +396,7 @@ describe('BatchIdController (e2e)', () => {
       const batch = await seedBatch(app, pico.id, { recipe_id: recipe.id });
 
       const res = await request(app.getHttpServer())
-        .get(`/batches/${batch.id}`)
+        .get(`/v1/batches/${batch.id}`)
         .expect(200);
 
       expect(res.body).toHaveProperty('recipe_id', recipe.id);
@@ -410,7 +410,7 @@ describe('BatchIdController (e2e)', () => {
       const batch = await seedBatch(app, pico.id, {});
 
       const res = await request(app.getHttpServer())
-        .get(`/batches/${batch.id}`)
+        .get(`/v1/batches/${batch.id}`)
         .expect(200);
 
       expect(res.body.recipe_id).toBeNull();
@@ -431,7 +431,7 @@ describe('BatchIdController (e2e)', () => {
       const batch = await seedBatch(app, pico.id, { recipe_id: recipe.id });
 
       const res = await request(app.getHttpServer())
-        .get(`/batches/${batch.id}`)
+        .get(`/v1/batches/${batch.id}`)
         .expect(200);
 
       expect(res.body).toHaveProperty('recipe_id', recipe.id);
@@ -479,7 +479,7 @@ describe('BatchIdController (e2e)', () => {
         });
 
         const res = await request(app.getHttpServer())
-          .get(`/batches/${batch!.id}`)
+          .get(`/v1/batches/${batch!.id}`)
           .expect(200);
 
         expect(res.body).toHaveProperty('recipe_id', 999999);

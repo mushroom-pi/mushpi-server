@@ -40,7 +40,7 @@ describe('Pico Units (e2e)', () => {
 
     it('creates a new unit (201) with full payload and sets last_seen', async () => {
       const res = await request(app.getHttpServer())
-        .post('/pico-units/announce')
+        .post('/v1/pico-units/announce')
         .set(announceHeaders)
         .send({
           handle: 'alpha',
@@ -66,7 +66,7 @@ describe('Pico Units (e2e)', () => {
 
     it('re-announces same handle with new IP → same id, ip updated, last_seen refreshed', async () => {
       const res = await request(app.getHttpServer())
-        .post('/pico-units/announce')
+        .post('/v1/pico-units/announce')
         .set(announceHeaders)
         .send({ handle: 'alpha', ip: '192.168.1.10' })
         .expect(201);
@@ -75,7 +75,7 @@ describe('Pico Units (e2e)', () => {
       await new Promise((r) => setTimeout(r, 10));
 
       const res2 = await request(app.getHttpServer())
-        .post('/pico-units/announce')
+        .post('/v1/pico-units/announce')
         .set(announceHeaders)
         .send({ handle: 'alpha', ip: '10.0.0.99' })
         .expect(201);
@@ -92,14 +92,14 @@ describe('Pico Units (e2e)', () => {
 
     it('returns 401 when X-Pico-Secret is missing', async () => {
       await request(app.getHttpServer())
-        .post('/pico-units/announce')
+        .post('/v1/pico-units/announce')
         .send({ handle: 'alpha' })
         .expect(401);
     });
 
     it('returns 401 when X-Pico-Secret is wrong', async () => {
       await request(app.getHttpServer())
-        .post('/pico-units/announce')
+        .post('/v1/pico-units/announce')
         .set({ 'x-pico-secret': 'wrong-secret' })
         .send({ handle: 'alpha' })
         .expect(401);
@@ -107,13 +107,13 @@ describe('Pico Units (e2e)', () => {
 
     it('returns 409 when re-announcing existing handle WITHOUT ip', async () => {
       await request(app.getHttpServer())
-        .post('/pico-units/announce')
+        .post('/v1/pico-units/announce')
         .set(announceHeaders)
         .send({ handle: 'alpha', ip: '192.168.1.10' })
         .expect(201);
 
       await request(app.getHttpServer())
-        .post('/pico-units/announce')
+        .post('/v1/pico-units/announce')
         .set(announceHeaders)
         .send({ handle: 'alpha' })
         .expect(409);
@@ -121,7 +121,7 @@ describe('Pico Units (e2e)', () => {
 
     it('returns 422 when handle is missing', async () => {
       await request(app.getHttpServer())
-        .post('/pico-units/announce')
+        .post('/v1/pico-units/announce')
         .set(announceHeaders)
         .send({})
         .expect(422);
@@ -133,7 +133,7 @@ describe('Pico Units (e2e)', () => {
       mockedAxios.get.mockResolvedValueOnce({ status: 200, data: 'pong' });
 
       const res = await request(app.getHttpServer())
-        .post('/pico-units')
+        .post('/v1/pico-units')
         .send({ handle: 'manual-1' })
         .expect(201);
 
@@ -152,7 +152,7 @@ describe('Pico Units (e2e)', () => {
       mockedAxios.get.mockRejectedValueOnce({ isAxiosError: true });
 
       const res = await request(app.getHttpServer())
-        .post('/pico-units')
+        .post('/v1/pico-units')
         .send({ handle: 'unreachable' })
         .expect(424);
 
@@ -171,21 +171,21 @@ describe('Pico Units (e2e)', () => {
       mockedAxios.get.mockResolvedValueOnce({ status: 200, data: 'pong' });
 
       await request(app.getHttpServer())
-        .post('/pico-units')
+        .post('/v1/pico-units')
         .send({ handle: 'existing' })
         .expect(409);
     });
 
     it('returns 422 when handle is missing', async () => {
       await request(app.getHttpServer())
-        .post('/pico-units')
+        .post('/v1/pico-units')
         .send({})
         .expect(422);
     });
 
     it('returns 422 when handle is empty string', async () => {
       await request(app.getHttpServer())
-        .post('/pico-units')
+        .post('/v1/pico-units')
         .send({ handle: '' })
         .expect(422);
     });
@@ -196,7 +196,7 @@ describe('Pico Units (e2e)', () => {
       await seedManyPicoUnits(app, 3); // 3 units
 
       const res = await request(app.getHttpServer())
-        .get('/pico-units')
+        .get('/v1/pico-units')
         .query({ page: 1, limit: 2 })
         .expect(200);
 
@@ -213,7 +213,7 @@ describe('Pico Units (e2e)', () => {
       const repo = await getPicoRepo(app);
       const one = await repo.findOneBy({ handle: 'unit-2' });
       const resQ = await request(app.getHttpServer())
-        .get('/pico-units')
+        .get('/v1/pico-units')
         .query({ q: one!.handle }) // search by handle
         .expect(200);
       expect(resQ.body.items.some((u: PicoUnit) => u.id === one!.id)).toBe(
@@ -225,7 +225,7 @@ describe('Pico Units (e2e)', () => {
       await seedManyPicoUnits(app, 2);
 
       const res = await request(app.getHttpServer())
-        .get('/pico-units')
+        .get('/v1/pico-units')
         .expect(200);
 
       const items = res.body.items as any[];

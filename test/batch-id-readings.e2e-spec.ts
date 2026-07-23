@@ -72,7 +72,7 @@ describe('Batch readings endpoint (e2e)', () => {
     });
 
     const res = await request(app.getHttpServer())
-      .get(`/batches/${batch.id}/readings`)
+      .get(`/v1/batches/${batch.id}/readings`)
       .expect(200);
 
     // should return r1, r2, r3 only (chronological)
@@ -110,7 +110,7 @@ describe('Batch readings endpoint (e2e)', () => {
     // provide start between r1 and r2 => expect r2, r3, r4
     const startIso = new Date(r1.ts.getTime() + 5000).toISOString(); // r1 +5s
     const resStart = await request(app.getHttpServer())
-      .get(`/batches/${batch.id}/readings`)
+      .get(`/v1/batches/${batch.id}/readings`)
       .query({ start: startIso })
       .expect(200);
 
@@ -123,7 +123,7 @@ describe('Batch readings endpoint (e2e)', () => {
     // provide end between r2 and r3 => expect r1,r2
     const endIso = new Date(r2.ts.getTime() + 5000).toISOString();
     const resEnd = await request(app.getHttpServer())
-      .get(`/batches/${batch.id}/readings`)
+      .get(`/v1/batches/${batch.id}/readings`)
       .query({ end: endIso })
       .expect(200);
 
@@ -133,7 +133,7 @@ describe('Batch readings endpoint (e2e)', () => {
     const start2 = new Date(r1.ts.getTime() + 5000).toISOString();
     const end2 = new Date(r3.ts.getTime() - 5000).toISOString();
     const resBoth = await request(app.getHttpServer())
-      .get(`/batches/${batch.id}/readings`)
+      .get(`/v1/batches/${batch.id}/readings`)
       .query({ start: start2, end: end2 })
       .expect(200);
 
@@ -171,7 +171,7 @@ describe('Batch readings endpoint (e2e)', () => {
 
     // request window wider than batch (start before batch, end after batch) -> clamped to batch: expect r1,r2,r3
     const res = await request(app.getHttpServer())
-      .get(`/batches/${batch.id}/readings`)
+      .get(`/v1/batches/${batch.id}/readings`)
       .query({
         start: new Date(base - 120000).toISOString(), // -120s
         end: new Date(base + 60000).toISOString(), // +60s
@@ -207,7 +207,7 @@ describe('Batch readings endpoint (e2e)', () => {
     });
 
     await request(app.getHttpServer())
-      .get(`/batches/${batch.id}/readings`)
+      .get(`/v1/batches/${batch.id}/readings`)
       .query({
         start: new Date(base + 10000).toISOString(),
         end: new Date(base + 20000).toISOString(),
@@ -226,7 +226,7 @@ describe('Batch readings endpoint (e2e)', () => {
     });
 
     await request(app.getHttpServer())
-      .get(`/batches/${batch.id}/readings`)
+      .get(`/v1/batches/${batch.id}/readings`)
       .query({ start: 'invalid-date' })
       .expect(422);
   });
@@ -247,7 +247,7 @@ describe('Batch readings endpoint (e2e)', () => {
     const e = new Date(base - 20000).toISOString(); // before start -> s > e
 
     const res = await request(app.getHttpServer())
-      .get(`/batches/${batch.id}/readings`)
+      .get(`/v1/batches/${batch.id}/readings`)
       .query({ start: s, end: e })
       .expect(400);
 

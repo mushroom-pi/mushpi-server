@@ -9,7 +9,7 @@ import {
 } from './fixtures/recipes.fixtures';
 import { closeTestApp, createTestApp } from './test-setup';
 
-describe('RecipesController (e2e)', () => {
+describe('RecipesV1Controller (e2e)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
@@ -30,7 +30,7 @@ describe('RecipesController (e2e)', () => {
   describe('GET /recipes', () => {
     it('returns an empty paginated response when no recipes exist', async () => {
       const res = await request(app.getHttpServer())
-        .get('/recipes')
+        .get('/v1/recipes')
         .expect(200);
 
       expect(res.body).toMatchObject({ items: [], total: 0, page: 1 });
@@ -45,7 +45,7 @@ describe('RecipesController (e2e)', () => {
       }
 
       const res = await request(app.getHttpServer())
-        .get('/recipes')
+        .get('/v1/recipes')
         .query({ page: 1, limit: 2 })
         .expect(200);
 
@@ -56,7 +56,7 @@ describe('RecipesController (e2e)', () => {
       expect(res.body.pages).toBe(3);
 
       const page2 = await request(app.getHttpServer())
-        .get('/recipes')
+        .get('/v1/recipes')
         .query({ page: 2, limit: 2 })
         .expect(200);
 
@@ -69,7 +69,7 @@ describe('RecipesController (e2e)', () => {
       await seedRecipe(app, { name: 'r-oyster-2', species: 'pink oyster' });
 
       const res = await request(app.getHttpServer())
-        .get('/recipes')
+        .get('/v1/recipes')
         .query({ species: 'oyster' })
         .expect(200);
 
@@ -93,7 +93,7 @@ describe('RecipesController (e2e)', () => {
       };
 
       const res = await request(app.getHttpServer())
-        .post('/recipes')
+        .post('/v1/recipes')
         .send(payload)
         .expect(201);
 
@@ -122,7 +122,7 @@ describe('RecipesController (e2e)', () => {
       };
 
       const res = await request(app.getHttpServer())
-        .post('/recipes')
+        .post('/v1/recipes')
         .send(payload)
         .expect(201);
 
@@ -132,11 +132,14 @@ describe('RecipesController (e2e)', () => {
 
     it('returns 422 when required fields are missing', async () => {
       // missing everything
-      await request(app.getHttpServer()).post('/recipes').send({}).expect(422);
+      await request(app.getHttpServer())
+        .post('/v1/recipes')
+        .send({})
+        .expect(422);
 
       // missing species
       await request(app.getHttpServer())
-        .post('/recipes')
+        .post('/v1/recipes')
         .send({
           name: 'incomplete',
           temperature_target: 20,
@@ -155,12 +158,12 @@ describe('RecipesController (e2e)', () => {
       };
 
       await request(app.getHttpServer())
-        .post('/recipes')
+        .post('/v1/recipes')
         .send({ ...base, temperature_target: -1 })
         .expect(422);
 
       await request(app.getHttpServer())
-        .post('/recipes')
+        .post('/v1/recipes')
         .send({ ...base, temperature_target: 51 })
         .expect(422);
     });
@@ -174,19 +177,19 @@ describe('RecipesController (e2e)', () => {
       };
 
       await request(app.getHttpServer())
-        .post('/recipes')
+        .post('/v1/recipes')
         .send({ ...base, humidity_target: 19 })
         .expect(422);
 
       await request(app.getHttpServer())
-        .post('/recipes')
+        .post('/v1/recipes')
         .send({ ...base, humidity_target: 91 })
         .expect(422);
     });
 
     it('returns 422 when duration_days is less than 1', async () => {
       await request(app.getHttpServer())
-        .post('/recipes')
+        .post('/v1/recipes')
         .send({
           name: 'duration-test',
           species: 'oyster',
@@ -207,12 +210,12 @@ describe('RecipesController (e2e)', () => {
       };
 
       await request(app.getHttpServer())
-        .post('/recipes')
+        .post('/v1/recipes')
         .send(payload)
         .expect(201);
 
       const res = await request(app.getHttpServer())
-        .post('/recipes')
+        .post('/v1/recipes')
         .send(payload)
         .expect(409);
 

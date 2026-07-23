@@ -3,8 +3,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ReadingsModule } from 'src/modules/readings/readings.module';
 
-import { PicoUnitIdController } from './controllers/pico-unit-id.controller';
-import { PicoUnitsController } from './controllers/pico-units.controller';
+import { PicoUnitIdV1Controller } from './controllers/pico-unit-id.v1.controller';
+import { PicoUnitsV1Controller } from './controllers/pico-units.v1.controller';
 import { PicoUnit } from './pico-unit.entity';
 import { PicoUnitsService } from './pico-units.service';
 
@@ -15,6 +15,6 @@ import { PicoUnitsService } from './pico-units.service';
   ],
   providers: [PicoUnitsService],
   exports: [PicoUnitsService, TypeOrmModule.forFeature([PicoUnit])],
-  controllers: [PicoUnitsController, PicoUnitIdController],
+  controllers: [PicoUnitsV1Controller, PicoUnitIdV1Controller],
 })
 export class PicoUnitsModule {}

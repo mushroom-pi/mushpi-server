@@ -12,7 +12,7 @@ import { RecipesService } from '../recipes.service';
 @ApiTags('recipes')
 @Controller('recipes/:recipeId')
 @ApiRecipe()
-export class RecipeIdController {
+export class RecipeIdV1Controller {
   constructor(private readonly svc: RecipesService) {}
 
   @Get()

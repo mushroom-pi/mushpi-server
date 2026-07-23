@@ -29,7 +29,7 @@ import { RecipesService } from '../recipes.service';
 @ApiTags('recipes', 'images')
 @Controller('recipes/:recipeId/image')
 @ApiRecipe()
-export class RecipeIdImageController {
+export class RecipeIdImageV1Controller {
   constructor(private readonly svc: RecipesService) {}
 
   @Put()

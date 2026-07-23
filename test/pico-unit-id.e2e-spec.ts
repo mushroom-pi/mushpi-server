@@ -42,7 +42,7 @@ describe('Pico Units (e2e)', () => {
       });
 
       const res = await request(app.getHttpServer())
-        .get(`/pico-units/${unit.id}`)
+        .get(`/v1/pico-units/${unit.id}`)
         .expect(200);
 
       expect(res.body).toMatchObject({
@@ -61,7 +61,7 @@ describe('Pico Units (e2e)', () => {
       });
 
       const res = await request(app.getHttpServer())
-        .get(`/pico-units/${unit.id}`)
+        .get(`/v1/pico-units/${unit.id}`)
         .expect(200);
 
       expect(res.body).toMatchObject({
@@ -79,7 +79,7 @@ describe('Pico Units (e2e)', () => {
       });
 
       const res = await request(app.getHttpServer())
-        .get(`/pico-units/${unit.id}`)
+        .get(`/v1/pico-units/${unit.id}`)
         .expect(200);
 
       expect(res.body).toMatchObject({
@@ -90,7 +90,7 @@ describe('Pico Units (e2e)', () => {
     });
 
     it('404 when not found', async () => {
-      await request(app.getHttpServer()).get('/pico-units/9999').expect(404);
+      await request(app.getHttpServer()).get('/v1/pico-units/9999').expect(404);
     });
   });
 
@@ -102,7 +102,7 @@ describe('Pico Units (e2e)', () => {
       });
 
       const res = await request(app.getHttpServer())
-        .patch(`/pico-units/${unit.id}`)
+        .patch(`/v1/pico-units/${unit.id}`)
         .send({ name: 'New Name', description: 'Updated', enabled: false })
         .expect(200);
 
@@ -123,13 +123,13 @@ describe('Pico Units (e2e)', () => {
       });
 
       await request(app.getHttpServer())
-        .delete(`/pico-units/${unit.id}`)
+        .delete(`/v1/pico-units/${unit.id}`)
         .expect(204)
         .expect(({ body }) => expect(body).toMatchObject({}));
 
       // confirm it’s gone
       await request(app.getHttpServer())
-        .get(`/pico-units/${unit.id}`)
+        .get(`/v1/pico-units/${unit.id}`)
         .expect(404);
     });
   });
@@ -149,7 +149,7 @@ describe('Pico Units (e2e)', () => {
       const before = (await repo.findOneBy({ id: unit.id }))!.last_seen;
 
       const res = await request(app.getHttpServer())
-        .get(`/pico-units/${unit.id}/ping`)
+        .get(`/v1/pico-units/${unit.id}/ping`)
         .expect(200);
 
       // controller returns string 'pong'
@@ -182,7 +182,7 @@ describe('Pico Units (e2e)', () => {
       mockedAxios.get.mockRejectedValueOnce(error as AxiosError);
 
       const res = await request(app.getHttpServer())
-        .get(`/pico-units/${unit.id}/ping`)
+        .get(`/v1/pico-units/${unit.id}/ping`)
         .expect(417);
 
       // response body should be your ExceptionResponseBody shape with statusCode 417
@@ -209,7 +209,7 @@ describe('Pico Units (e2e)', () => {
       mockedAxios.get.mockRejectedValueOnce(error as AxiosError);
 
       const res = await request(app.getHttpServer())
-        .get(`/pico-units/${unit.id}/ping`)
+        .get(`/v1/pico-units/${unit.id}/ping`)
         .expect(502);
 
       expect(res.body).toHaveProperty('statusCode', 502);
@@ -235,7 +235,7 @@ describe('Pico Units (e2e)', () => {
       mockedAxios.get.mockRejectedValueOnce(error as AxiosError);
 
       const res = await request(app.getHttpServer())
-        .get(`/pico-units/${unit.id}/ping`)
+        .get(`/v1/pico-units/${unit.id}/ping`)
         .expect(424);
 
       expect(res.body).toHaveProperty('statusCode', 424);
@@ -261,7 +261,7 @@ describe('Pico Units (e2e)', () => {
           .mockResolvedValueOnce({ status: 200, data: 'pong' }); // IP succeeds
 
         const res = await request(app.getHttpServer())
-          .get(`/pico-units/${unit.id}/ping`)
+          .get(`/v1/pico-units/${unit.id}/ping`)
           .expect(200);
 
         expect(res.text === 'pong' || res.body === 'pong').toBeTruthy();
@@ -293,7 +293,7 @@ describe('Pico Units (e2e)', () => {
         mockedAxios.get.mockRejectedValueOnce(networkError as AxiosError);
 
         await request(app.getHttpServer())
-          .get(`/pico-units/${unit.id}/ping`)
+          .get(`/v1/pico-units/${unit.id}/ping`)
           .expect(502);
       });
 
@@ -312,7 +312,7 @@ describe('Pico Units (e2e)', () => {
         mockedAxios.get.mockRejectedValueOnce(serverError as AxiosError);
 
         await request(app.getHttpServer())
-          .get(`/pico-units/${unit.id}/ping`)
+          .get(`/v1/pico-units/${unit.id}/ping`)
           .expect(417);
       });
     });

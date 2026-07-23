@@ -43,7 +43,7 @@ describe('PUT /pico-units/:picoUnitId/reboot (e2e)', () => {
     mockedAxios.post.mockResolvedValueOnce({ status: 200, data: {} });
 
     const res = await request(app.getHttpServer())
-      .put(`/pico-units/${unit.id}/reboot`)
+      .put(`/v1/pico-units/${unit.id}/reboot`)
       .send({ type: 'soft' })
       .expect(202);
 
@@ -79,7 +79,7 @@ describe('PUT /pico-units/:picoUnitId/reboot (e2e)', () => {
     mockedAxios.post.mockRejectedValueOnce(networkError as AxiosError);
 
     const res = await request(app.getHttpServer())
-      .put(`/pico-units/${unit.id}/reboot`)
+      .put(`/v1/pico-units/${unit.id}/reboot`)
       .send({ type: 'soft' })
       .expect(202);
 
@@ -110,7 +110,7 @@ describe('PUT /pico-units/:picoUnitId/reboot (e2e)', () => {
       .mockRejectedValueOnce(networkError as AxiosError); // IP also drops (expected)
 
     const res = await request(app.getHttpServer())
-      .put(`/pico-units/${unit.id}/reboot`)
+      .put(`/v1/pico-units/${unit.id}/reboot`)
       .send({ type: 'soft' })
       .expect(202);
 
@@ -143,7 +143,7 @@ describe('PUT /pico-units/:picoUnitId/reboot (e2e)', () => {
     mockedAxios.post.mockResolvedValueOnce({ status: 200, data: {} });
 
     const res = await request(app.getHttpServer())
-      .put(`/pico-units/${unit.id}/reboot`)
+      .put(`/v1/pico-units/${unit.id}/reboot`)
       .send({ type: 'hard' })
       .expect(202);
 
@@ -160,7 +160,7 @@ describe('PUT /pico-units/:picoUnitId/reboot (e2e)', () => {
     });
 
     await request(app.getHttpServer())
-      .put(`/pico-units/${unit.id}/reboot`)
+      .put(`/v1/pico-units/${unit.id}/reboot`)
       .send({ type: 'warm' })
       .expect(422);
 
@@ -174,7 +174,7 @@ describe('PUT /pico-units/:picoUnitId/reboot (e2e)', () => {
     });
 
     await request(app.getHttpServer())
-      .put(`/pico-units/${unit.id}/reboot`)
+      .put(`/v1/pico-units/${unit.id}/reboot`)
       .send({})
       .expect(422);
   });
@@ -187,14 +187,14 @@ describe('PUT /pico-units/:picoUnitId/reboot (e2e)', () => {
     });
 
     await request(app.getHttpServer())
-      .put(`/pico-units/${unit.id}/reboot`)
+      .put(`/v1/pico-units/${unit.id}/reboot`)
       .send({ type: 'soft' })
       .expect(410);
   });
 
   it('404 when unit does not exist', async () => {
     await request(app.getHttpServer())
-      .put('/pico-units/9999/reboot')
+      .put('/v1/pico-units/9999/reboot')
       .send({ type: 'soft' })
       .expect(404);
   });
@@ -214,7 +214,7 @@ describe('PUT /pico-units/:picoUnitId/reboot (e2e)', () => {
     mockedAxios.post.mockRejectedValueOnce(serverError as AxiosError);
 
     const res = await request(app.getHttpServer())
-      .put(`/pico-units/${unit.id}/reboot`)
+      .put(`/v1/pico-units/${unit.id}/reboot`)
       .send({ type: 'soft' })
       .expect(417);
 

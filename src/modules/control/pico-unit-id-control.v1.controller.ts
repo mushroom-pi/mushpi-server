@@ -25,7 +25,7 @@ import { ControlService } from './control.service';
 @Controller('pico-units/:picoUnitId/control')
 @ApiPicoUnit()
 @ApiAxiosErrorResponses()
-export class PicoUnitIdControlController {
+export class PicoUnitIdControlV1Controller {
   constructor(private readonly svc: ControlService) {}
 
   @Put('setpoints')

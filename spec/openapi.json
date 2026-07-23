@@ -409,10 +409,10 @@
         ]
       }
     },
-    "/pico-units": {
+    "/v1/pico-units": {
       "post": {
         "description": "Register a Pico unit by handle after verifying it is reachable via mDNS.",
-        "operationId": "PicoUnitsController_create",
+        "operationId": "PicoUnitsController_create_v1",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -600,7 +600,7 @@
       },
       "get": {
         "description": "Retrieve all the pico units stored in the database, with minimal filtering options",
-        "operationId": "PicoUnitsController_list",
+        "operationId": "PicoUnitsController_list_v1",
         "parameters": [
           {
             "name": "page",
@@ -791,10 +791,10 @@
         ]
       }
     },
-    "/pico-units/announce": {
+    "/v1/pico-units/announce": {
       "post": {
         "description": "Called by Pico units on boot with hardware/network metadata. Upserts by handle.",
-        "operationId": "PicoUnitsController_announce",
+        "operationId": "PicoUnitsController_announce_v1",
         "parameters": [
           {
             "name": "X-Pico-Secret",
@@ -985,9 +985,9 @@
         ]
       }
     },
-    "/pico-units/{picoUnitId}": {
+    "/v1/pico-units/{picoUnitId}": {
       "get": {
-        "operationId": "PicoUnitIdController_getOne",
+        "operationId": "PicoUnitIdController_getOne_v1",
         "parameters": [
           {
             "name": "picoUnitId",
@@ -1160,7 +1160,7 @@
         ]
       },
       "patch": {
-        "operationId": "PicoUnitIdController_update",
+        "operationId": "PicoUnitIdController_update_v1",
         "parameters": [
           {
             "name": "picoUnitId",
@@ -1346,7 +1346,7 @@
         ]
       },
       "delete": {
-        "operationId": "PicoUnitIdController_remove",
+        "operationId": "PicoUnitIdController_remove_v1",
         "parameters": [
           {
             "name": "picoUnitId",
@@ -1512,10 +1512,10 @@
         ]
       }
     },
-    "/pico-units/{picoUnitId}/ping": {
+    "/v1/pico-units/{picoUnitId}/ping": {
       "get": {
         "description": "Send GET request to the unit's most basic life-check endpoint",
-        "operationId": "PicoUnitIdController_ping",
+        "operationId": "PicoUnitIdController_ping_v1",
         "parameters": [
           {
             "name": "picoUnitId",
@@ -1717,9 +1717,9 @@
         ]
       }
     },
-    "/pico-units/{picoUnitId}/poll": {
+    "/v1/pico-units/{picoUnitId}/poll": {
       "post": {
-        "operationId": "PicoUnitIdController_poll",
+        "operationId": "PicoUnitIdController_poll_v1",
         "parameters": [
           {
             "name": "picoUnitId",
@@ -1943,10 +1943,10 @@
         ]
       }
     },
-    "/pico-units/{picoUnitId}/reboot": {
+    "/v1/pico-units/{picoUnitId}/reboot": {
       "put": {
         "description": "Proxies a reboot command to the Pico Unit. `soft` performs machine.soft_reset() (preserves cumulative uptime); `hard` performs machine.reset() (full power-cycle, uptime resets). Responds 202 Accepted because the unit becomes unreachable while rebooting.",
-        "operationId": "PicoUnitIdController_reboot",
+        "operationId": "PicoUnitIdController_reboot_v1",
         "parameters": [
           {
             "name": "picoUnitId",
@@ -2170,10 +2170,10 @@
         ]
       }
     },
-    "/pico-units/{picoUnitId}/readings": {
+    "/v1/pico-units/{picoUnitId}/readings": {
       "get": {
         "description": "Extracts requested readings from the database (without calling the Pico Unit) and displays them chronologically. Results can be framed by time.",
-        "operationId": "PicoUnitIdReadingsController_listForUnit",
+        "operationId": "PicoUnitIdReadingsController_listForUnit_v1",
         "parameters": [
           {
             "name": "start",
@@ -2399,10 +2399,10 @@
         ]
       }
     },
-    "/pico-units/{picoUnitId}/readings/export": {
+    "/v1/pico-units/{picoUnitId}/readings/export": {
       "get": {
         "description": "Generate and trigger download of a CSV file with the readings from the requested pico unit and time window",
-        "operationId": "PicoUnitIdReadingsController_exportCsvForUnit",
+        "operationId": "PicoUnitIdReadingsController_exportCsvForUnit_v1",
         "parameters": [
           {
             "name": "start",
@@ -2606,10 +2606,10 @@
         ]
       }
     },
-    "/batches/{batchId}/readings": {
+    "/v1/batches/{batchId}/readings": {
       "get": {
         "description": "Extracts requested readings from the database and displays them chronologically. Results can be framed by time, but if the provided time limits are beyond the batch's, they won't be applied.",
-        "operationId": "BatchIdReadingsController_listForBatch",
+        "operationId": "BatchIdReadingsController_listForBatch_v1",
         "parameters": [
           {
             "name": "start",
@@ -2835,10 +2835,10 @@
         ]
       }
     },
-    "/batches/{batchId}/readings/export": {
+    "/v1/batches/{batchId}/readings/export": {
       "get": {
         "description": "Generate and trigger download of a CSV file with the readings from the requested batch. Same time window rules apply as for the list readings endpoint",
-        "operationId": "BatchIdReadingsController_exportCsvForUnit",
+        "operationId": "BatchIdReadingsController_exportCsvForUnit_v1",
         "parameters": [
           {
             "name": "start",
@@ -3042,10 +3042,10 @@
         ]
       }
     },
-    "/batches": {
+    "/v1/batches": {
       "post": {
         "description": "For a Pico Unit, establish a new growing or incubation process. If the unit has an active batch, the new batch can only be created if: (1) the active batch has a defined finish_at date, AND (2) the new batch's start_at is scheduled after the active batch's finish_at.",
-        "operationId": "BatchesController_create",
+        "operationId": "BatchesController_create_v1",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -3233,7 +3233,7 @@
       },
       "get": {
         "description": "Retrieve all the batches stored in the database, with minimal filtering options",
-        "operationId": "BatchesController_list",
+        "operationId": "BatchesController_list_v1",
         "parameters": [
           {
             "name": "page",
@@ -3438,9 +3438,9 @@
         ]
       }
     },
-    "/batches/{batchId}": {
+    "/v1/batches/{batchId}": {
       "get": {
-        "operationId": "BatchIdController_getOne",
+        "operationId": "BatchIdController_getOne_v1",
         "parameters": [
           {
             "name": "batchId",
@@ -3613,7 +3613,7 @@
         ]
       },
       "patch": {
-        "operationId": "BatchIdController_update",
+        "operationId": "BatchIdController_update_v1",
         "parameters": [
           {
             "name": "batchId",
@@ -3813,7 +3813,7 @@
         ]
       },
       "delete": {
-        "operationId": "BatchIdController_remove",
+        "operationId": "BatchIdController_remove_v1",
         "parameters": [
           {
             "name": "batchId",
@@ -3979,10 +3979,10 @@
         ]
       }
     },
-    "/batches/{batchId}/images": {
+    "/v1/batches/{batchId}/images": {
       "put": {
         "description": "Append uploaded images to the batch (max 5 total). Rejects if the batch already has 5 images.",
-        "operationId": "BatchIdImagesController_addImages",
+        "operationId": "BatchIdImagesController_addImages_v1",
         "parameters": [
           {
             "name": "batchId",
@@ -4210,9 +4210,9 @@
         ]
       }
     },
-    "/batches/{batchId}/images/{filename}": {
+    "/v1/batches/{batchId}/images/{filename}": {
       "delete": {
-        "operationId": "BatchIdImagesController_removeImage",
+        "operationId": "BatchIdImagesController_removeImage_v1",
         "parameters": [
           {
             "name": "filename",
@@ -4417,10 +4417,10 @@
         ]
       }
     },
-    "/batches/{batchId}/recipe": {
+    "/v1/batches/{batchId}/recipe": {
       "post": {
         "description": "Creates a new recipe using the species and climate targets from the batch. duration_days is computed from start_at → finish_at. The batch must be finished and have species, temperature_target, and humidity_target set.",
-        "operationId": "BatchIdRecipeController_createRecipe",
+        "operationId": "BatchIdRecipeController_createRecipe_v1",
         "parameters": [
           {
             "name": "batchId",
@@ -4603,9 +4603,9 @@
         ]
       }
     },
-    "/pico-units/{picoUnitId}/batches": {
+    "/v1/pico-units/{picoUnitId}/batches": {
       "get": {
-        "operationId": "PicoUnitIdBatchesController_list",
+        "operationId": "PicoUnitIdBatchesController_list_v1",
         "parameters": [
           {
             "name": "page",
@@ -4814,9 +4814,9 @@
         ]
       }
     },
-    "/pico-units/{picoUnitId}/batches/current": {
+    "/v1/pico-units/{picoUnitId}/batches/current": {
       "get": {
-        "operationId": "PicoUnitIdBatchesController_getCurrent",
+        "operationId": "PicoUnitIdBatchesController_getCurrent_v1",
         "parameters": [
           {
             "name": "batchId",
@@ -5001,10 +5001,10 @@
         ]
       }
     },
-    "/recipes": {
+    "/v1/recipes": {
       "post": {
         "description": "Register a reusable growing template",
-        "operationId": "RecipesController_create",
+        "operationId": "RecipesController_create_v1",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -5176,7 +5176,7 @@
       },
       "get": {
         "description": "Retrieve all stored recipes with optional species filter",
-        "operationId": "RecipesController_list",
+        "operationId": "RecipesController_list_v1",
         "parameters": [
           {
             "name": "page",
@@ -5358,9 +5358,9 @@
         ]
       }
     },
-    "/recipes/{recipeId}": {
+    "/v1/recipes/{recipeId}": {
       "get": {
-        "operationId": "RecipeIdController_getOne",
+        "operationId": "RecipeIdController_getOne_v1",
         "parameters": [
           {
             "name": "recipeId",
@@ -5533,7 +5533,7 @@
         ]
       },
       "patch": {
-        "operationId": "RecipeIdController_update",
+        "operationId": "RecipeIdController_update_v1",
         "parameters": [
           {
             "name": "recipeId",
@@ -5716,7 +5716,7 @@
         ]
       },
       "delete": {
-        "operationId": "RecipeIdController_remove",
+        "operationId": "RecipeIdController_remove_v1",
         "parameters": [
           {
             "name": "recipeId",
@@ -5882,9 +5882,9 @@
         ]
       }
     },
-    "/recipes/{recipeId}/batches": {
+    "/v1/recipes/{recipeId}/batches": {
       "get": {
-        "operationId": "RecipeIdBatchesController_list",
+        "operationId": "RecipeIdBatchesController_list_v1",
         "parameters": [
           {
             "name": "page",
@@ -6093,10 +6093,10 @@
         ]
       }
     },
-    "/recipes/{recipeId}/image": {
+    "/v1/recipes/{recipeId}/image": {
       "put": {
         "description": "Beware: if an image is already associated to the recipe, providing a new one will automatically remove the previous.",
-        "operationId": "RecipeIdImageController_setImage",
+        "operationId": "RecipeIdImageController_setImage_v1",
         "parameters": [
           {
             "name": "recipeId",
@@ -6327,7 +6327,7 @@
         ]
       },
       "delete": {
-        "operationId": "RecipeIdImageController_removeImage",
+        "operationId": "RecipeIdImageController_removeImage_v1",
         "parameters": [
           {
             "name": "recipeId",
@@ -6514,10 +6514,10 @@
         ]
       }
     },
-    "/pico-units/{picoUnitId}/control/setpoints": {
+    "/v1/pico-units/{picoUnitId}/control/setpoints": {
       "put": {
         "description": "Modify the temperature and/or humidity targets for a Pico Unit. If the control loop is enabled, these changes will affect the devices. If success, a new reading will be generated afterwards.",
-        "operationId": "PicoUnitIdControlController_setpoints",
+        "operationId": "PicoUnitIdControlController_setpoints_v1",
         "parameters": [
           {
             "name": "picoUnitId",
@@ -6741,10 +6741,10 @@
         ]
       }
     },
-    "/pico-units/{picoUnitId}/control/setup": {
+    "/v1/pico-units/{picoUnitId}/control/setup": {
       "put": {
         "description": "Use this endpoint to modify any of the PIN connections in the Pico Unit. Using it will make the Unit change its PIN-devices mapping. Use this endpoint with care.",
-        "operationId": "PicoUnitIdControlController_setup",
+        "operationId": "PicoUnitIdControlController_setup_v1",
         "parameters": [
           {
             "name": "picoUnitId",
@@ -6968,10 +6968,10 @@
         ]
       }
     },
-    "/pico-units/{picoUnitId}/control/outputs": {
+    "/v1/pico-units/{picoUnitId}/control/outputs": {
       "put": {
         "description": "Change the status of the Pico Unit's devices. This endpoint will only have an effect if the control loop is deactivated.",
-        "operationId": "PicoUnitIdControlController_outputs",
+        "operationId": "PicoUnitIdControlController_outputs_v1",
         "parameters": [
           {
             "name": "picoUnitId",
@@ -7205,10 +7205,10 @@
         ]
       }
     },
-    "/pico-units/{picoUnitId}/control/loop": {
+    "/v1/pico-units/{picoUnitId}/control/loop": {
       "put": {
         "description": "Turns the Pico Unit's control loop (the logic that keeps track of the targets and turns devices on and off automatically to meet them) on and off. This action will override any manual settings that the outputs might be using and will use the temperature and humidity set points.",
-        "operationId": "PicoUnitIdControlController_loop",
+        "operationId": "PicoUnitIdControlController_loop_v1",
         "parameters": [
           {
             "name": "picoUnitId",

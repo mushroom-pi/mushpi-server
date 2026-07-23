@@ -38,7 +38,7 @@ import { PicoUnitsService } from '../pico-units.service';
 @ApiTags('pico-units')
 @Controller('pico-units/:picoUnitId')
 @ApiPicoUnit()
-export class PicoUnitIdController {
+export class PicoUnitIdV1Controller {
   constructor(
     private readonly svc: PicoUnitsService,
     private readonly readingsService: ReadingsService,

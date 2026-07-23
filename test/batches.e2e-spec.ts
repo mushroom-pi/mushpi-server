@@ -11,7 +11,7 @@ import { clearPicos, seedPicoUnit } from './fixtures/pico-units.fixtures';
 import { clearRecipes, seedRecipe } from './fixtures/recipes.fixtures';
 import { closeTestApp, createTestApp } from './test-setup';
 
-describe('BatchesController (e2e)', () => {
+describe('BatchesV1Controller (e2e)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
@@ -47,7 +47,7 @@ describe('BatchesController (e2e)', () => {
       };
 
       const res = await request(app.getHttpServer())
-        .post('/batches')
+        .post('/v1/batches')
         .send(payload)
         .expect(201);
 
@@ -69,7 +69,7 @@ describe('BatchesController (e2e)', () => {
       };
 
       const res = await request(app.getHttpServer())
-        .post('/batches')
+        .post('/v1/batches')
         .send(payload)
         .expect(404);
       expect(res.body).toHaveProperty('statusCode', 404);
@@ -85,7 +85,7 @@ describe('BatchesController (e2e)', () => {
       await seedBatch(app, pico.id, { finish_at: null });
 
       const res = await request(app.getHttpServer())
-        .post('/batches')
+        .post('/v1/batches')
         .send({ pico_unit_id: pico.id, species: 'oyster' })
         .expect(409);
 
@@ -107,7 +107,7 @@ describe('BatchesController (e2e)', () => {
 
       // Try to create new batch starting now (before active batch ends)
       const res = await request(app.getHttpServer())
-        .post('/batches')
+        .post('/v1/batches')
         .send({ pico_unit_id: pico.id, species: 'shiitake' })
         .expect(409);
 
@@ -125,7 +125,7 @@ describe('BatchesController (e2e)', () => {
       const finishAt = new Date(Date.now() + 1 * 60 * 60 * 1000).toISOString(); // 1h from now (before start_at)
 
       const res = await request(app.getHttpServer())
-        .post('/batches')
+        .post('/v1/batches')
         .send({ pico_unit_id: pico.id, start_at: startAt, finish_at: finishAt })
         .expect(422);
 
@@ -150,7 +150,7 @@ describe('BatchesController (e2e)', () => {
       // Create new batch starting 2 hours from now (after active batch ends)
       const newBatchStart = new Date(Date.now() + 120 * 60 * 1000);
       const res = await request(app.getHttpServer())
-        .post('/batches')
+        .post('/v1/batches')
         .send({
           pico_unit_id: pico.id,
           species: 'oyster',
@@ -181,7 +181,7 @@ describe('BatchesController (e2e)', () => {
       // Try to create new batch starting 1 hour from now (before active batch ends)
       const newBatchStart = new Date(Date.now() + 60 * 60 * 1000);
       const res = await request(app.getHttpServer())
-        .post('/batches')
+        .post('/v1/batches')
         .send({
           pico_unit_id: pico.id,
           species: 'shiitake',
@@ -205,7 +205,7 @@ describe('BatchesController (e2e)', () => {
       });
 
       const res = await request(app.getHttpServer())
-        .post('/batches')
+        .post('/v1/batches')
         .send({ pico_unit_id: pico.id, species: 'lion mane' })
         .expect(201);
 
@@ -231,7 +231,7 @@ describe('BatchesController (e2e)', () => {
       }
 
       const res = await request(app.getHttpServer())
-        .get('/batches')
+        .get('/v1/batches')
         .query({ page: 1, limit: 2 })
         .expect(200);
 
@@ -285,7 +285,7 @@ describe('BatchesController (e2e)', () => {
 
       // Query all planned (should return one batch)
       const resPlanned = await request(app.getHttpServer())
-        .get('/batches')
+        .get('/v1/batches')
         .query({ status: 'planned' })
         .expect(200);
 
@@ -294,7 +294,7 @@ describe('BatchesController (e2e)', () => {
 
       // Query all in-progress (should return two batches)
       const resIn = await request(app.getHttpServer())
-        .get('/batches')
+        .get('/v1/batches')
         .query({ status: 'in-progress' })
         .expect(200);
 
@@ -307,7 +307,7 @@ describe('BatchesController (e2e)', () => {
 
       // Query finished
       const resFin = await request(app.getHttpServer())
-        .get('/batches')
+        .get('/v1/batches')
         .query({ status: 'finished' })
         .expect(200);
       expect(resFin.body.total).toBe(1);
@@ -315,7 +315,7 @@ describe('BatchesController (e2e)', () => {
 
       // Query per pico unit (picoA) - should return 3 batches: planned, finished, in-progress-null
       const resA = await request(app.getHttpServer())
-        .get('/batches')
+        .get('/v1/batches')
         .query({ pico_unit_id: picoA.id })
         .expect(200);
 
@@ -345,7 +345,7 @@ describe('BatchesController (e2e)', () => {
       await seedBatch(app, pico.id, { notes: 'without-recipe' });
 
       const res = await request(app.getHttpServer())
-        .get('/batches')
+        .get('/v1/batches')
         .expect(200);
 
       expect(res.body.items.length).toBe(2);
@@ -388,7 +388,7 @@ describe('BatchesController (e2e)', () => {
       });
 
       const res = await request(app.getHttpServer())
-        .post('/batches')
+        .post('/v1/batches')
         .send({ pico_unit_id: pico.id, recipe_id: recipe.id })
         .expect(201);
 
@@ -411,7 +411,7 @@ describe('BatchesController (e2e)', () => {
       });
 
       const res = await request(app.getHttpServer())
-        .post('/batches')
+        .post('/v1/batches')
         .send({
           pico_unit_id: pico.id,
           recipe_id: recipe.id,
@@ -432,7 +432,7 @@ describe('BatchesController (e2e)', () => {
       });
 
       const res = await request(app.getHttpServer())
-        .post('/batches')
+        .post('/v1/batches')
         .send({ pico_unit_id: pico.id, recipe_id: 999999 })
         .expect(404);
 

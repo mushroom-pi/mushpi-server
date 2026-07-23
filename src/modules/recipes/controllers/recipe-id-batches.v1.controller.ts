@@ -14,7 +14,7 @@ import { Recipe } from '../recipes.entity';
 @ApiTags('recipes', 'batches')
 @Controller('recipes/:recipeId/batches')
 @ApiRecipe()
-export class RecipeIdBatchesController {
+export class RecipeIdBatchesV1Controller {
   constructor(private readonly batchesSvc: BatchesService) {}
 
   @Get()

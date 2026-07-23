@@ -14,10 +14,10 @@ import * as path from 'path';
 import { BatchesModule } from 'src/modules/batches/batches.module';
 import { CustomConfigService } from 'src/modules/config/config.service';
 
-import { RecipeIdBatchesController } from './controllers/recipe-id-batches.controller';
-import { RecipeIdImageController } from './controllers/recipe-id-image.controller';
-import { RecipeIdController } from './controllers/recipe-id.controller';
-import { RecipesController } from './controllers/recipes.controller';
+import { RecipeIdBatchesV1Controller } from './controllers/recipe-id-batches.v1.controller';
+import { RecipeIdImageV1Controller } from './controllers/recipe-id-image.v1.controller';
+import { RecipeIdV1Controller } from './controllers/recipe-id.v1.controller';
+import { RecipesV1Controller } from './controllers/recipes.v1.controller';
 import { RecipeByIdMiddleware } from './recipe-by-id.middleware';
 import { Recipe } from './recipes.entity';
 import { RecipesService } from './recipes.service';
@@ -28,10 +28,10 @@ import { RecipesService } from './recipes.service';
     forwardRef(() => BatchesModule),
   ],
   controllers: [
-    RecipesController,
-    RecipeIdController,
-    RecipeIdBatchesController,
-    RecipeIdImageController,
+    RecipesV1Controller,
+    RecipeIdV1Controller,
+    RecipeIdBatchesV1Controller,
+    RecipeIdImageV1Controller,
   ],
   providers: [RecipesService],
   exports: [RecipesService, TypeOrmModule.forFeature([Recipe])],
@@ -49,11 +49,11 @@ export class RecipesModule implements NestModule, OnModuleInit {
 
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(RecipeByIdMiddleware).forRoutes({
-      path: 'recipes/:recipeId',
+      path: 'v1/recipes/:recipeId',
       method: RequestMethod.ALL,
     });
     consumer.apply(RecipeByIdMiddleware).forRoutes({
-      path: 'recipes/:recipeId/*path',
+      path: 'v1/recipes/:recipeId/*path',
       method: RequestMethod.ALL,
     });
   }

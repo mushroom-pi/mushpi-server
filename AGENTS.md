@@ -4,7 +4,7 @@ NestJS 11 backend for mushroom growing control system. Runs on Raspberry Pi, pol
 
 ## External Relationships
 
-- **mushpi-grow** (Pico units): each unit runs a MicroPython HTTP server on `handle.local:port`. Server proxies calls (`/sensors`, `/setpoints`, `/outputs`, `/setup`, `/control`) via mDNS → IP fallback using `src/common/utils/http-fallback.ts` (`getWithFallback`/`postWithFallback`). Units self-register on boot via `POST /pico-units`.
+- **mushpi-grow** (Pico units): each unit runs a MicroPython HTTP server on `handle.local:port`. Server proxies calls (`/sensors`, `/setpoints`, `/outputs`, `/setup`, `/control`) via mDNS → IP fallback using `src/common/utils/http-fallback.ts` (`getWithFallback`/`postWithFallback`). Units self-register on boot via `POST /v1/pico-units/announce`.
   - **Pico response validation**: `validateDeviceResponse()` in `readings.service.ts` validates the Pico `GET /` response against `DeviceResponseDto` with `whitelist: true` + `forbidNonWhitelisted: false`. Any key the Pico emits that is not decorated on the DTO is **silently dropped** — no error, no warning, no `failed_calls` increment. Firmware field names must match the DTO exactly (e.g. `outputs.heater`, not `outputs.heater_on`).
 - **mushpi-client** (frontend): consumes Swagger JSON at `/<DOCS_ENDPOINT>-json` to regenerate its API client. CORS origin from `CLIENT_URL` env var.
 
@@ -126,9 +126,58 @@ readings/     — readings storage and time-range queries
 batches/      — batch CRUD + lifecycle rules + recipe linking
 control/      — proxy: setpoints, outputs, setup, control loop toggle (each triggers an immediate trailing poll via `callPollAndUpdate`)  
 cron/         — scheduled polling of all enabled Pico units
-monitoring/   — /ping, /health
-swagger/      — OpenAPI setup with global error schemas; provider registered in AppModule, invoked manually in main.ts; also powers spec:export
+monitoring/   — /ping, /health, /metrics (VERSION_NEUTRAL — unversioned)
+swagger/      — OpenAPI setup with global error schemas + operationIdFactory; provider registered in AppModule, invoked manually in main.ts; also powers spec:export
 ```
+
+## API Versioning
+
+All functional endpoints live under `/v1/` via NestJS's idiomatic built-in versioning:
+
+```ts
+// src/common/utils/api-version.ts
+export const API_VERSION = '1' as const;
+export function applyApiVersioning(app: INestApplication): void {
+  app.enableVersioning({ type: VersioningType.URI, defaultVersion: API_VERSION });
+}
+```
+
+Applied in `main.ts`, `test/test-setup.ts`, and `spec/generators/openapi.generator.ts` **before** any route registration or Swagger document building.
+
+Monitoring endpoints (`/ping`, `/health`, `/metrics`) are exempted via `@Controller({ version: VERSION_NEUTRAL })` on `MonitoringController`. They remain at root — no `/v1/` prefix.
+
+### Controller Naming Convention
+
+All controllers **except `MonitoringController`** carry a `V1` suffix in both class name and filename:
+
+```
+batches.v1.controller.ts        → BatchesV1Controller
+pico-units.v1.controller.ts     → PicoUnitsV1Controller
+recipe-id-image.v1.controller.ts → RecipeIdImageV1Controller
+```
+
+This makes the version visually scannable in the codebase and prepares for `/v2/` controllers alongside `/v1/` ones. The `V1` suffix is **not** reflected in operationIds — see below.
+
+### Swagger operationIdFactory
+
+The `V1` controller suffix is stripped from OpenAPI `operationId` values via a custom factory in `SwaggerModule.buildOpenApiDocument()`:
+
+```ts
+operationIdFactory: (controllerKey, methodKey, version) => {
+  const cleanKey = controllerKey.replace(/V1(?=Controller)/, '');
+  return version ? `${cleanKey}_${methodKey}_${version}` : `${cleanKey}_${methodKey}`;
+}
+```
+
+This keeps the generated client contract stable — operationIds like `BatchesController_create_v1` (not `BatchesV1Controller_create_v1`). The version segment `_v1` at the end comes from the `version` parameter, not the class name.
+
+### Middleware and API Versioning
+
+NestJS 11's `MiddlewareConsumer` with the `version` property in `forRoutes()` is **broken** with `path-to-regexp` v8 (Express 5) — it throws `TypeError: Unexpected ( at 8, expected END`. Two workarounds are in place:
+
+1. **Global middleware** (`ProtectEventLoopMiddleware`, `AppSecretBearerMiddleware`): registered via `app.use()` in `main.ts` and `test-setup.ts`, bypassing route versioning entirely — they apply to all routes including monitoring and static assets.
+
+2. **Route-specific middleware** (`PicoUnitByIdMiddleware`, `BatchByIdMiddleware`, `RecipeByIdMiddleware`): use explicit `v1/` prefix in path strings (e.g. `forRoutes('v1/pico-units/:picoUnitId')`) in their respective module's `configure()` method. This avoids the broken `version` property on `RouteInfo` objects.
 
 ## API Specification Tooling
 
@@ -158,7 +207,7 @@ Husky detects `src/` changes and automatically runs `yarn spec:all`, then stages
 
 ### SwaggerModule dual wiring
 
-`SwaggerModule` is registered as a **provider in `AppModule`** but invoked **manually in `main.ts`** (not via DI in a controller). This exists because `setupSwagger()` needs the `INestApplication` instance before the server starts. The `spec:export` script (`spec/generators/openapi.generator.ts`) gets it via `app.get(SwaggerModule)` after booting a lightweight `NestFactory.createApplicationContext()` (no HTTP listener).
+`SwaggerModule` is registered as a **provider in `AppModule`** but invoked **manually in `main.ts`** (not via DI in a controller). This exists because `setupSwagger()` needs the `INestApplication` instance before the server starts. The `spec:export` script (`spec/generators/openapi.generator.ts`) gets it via `app.get(SwaggerModule)` after booting a `NestFactory.create(AppModule, { logger: false })` instance (no HTTP listener — `app.listen()` is never called).
 
 ### Script conventions (ts-node)
 
@@ -172,30 +221,30 @@ This is the established pattern (also used by the `typeorm` CLI script). Without
 
 ## REST API
 
-| Method           | Path                                      | Notes                                                                          |
-| ---------------- | ----------------------------------------- | ------------------------------------------------------------------------------ |
-| GET/POST         | `/pico-units`                             | List (paginated) / Manual create (verify reachability via mDNS, then create)   |
-| POST             | `/pico-units/announce`                    | Pico hardware announcement (upsert by handle, requires `X-Pico-Secret` header) |
-| GET/PATCH/DELETE | `/pico-units/:picoUnitId`                 | CRUD                                                                           |
-| GET              | `/pico-units/:picoUnitId/ping`            | Proxy → Pico `/`                                                               |
-| PUT              | `/pico-units/:picoUnitId/setpoints`       | Proxy → Pico `/setpoints`                                                      |
-| PUT              | `/pico-units/:picoUnitId/setup`           | Proxy → Pico `/setup`                                                          |
-| PUT              | `/pico-units/:picoUnitId/outputs`         | Proxy → Pico `/outputs`                                                        |
-| POST/DELETE      | `/pico-units/:picoUnitId/control`         | Proxy → Pico `/control` toggle                                                 |
-| POST             | `/pico-units/:picoUnitId/poll`            | On-demand Pico poll → store reading → return PicoUnit with `latest_reading`    |
-| PUT              | `/pico-units/:picoUnitId/reboot`          | Proxy → Pico POST /reboot (soft/hard reset); returns 202                       |
-| GET              | `/pico-units/:picoUnitId/readings`        | Filterable by time range + limit                                               |
-| GET              | `/pico-units/:picoUnitId/batches`         | + `/current`                                                                   |
-| GET/POST         | `/batches`                                | List (paginated) / Create                                                      |
-| GET/PATCH/DELETE | `/batches/:batchId`                       | CRUD                                                                           |
-| GET              | `/batches/:batchId/readings`              | Readings for a batch                                                           |
-| POST             | `/batches/:batchId/recipe`                | Link recipe to batch                                                           |
-| PUT/DELETE       | `/batches/:batchId/images/:filename`      | Batch image upload (append, max 5) / removal                                   |
-| GET/POST         | `/recipes`                                | List / Create                                                                  |
-| GET/PATCH/DELETE | `/recipes/:recipeId`                      | CRUD                                                                           |
-| GET              | `/recipes/:recipeId/batches`              | Batches using this recipe                                                      |
-| PUT/DELETE       | `/recipes/:recipeId/image`                | Recipe image upload/removal                                                    |
-| GET              | `/monitoring/ping` + `/monitoring/health` | Liveness / full health                                                         |
+| Method           | Path                                            | Notes                                                                          |
+| ---------------- | ----------------------------------------------- | ------------------------------------------------------------------------------ |
+| GET/POST         | `/v1/pico-units`                                | List (paginated) / Manual create (verify reachability via mDNS, then create)   |
+| POST             | `/v1/pico-units/announce`                       | Pico hardware announcement (upsert by handle, requires `X-Pico-Secret` header) |
+| GET/PATCH/DELETE | `/v1/pico-units/:picoUnitId`                    | CRUD                                                                           |
+| GET              | `/v1/pico-units/:picoUnitId/ping`               | Proxy → Pico `/`                                                               |
+| PUT              | `/v1/pico-units/:picoUnitId/control/setpoints`  | Proxy → Pico `/setpoints`                                                      |
+| PUT              | `/v1/pico-units/:picoUnitId/control/setup`      | Proxy → Pico `/setup`                                                          |
+| PUT              | `/v1/pico-units/:picoUnitId/control/outputs`    | Proxy → Pico `/outputs`                                                        |
+| PUT              | `/v1/pico-units/:picoUnitId/control/loop`       | Proxy → Pico `/control` toggle                                                 |
+| POST             | `/v1/pico-units/:picoUnitId/poll`               | On-demand Pico poll → store reading → return PicoUnit with `latest_reading`    |
+| PUT              | `/v1/pico-units/:picoUnitId/reboot`             | Proxy → Pico POST /reboot (soft/hard reset); returns 202                       |
+| GET              | `/v1/pico-units/:picoUnitId/readings`           | Filterable by time range + limit                                               |
+| GET              | `/v1/pico-units/:picoUnitId/batches`            | + `/current`                                                                   |
+| GET/POST         | `/v1/batches`                                   | List (paginated) / Create                                                      |
+| GET/PATCH/DELETE | `/v1/batches/:batchId`                          | CRUD                                                                           |
+| GET              | `/v1/batches/:batchId/readings`                 | Readings for a batch                                                           |
+| POST             | `/v1/batches/:batchId/recipe`                   | Link recipe to batch                                                           |
+| PUT/DELETE       | `/v1/batches/:batchId/images/:filename`         | Batch image upload (append, max 5) / removal                                   |
+| GET/POST         | `/v1/recipes`                                   | List / Create                                                                  |
+| GET/PATCH/DELETE | `/v1/recipes/:recipeId`                         | CRUD                                                                           |
+| GET              | `/v1/recipes/:recipeId/batches`                 | Batches using this recipe                                                      |
+| PUT/DELETE       | `/v1/recipes/:recipeId/image`                   | Recipe image upload/removal                                                    |
+| GET              | `/ping` + `/health` + `/metrics`                | Liveness / full health / Prometheus (unversioned, VERSION_NEUTRAL)             |
 
 ## Cron Polling
 
@@ -264,7 +313,7 @@ Schema changes for production (`NODE_ENV=prod`, where `synchronize: false`) requ
 | `SQLITE_PATH`          | `./data/app.sqlite` | DB path                                                                       |
 | `CLIENT_URL`           | —                   | CORS allowed origin                                                           |
 | `APP_SECRET`           | —                   | Bearer token (required in prod)                                               |
-| `PICO_ANNOUNCE_SECRET` | `mushpi-dev-secret` | Shared secret for `POST /pico-units/announce` (required in prod, min 6 chars) |
+| `PICO_ANNOUNCE_SECRET` | `mushpi-dev-secret` | Shared secret for `POST /v1/pico-units/announce` (required in prod, min 6 chars) |
 | `DOCS_ENDPOINT`        | —                   | Swagger UI path                                                               |
 | `LOGS_LEVEL`           | `info`              | Pino level                                                                    |
 
