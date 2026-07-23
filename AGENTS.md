@@ -2,6 +2,8 @@
 
 NestJS 11 backend for mushroom growing control system. Runs on Raspberry Pi, polls Pico units via cron, stores readings in SQLite. Exposes REST API + OpenAPI spec consumed by `mushpi-client`.
 
+> **Skill**: For general NestJS patterns (bootstrap order, controller splitting, DTO hierarchy, Joi config, exception filter dispatch, e2e test structure), load the `nestjs-backend` skill. This file documents **only** what is specific to this project or deviates from standard NestJS conventions.
+
 ## External Relationships
 
 - **mushpi-grow** (Pico units): each unit runs a MicroPython HTTP server on `handle.local:port`. Server proxies calls (`/sensors`, `/setpoints`, `/outputs`, `/setup`, `/control`) via mDNS → IP fallback using `src/common/utils/http-fallback.ts` (`getWithFallback`/`postWithFallback`). Units self-register on boot via `POST /v1/pico-units/announce`.
@@ -22,13 +24,10 @@ yarn start     # Must boot without exceptions
 
 ## E2E Test Conventions
 
-When new functionality is added, **propose and write e2e tests** that cover the new behavior. At minimum, consider:
+When new functionality is added, **propose and write e2e tests** (see the `nestjs-backend` skill for general e2e patterns). Project-specific rules:
 
-- **Happy path**: the expected outcome when all conditions are met
-- **Boundary/edge**: time windows, empty inputs, missing relations, null fields
-- **State persistence**: any accumulated state (e.g. `lastHandleBatchSyncAt`) that persists across test cases — reset it in `beforeEach` to avoid cross-test contamination
-
-Tests that exercise time-windowed queries must use `finish_at` / `start_at` timestamps that fall within the window the production code actually computes (e.g. within the last 60 seconds for `handleBatchSync()`), or explicitly pass a `since` argument wide enough to cover the seeded data.
+- Tests that exercise time-windowed queries must use `finish_at` / `start_at` timestamps that fall within the window the production code actually computes (e.g. within the last 60 seconds for `handleBatchSync()`), or explicitly pass a `since` argument wide enough to cover the seeded data.
+- **State persistence**: any accumulated state (e.g. `lastHandleBatchSyncAt`) that persists across test cases — reset it in `beforeEach` to avoid cross-test contamination.
 
 ## Project-Specific Domain Rules
 
@@ -211,13 +210,7 @@ Husky detects `src/` changes and automatically runs `yarn spec:all`, then stages
 
 ### Script conventions (ts-node)
 
-Scripts that import TypeScript source using `src/*` path aliases (e.g. `spec/generators/`, `docs/`) must be invoked with:
-
-```bash
-ts-node -r tsconfig-paths/register <script.ts>
-```
-
-This is the established pattern (also used by the `typeorm` CLI script). Without `tsconfig-paths/register`, the path aliases configured in `tsconfig.json` won't resolve.
+Scripts that import TypeScript source using `src/*` path aliases (e.g. `spec/generators/`, `docs/`) require `tsconfig-paths/register`. The `typeorm` CLI script follows the same pattern.
 
 ## REST API
 
