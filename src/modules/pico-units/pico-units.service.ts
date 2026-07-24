@@ -243,6 +243,16 @@ export class PicoUnitsService {
     return this.picoUnitRepo.save(unit);
   }
 
+  async addFailedReading(unit: PicoUnit): Promise<PicoUnit> {
+    unit.failed_readings++;
+    return this.picoUnitRepo.save(unit);
+  }
+
+  async resetFailedReadings(unit: PicoUnit): Promise<PicoUnit> {
+    unit.failed_readings = 0;
+    return this.picoUnitRepo.save(unit);
+  }
+
   async touchAndResetFailedCalls(
     unit: PicoUnit,
     mac?: string,

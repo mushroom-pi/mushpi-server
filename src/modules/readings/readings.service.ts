@@ -31,9 +31,11 @@ import { LockedException } from 'src/common/exceptions/locked.exception';
 import { getWithFallback } from 'src/common/utils/http-fallback';
 import { BatchesService } from 'src/modules/batches/batches.service';
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
+import { DANGER_TEMPERATURE_C } from 'src/modules/pico-units/pico-units.constant';
 import { PicoUnitsService } from 'src/modules/pico-units/pico-units.service';
 
 import { Batch } from '../batches/batches.entity';
+import { isReadingInRange } from './readings-range.util';
 import {
   ListReadingsQueryDto,
   OptionalTimeLimitsQueryDto,
@@ -129,11 +131,30 @@ export class ReadingsService {
         return null;
       }
 
+      // Sensor range validation (DHT11 plausible bounds)
+      if (!isReadingInRange(rawTemp, rawHum)) {
+        this.logger.warn(
+          `Out-of-range DHT11 reading for unit ${unit.id} (temp=${rawTemp}, humidity=${rawHum})`,
+        );
+        await this.picoUnitsService.addFailedReading(unit);
+        return null;
+      }
+
+      // Danger-temperature warning (in-range but hazardous — does NOT block persistence)
+      if (rawTemp != null && rawTemp > DANGER_TEMPERATURE_C) {
+        this.logger.warn(
+          `Dangerous temperature for unit ${unit.id}: ${rawTemp}°C (>${DANGER_TEMPERATURE_C}°C)`,
+        );
+      }
+
       const reading = await this.createFromDeviceResponse(
         unit,
         response,
         durationMs,
       );
+
+      // Successful persist — reset the sensor fault counter
+      await this.picoUnitsService.resetFailedReadings(unit);
 
       return reading;
     } catch (e) {

@@ -411,4 +411,254 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
       expect(res.body.latest_reading.humidity).toBe(55);
     });
   });
+
+  describe('sensor range validation', () => {
+    it('persists reading when values are in-range (happy path)', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-range-ok',
+        port: 5120,
+      });
+
+      mockedAxios.get.mockResolvedValueOnce({
+        data: withSensorOverrides({ temperature: 25, humidity: 60 }),
+        status: 200,
+      });
+
+      const res = await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      expect(res.body.latest_reading).toBeDefined();
+      const readingCount = await readingsRepo.count();
+      expect(readingCount).toBe(1);
+
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      expect(updated!.failed_readings).toBe(0);
+      expect(updated!.failed_calls).toBe(0);
+    });
+
+    it('rejects out-of-range temperature and increments failed_readings', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-range-temph',
+        port: 5121,
+      });
+
+      mockedAxios.get.mockResolvedValueOnce({
+        data: withSensorOverrides({ temperature: 55, humidity: 60 }),
+        status: 200,
+      });
+
+      const res = await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      expect(res.body.latest_reading).toBeUndefined();
+      const readingCount = await readingsRepo.count();
+      expect(readingCount).toBe(0);
+
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      expect(updated!.failed_readings).toBe(1);
+      expect(updated!.failed_calls).toBe(0);
+    });
+
+    it('rejects out-of-range humidity and increments failed_readings', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-range-hum',
+        port: 5122,
+      });
+
+      mockedAxios.get.mockResolvedValueOnce({
+        data: withSensorOverrides({ temperature: 25, humidity: 5 }),
+        status: 200,
+      });
+
+      const res = await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      expect(res.body.latest_reading).toBeUndefined();
+      const readingCount = await readingsRepo.count();
+      expect(readingCount).toBe(0);
+
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      expect(updated!.failed_readings).toBe(1);
+    });
+
+    it('single increment when both values are out-of-range', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-range-both',
+        port: 5123,
+      });
+
+      mockedAxios.get.mockResolvedValueOnce({
+        data: withSensorOverrides({ temperature: 55, humidity: 5 }),
+        status: 200,
+      });
+
+      const res = await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      expect(res.body.latest_reading).toBeUndefined();
+      const readingCount = await readingsRepo.count();
+      expect(readingCount).toBe(0);
+
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      // Single increment, not two
+      expect(updated!.failed_readings).toBe(1);
+    });
+
+    it('passes null sensors through (not a range fault)', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-range-null',
+        port: 5124,
+      });
+
+      mockedAxios.get.mockResolvedValueOnce({
+        data: withSensorOverrides({
+          temperature: null as any,
+          humidity: null as any,
+        }),
+        status: 200,
+      });
+
+      const res = await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      // Reading persisted (with nulls)
+      expect(res.body.latest_reading).toBeDefined();
+      const readingCount = await readingsRepo.count();
+      expect(readingCount).toBe(1);
+
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      expect(updated!.failed_readings).toBe(0);
+    });
+
+    it('resets failed_readings on recovery after out-of-range polls', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-range-recover',
+        port: 5125,
+        failed_readings: 4,
+      });
+
+      // First poll: out-of-range → failed_readings becomes 5
+      mockedAxios.get.mockResolvedValueOnce({
+        data: withSensorOverrides({ temperature: 55, humidity: 60 }),
+        status: 200,
+      });
+
+      await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      let updated = await picoRepo.findOneBy({ id: unit.id });
+      expect(updated!.failed_readings).toBe(5);
+
+      // Second poll: in-range → failed_readings resets to 0, reading persisted
+      mockedAxios.get.mockResolvedValueOnce({
+        data: withSensorOverrides({ temperature: 25, humidity: 60 }),
+        status: 200,
+      });
+
+      const res = await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      expect(res.body.latest_reading).toBeDefined();
+      updated = await picoRepo.findOneBy({ id: unit.id });
+      expect(updated!.failed_readings).toBe(0);
+
+      const readingCount = await readingsRepo.count();
+      expect(readingCount).toBe(1);
+    });
+
+    it('persists reading for dangerous-but-in-range temperature (not a fault)', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-range-danger',
+        port: 5126,
+      });
+
+      mockedAxios.get.mockResolvedValueOnce({
+        data: withSensorOverrides({ temperature: 45, humidity: 60 }),
+        status: 200,
+      });
+
+      const res = await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      // Reading persisted — valid sensor data, not a fault
+      expect(res.body.latest_reading).toBeDefined();
+      expect(res.body.latest_reading.temperature).toBe(45);
+
+      const readingCount = await readingsRepo.count();
+      expect(readingCount).toBe(1);
+
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      expect(updated!.failed_readings).toBe(0);
+    });
+
+    it('zero-reading filter takes precedence over range check (no failed_readings increment)', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-range-zero',
+        port: 5127,
+      });
+
+      mockedAxios.get.mockResolvedValueOnce({
+        data: withSensorOverrides({ temperature: 0, humidity: 60 }),
+        status: 200,
+      });
+
+      const res = await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      // Zero filter wins — no reading, no range fault
+      expect(res.body.latest_reading).toBeUndefined();
+      const readingCount = await readingsRepo.count();
+      expect(readingCount).toBe(0);
+
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      // Zero is noise, not a range fault
+      expect(updated!.failed_readings).toBe(0);
+    });
+
+    it('out-of-range path runs inside the lock; second concurrent poll still gets 423', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-range-lock',
+        port: 5128,
+      });
+
+      // Slow out-of-range response to hold the lock
+      mockedAxios.get.mockImplementationOnce(
+        () =>
+          new Promise((res) =>
+            setTimeout(
+              () =>
+                res({
+                  data: withSensorOverrides({ temperature: 55, humidity: 60 }),
+                  status: 200,
+                }),
+              300,
+            ),
+          ),
+      );
+
+      const results = await Promise.all([
+        request(app.getHttpServer()).post(`/v1/pico-units/${unit.id}/poll`),
+        request(app.getHttpServer()).post(`/v1/pico-units/${unit.id}/poll`),
+      ]);
+
+      const statuses = results.map((r) => r.status).sort();
+      expect(statuses).toEqual([201, 423]);
+
+      // Out-of-range → no reading persisted, failed_readings incremented
+      const readingCount = await readingsRepo.count();
+      expect(readingCount).toBe(0);
+
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      expect(updated!.failed_readings).toBe(1);
+    });
+  });
 });

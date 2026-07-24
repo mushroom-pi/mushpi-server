@@ -68,8 +68,22 @@ export class PicoUnit {
   @Column({ type: 'integer', nullable: true, default: 0 })
   board_cpu_freq_mhz?: number;
 
+  @ApiProperty({
+    description: 'Consecutive unreachable polls from the server cron',
+    example: 0,
+    type: 'integer',
+  })
   @Column({ type: 'integer', nullable: false, default: 0 })
   failed_calls!: number;
+
+  @ApiProperty({
+    description:
+      'Consecutive out-of-range DHT11 readings (0-50°C, 10-90% humidity). Resets to 0 on a valid reading.',
+    example: 0,
+    type: 'integer',
+  })
+  @Column({ type: 'integer', nullable: false, default: 0 })
+  failed_readings!: number;
 
   @Expose()
   @Transform(({ obj }) => `http://${obj.handle}.local:${obj.port}`)

@@ -178,7 +178,7 @@ describe('RecipesV1Controller (e2e)', () => {
 
       await request(app.getHttpServer())
         .post('/v1/recipes')
-        .send({ ...base, humidity_target: 19 })
+        .send({ ...base, humidity_target: 9 })
         .expect(422);
 
       await request(app.getHttpServer())

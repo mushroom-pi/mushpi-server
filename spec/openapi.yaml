@@ -5323,6 +5323,14 @@ components:
           type: string
           description: mDNS hostname derived from handle
           example: unit-01.local
+        failed_calls:
+          type: integer
+          description: Consecutive unreachable polls from the server cron
+          example: 0
+        failed_readings:
+          type: integer
+          description: Consecutive out-of-range DHT11 readings (0-50°C, 10-90% humidity). Resets to 0 on a valid reading.
+          example: 0
         address:
           type: string
           description: Local mDNS address for the pico unit's REST API
@@ -5339,6 +5347,8 @@ components:
             - $ref: '#/components/schemas/Readings'
       required:
         - host
+        - failed_calls
+        - failed_readings
         - address
         - ipAddress
         - latest_reading

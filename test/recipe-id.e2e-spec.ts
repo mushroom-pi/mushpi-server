@@ -118,7 +118,7 @@ describe('RecipeIdV1Controller (e2e)', () => {
 
       await request(app.getHttpServer())
         .patch(`/v1/recipes/${recipe.id}`)
-        .send({ humidity_target: 10 })
+        .send({ humidity_target: 5 })
         .expect(422);
     });
   });

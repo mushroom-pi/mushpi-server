@@ -70,7 +70,7 @@ export const sampleDeviceResponse = {
   },
   sensors: {
     dht: {
-      humidity: 10,
+      humidity: 55,
       last_ok_age_s: 9,
       last_error: null,
       sensor_ok: true,
