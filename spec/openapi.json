@@ -7952,7 +7952,7 @@
           },
           "humidity_target": {
             "type": "number",
-            "minimum": 20,
+            "minimum": 10,
             "maximum": 90
           },
           "notes": {
@@ -8070,7 +8070,7 @@
           },
           "humidity_target": {
             "type": "number",
-            "minimum": 20,
+            "minimum": 10,
             "maximum": 90
           },
           "notes": {
@@ -8139,7 +8139,7 @@
           },
           "humidity_target": {
             "type": "number",
-            "minimum": 20,
+            "minimum": 10,
             "maximum": 90
           },
           "duration_days": {
@@ -8218,7 +8218,7 @@
           },
           "humidity_target": {
             "type": "number",
-            "minimum": 20,
+            "minimum": 10,
             "maximum": 90
           },
           "duration_days": {
@@ -8245,7 +8245,7 @@
             "type": "number",
             "description": "The percentage of humidity that we want the Pico Unit to maintain",
             "example": 60,
-            "minimum": 20,
+            "minimum": 10,
             "maximum": 90
           }
         }

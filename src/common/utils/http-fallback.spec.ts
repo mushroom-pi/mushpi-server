@@ -3,9 +3,12 @@ import axios, { AxiosError } from 'axios';
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
 
 import {
+  formatPollError,
   getWithFallback,
+  isConnectionLevelError,
   isNetworkError,
   postWithFallback,
+  shouldRetryAxiosError,
 } from './http-fallback';
 
 jest.mock('axios');
@@ -200,5 +203,145 @@ describe('postWithFallback', () => {
       {},
       { timeout: 3000 },
     );
+  });
+});
+
+describe('isConnectionLevelError', () => {
+  it.each(['EHOSTUNREACH', 'ECONNREFUSED', 'ENETUNREACH', 'ETIMEDOUT'])(
+    'returns true for axios error with code %s and no response',
+    (code) => {
+      const err = Object.assign(new Error(code), {
+        isAxiosError: true,
+        code,
+        request: {},
+      });
+      expect(isConnectionLevelError(err)).toBe(true);
+    },
+  );
+
+  it('returns false for plain Error', () => {
+    expect(isConnectionLevelError(new Error('generic'))).toBe(false);
+  });
+
+  it('returns false for axios error with response', () => {
+    const err = Object.assign(new Error('server error'), {
+      isAxiosError: true,
+      code: 'EHOSTUNREACH',
+      response: { status: 500 },
+    });
+    expect(isConnectionLevelError(err)).toBe(false);
+  });
+
+  it('returns false for axios error without response but non-connection code', () => {
+    const err = Object.assign(new Error('timeout'), {
+      isAxiosError: true,
+      code: 'ECONNABORTED',
+      request: {},
+    });
+    expect(isConnectionLevelError(err)).toBe(false);
+  });
+});
+
+describe('shouldRetryAxiosError', () => {
+  it('returns true for 500 response', () => {
+    const err = Object.assign(new Error('server error'), {
+      isAxiosError: true,
+      response: { status: 500 },
+    });
+    expect(shouldRetryAxiosError(err)).toBe(true);
+  });
+
+  it('returns true for 429 response', () => {
+    const err = Object.assign(new Error('rate limited'), {
+      isAxiosError: true,
+      response: { status: 429 },
+    });
+    expect(shouldRetryAxiosError(err)).toBe(true);
+  });
+
+  it('returns false for connection-level error (no response)', () => {
+    const err = Object.assign(new Error('no route'), {
+      isAxiosError: true,
+      code: 'EHOSTUNREACH',
+      request: {},
+    });
+    expect(shouldRetryAxiosError(err)).toBe(false);
+  });
+
+  it('returns false for axios error without response', () => {
+    const err = Object.assign(new Error('no response'), {
+      isAxiosError: true,
+      request: {},
+    });
+    expect(shouldRetryAxiosError(err)).toBe(false);
+  });
+
+  it('returns false for generic errors', () => {
+    expect(shouldRetryAxiosError(new Error('generic'))).toBe(false);
+  });
+
+  it('returns false for 4xx response (non-429)', () => {
+    const err = Object.assign(new Error('bad request'), {
+      isAxiosError: true,
+      response: { status: 400 },
+    });
+    expect(shouldRetryAxiosError(err)).toBe(false);
+  });
+});
+
+describe('formatPollError', () => {
+  it('formats unreachable message for connection-level error', () => {
+    const unit = makeUnit();
+    const err = Object.assign(new Error('no route'), {
+      isAxiosError: true,
+      code: 'EHOSTUNREACH',
+      request: {},
+    });
+    const msg = formatPollError(unit, err);
+    expect(msg).toMatch(/^Pico unit 1 unreachable \(EHOSTUNREACH: /);
+  });
+
+  it('formats poll-failed message for HTTP error response', () => {
+    const unit = makeUnit();
+    const err = Object.assign(new Error('server error'), {
+      isAxiosError: true,
+      response: { status: 500 },
+    });
+    const msg = formatPollError(unit, err);
+    expect(msg).toMatch(/^Pico unit 1 poll failed \(HTTP 500: /);
+  });
+
+  it('uses config.url as target when available', () => {
+    const unit = makeUnit();
+    const err = Object.assign(new Error('no route'), {
+      isAxiosError: true,
+      code: 'ECONNREFUSED',
+      request: {},
+      config: { url: 'http://192.168.1.10:5000/ping' },
+    });
+    const msg = formatPollError(unit, err);
+    expect(msg).toContain('http://192.168.1.10:5000/ping');
+  });
+
+  it('falls back to host:port when no config.url', () => {
+    const unit = makeUnit();
+    const err = Object.assign(new Error('no route'), {
+      isAxiosError: true,
+      code: 'ETIMEDOUT',
+      request: {},
+    });
+    const msg = formatPollError(unit, err);
+    expect(msg).toContain('unit-test.local:5000');
+  });
+
+  it('uses NO_RESPONSE for error without code or response', () => {
+    const unit = makeUnit();
+    const err = Object.assign(new Error('mystery'), {
+      isAxiosError: true,
+      request: {},
+    });
+    const msg = formatPollError(unit, err);
+    expect(msg).toContain('NO_RESPONSE');
+    expect(msg).toMatch(/^Pico unit 1 unreachable/);
   });
 });

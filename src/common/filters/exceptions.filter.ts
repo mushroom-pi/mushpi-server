@@ -165,6 +165,10 @@ export class ExceptionsFilter implements ExceptionFilter {
       delete responseBody.description;
     }
 
+    // Prevent pino-http from logging a duplicate "request errored" message
+    // since this filter already logged the exception with full details
+    (response as any)._exceptionLogged = true;
+
     httpAdapter.reply(response, responseBody, httpStatus);
   }
 }

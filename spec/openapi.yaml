@@ -5540,7 +5540,7 @@ components:
           maximum: 50
         humidity_target:
           type: number
-          minimum: 20
+          minimum: 10
           maximum: 90
         notes:
           type: string
@@ -5630,7 +5630,7 @@ components:
           maximum: 50
         humidity_target:
           type: number
-          minimum: 20
+          minimum: 10
           maximum: 90
         notes:
           type: string
@@ -5681,7 +5681,7 @@ components:
           maximum: 50
         humidity_target:
           type: number
-          minimum: 20
+          minimum: 10
           maximum: 90
         duration_days:
           type: number
@@ -5742,7 +5742,7 @@ components:
           maximum: 50
         humidity_target:
           type: number
-          minimum: 20
+          minimum: 10
           maximum: 90
         duration_days:
           type: number
@@ -5763,7 +5763,7 @@ components:
           type: number
           description: The percentage of humidity that we want the Pico Unit to maintain
           example: 60
-          minimum: 20
+          minimum: 10
           maximum: 90
     SetpointsDto:
       type: object

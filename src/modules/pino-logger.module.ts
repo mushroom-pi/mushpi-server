@@ -62,6 +62,7 @@ export class PinoLoggerModule {
                   res: ServerResponse,
                   err: Error | undefined,
                 ) => {
+                  if ((res as any)._exceptionLogged) return 'silent';
                   if (err || res.statusCode >= 500) return 'error';
                   if (res.statusCode >= 400) return 'warn';
                   return 'debug';

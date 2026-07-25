@@ -1,9 +1,71 @@
-import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axiosRetry from 'axios-retry';
 
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
 
+/** Error codes that indicate the Pico is unreachable at the network level. */
+export const CONNECTION_LEVEL_ERROR_CODES = [
+  'EHOSTUNREACH',
+  'ECONNREFUSED',
+  'ENETUNREACH',
+  'ETIMEDOUT',
+];
+
 export function isNetworkError(error: unknown): boolean {
   return axios.isAxiosError(error) && !error.response;
+}
+
+/**
+ * Returns true when the error is an axios error with no `.response` and a
+ * connection-level error code (EHOSTUNREACH, ECONNREFUSED, etc.).
+ */
+export function isConnectionLevelError(error: unknown): boolean {
+  return (
+    axios.isAxiosError(error) &&
+    !error.response &&
+    CONNECTION_LEVEL_ERROR_CODES.includes((error as any).code)
+  );
+}
+
+/**
+ * Retry condition for axios-retry: only retry transient HTTP-server responses
+ * (5xx or 429). Connection-level errors and "no-response" errors return false.
+ */
+export function shouldRetryAxiosError(error: unknown): boolean {
+  return (
+    axios.isAxiosError(error) &&
+    !!error.response &&
+    (error.response.status >= 500 || error.response.status === 429)
+  );
+}
+
+/**
+ * Thin, idempotent wrapper around axiosRetry that applies the project-wide
+ * retry policy (2 retries, exponential delay, server-error only).
+ */
+export function configureAxiosRetry(axiosInstance: AxiosInstance): void {
+  axiosRetry(axiosInstance, {
+    retries: 2,
+    retryDelay: axiosRetry.exponentialDelay,
+    retryCondition: shouldRetryAxiosError,
+  });
+}
+
+/**
+ * Format a human-readable error message for a Pico poll failure.
+ * Distinguishes between "unreachable" (no response) and "poll failed" (HTTP
+ * response received but indicates an error).
+ */
+export function formatPollError(unit: PicoUnit, error: unknown): string {
+  const reason =
+    (error as any)?.code ??
+    ((error as any)?.response
+      ? `HTTP ${(error as any).response.status}`
+      : 'NO_RESPONSE');
+  const target = (error as any)?.config?.url ?? `${unit.host}:${unit.port}`;
+  const hasResponse = !!(error as any)?.response;
+  const verb = hasResponse ? 'poll failed' : 'unreachable';
+  return `Pico unit ${unit.id} ${verb} (${reason}: ${target})`;
 }
 
 export async function getWithFallback(

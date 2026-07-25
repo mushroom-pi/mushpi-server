@@ -1,14 +1,16 @@
 import { Injectable } from '@nestjs/common';
 
 import axios from 'axios';
-import axiosRetry from 'axios-retry';
 
 import {
   DevicesDto,
   OutputsDto,
   SetpointsDto,
 } from 'src/common/dto/pico-unit-response.dto';
-import { postWithFallback } from 'src/common/utils/http-fallback';
+import {
+  configureAxiosRetry,
+  postWithFallback,
+} from 'src/common/utils/http-fallback';
 import { Batch } from 'src/modules/batches/batches.entity';
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
 import { PicoUnitsService } from 'src/modules/pico-units/pico-units.service';
@@ -27,7 +29,7 @@ export class ControlService {
     private readonly readingsService: ReadingsService,
     private readonly picoUnitsService: PicoUnitsService,
   ) {
-    axiosRetry(axios, { retryDelay: axiosRetry.exponentialDelay });
+    configureAxiosRetry(axios);
   }
 
   private async callSilent(

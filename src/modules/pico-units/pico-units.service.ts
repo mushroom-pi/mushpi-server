@@ -7,12 +7,12 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import axios from 'axios';
-import axiosRetry from 'axios-retry';
 import { ILike, MoreThan, Repository } from 'typeorm';
 
 import { PORT_DEFAULT } from 'src/common/constants/hardware.constants';
 import { FailedDependencyException } from 'src/common/exceptions/failed-dependency.exception';
 import {
+  configureAxiosRetry,
   getWithFallback,
   postWithFallback,
 } from 'src/common/utils/http-fallback';
@@ -41,7 +41,7 @@ export class PicoUnitsService {
     @InjectRepository(PicoUnit) private picoUnitRepo: Repository<PicoUnit>,
     private readonly eventEmitter: EventEmitter2,
   ) {
-    axiosRetry(axios, { retryDelay: axiosRetry.exponentialDelay });
+    configureAxiosRetry(axios);
   }
 
   async announce(dto: AnnouncePicoUnitDto): Promise<PicoUnit> {

@@ -181,6 +181,42 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
     expect(mockedAxios.get).toHaveBeenCalledTimes(2);
   });
 
+  it('maps EHOSTUNREACH to 502 with a human-readable message', async () => {
+    const unit = await seedPicoUnit(app, {
+      handle: 'poll-eunreach',
+      port: 5129,
+      ip: '10.0.0.29',
+    });
+
+    const hostUnreachable = Object.assign(new Error('No route to host'), {
+      isAxiosError: true,
+      code: 'EHOSTUNREACH',
+      request: {},
+    });
+
+    mockedAxios.get
+      .mockRejectedValueOnce(hostUnreachable as AxiosError)
+      .mockRejectedValueOnce(hostUnreachable as AxiosError);
+
+    const res = await request(app.getHttpServer())
+      .post(`/v1/pico-units/${unit.id}/poll`)
+      .expect(502);
+
+    expect(res.body.message).toMatch(
+      /Pico unit \d+ unreachable \(EHOSTUNREACH: /,
+    );
+
+    // mDNS + IP fallback
+    expect(mockedAxios.get).toHaveBeenCalledTimes(2);
+
+    // No reading persisted
+    const readingCount = await readingsRepo.count();
+    expect(readingCount).toBe(0);
+
+    const updated = (await picoRepo.findOneBy({ id: unit.id }))!;
+    expect(updated.failed_calls).toBe(1);
+  });
+
   it('falls back to IP when mDNS fails', async () => {
     const unit = await seedPicoUnit(app, {
       handle: 'poll-fallback',

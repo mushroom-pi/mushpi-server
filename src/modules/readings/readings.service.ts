@@ -1,4 +1,5 @@
 import {
+  BadGatewayException,
   BadRequestException,
   Injectable,
   Logger,
@@ -8,7 +9,6 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 
 import axios from 'axios';
-import axiosRetry from 'axios-retry';
 import { Response } from 'express';
 import { createReadStream, promises as fs } from 'fs';
 import { tmpdir } from 'os';
@@ -28,7 +28,11 @@ import {
   validateDeviceResponse,
 } from 'src/common/dto/pico-unit-response.dto';
 import { LockedException } from 'src/common/exceptions/locked.exception';
-import { getWithFallback } from 'src/common/utils/http-fallback';
+import {
+  configureAxiosRetry,
+  formatPollError,
+  getWithFallback,
+} from 'src/common/utils/http-fallback';
 import { BatchesService } from 'src/modules/batches/batches.service';
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
 import { DANGER_TEMPERATURE_C } from 'src/modules/pico-units/pico-units.constant';
@@ -56,12 +60,23 @@ export class ReadingsService {
     private readonly picoUnitsService: PicoUnitsService,
     private readonly batchesService: BatchesService,
   ) {
-    axiosRetry(axios, { retryDelay: axiosRetry.exponentialDelay });
+    configureAxiosRetry(axios);
   }
 
   async fetchAndValidateReading(unit: PicoUnit, path: string) {
     const t0 = new Date();
-    const r = await getWithFallback(unit, path, { timeout: 10000 });
+    let r;
+    try {
+      r = await getWithFallback(unit, path, { timeout: 10000 });
+    } catch (error) {
+      // No-response errors (EHOSTUNREACH, ECONNREFUSED, etc.) → 502
+      if (axios.isAxiosError(error) && !error.response) {
+        throw new BadGatewayException(formatPollError(unit, error));
+      }
+      // HTTP-response errors (e.g. Pico returns 500) and non-axios errors
+      // (validation, lock, etc.) propagate unchanged.
+      throw error;
+    }
     const t1 = new Date();
     const durationMs = Number(t1.getTime() - t0.getTime());
     const { errors } = await validateDeviceResponse(r.data);
@@ -174,9 +189,7 @@ export class ReadingsService {
         await this.pollReadingsFromUnit(picoUnit);
       } catch (error) {
         // We don't want conflicts while writting in the database
-        this.logger.error(
-          `Polling for Pico Unit ${picoUnit.id} couldn't be completed due to: ${JSON.stringify(error)}`,
-        );
+        this.logger.warn(formatPollError(picoUnit, error));
       }
     }
 

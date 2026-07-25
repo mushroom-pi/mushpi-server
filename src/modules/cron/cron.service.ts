@@ -2,6 +2,7 @@ import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
+import { formatPollError } from 'src/common/utils/http-fallback';
 import {
   BATCH_EVENTS,
   BatchFinishedEvent,
@@ -111,9 +112,7 @@ export class CronService implements OnApplicationBootstrap {
     try {
       await this.readingsService.pollReadingsFromUnit(unit);
     } catch (error) {
-      this.logger.warn(
-        `Could not poll readings on enable for unit ${unit.id}: ${JSON.stringify(error)}`,
-      );
+      this.logger.warn(formatPollError(unit, error));
     }
     const batch = await this.batchesService.findInProgressForUnit(unit.id);
     if (!batch) return;
