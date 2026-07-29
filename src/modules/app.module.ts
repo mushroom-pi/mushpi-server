@@ -16,6 +16,7 @@ import { CustomConfigModule } from './config/config.module';
 import { CustomConfigService } from './config/config.service';
 import { ControlModule } from './control/control.module';
 import { CronModule } from './cron/cron.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
 import { PicoUnitsModule } from './pico-units/pico-units.module';
 import { PinoLoggerModule } from './pino-logger.module';
@@ -72,6 +73,7 @@ import { SwaggerModule } from './swagger/swagger.module';
     ControlModule,
     BatchesModule,
     RecipesModule,
+    DashboardModule,
   ],
   providers: [
     {

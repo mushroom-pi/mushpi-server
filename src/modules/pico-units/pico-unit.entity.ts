@@ -85,6 +85,15 @@ export class PicoUnit {
   @Column({ type: 'integer', nullable: false, default: 0 })
   failed_readings!: number;
 
+  @ApiProperty({
+    description:
+      'Consecutive polls where both temp and humidity were null (sensor returned no data). Resets to 0 when at least one value is non-null.',
+    example: 0,
+    type: 'integer',
+  })
+  @Column({ type: 'integer', nullable: false, default: 0 })
+  consecutive_empty_readings!: number;
+
   @Expose()
   @Transform(({ obj }) => `http://${obj.handle}.local:${obj.port}`)
   @ApiProperty({

@@ -544,7 +544,7 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
       expect(updated!.failed_readings).toBe(1);
     });
 
-    it('passes null sensors through (not a range fault)', async () => {
+    it('increments consecutive_empty_readings when both sensors are null (no reading persisted)', async () => {
       const unit = await seedPicoUnit(app, {
         handle: 'poll-range-null',
         port: 5124,
@@ -562,12 +562,14 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
         .post(`/v1/pico-units/${unit.id}/poll`)
         .expect(201);
 
-      // Reading persisted (with nulls)
-      expect(res.body.latest_reading).toBeDefined();
+      // No reading persisted — empty sensor data
+      expect(res.body.latest_reading).toBeUndefined();
       const readingCount = await readingsRepo.count();
-      expect(readingCount).toBe(1);
+      expect(readingCount).toBe(0);
 
       const updated = await picoRepo.findOneBy({ id: unit.id });
+      expect(updated!.consecutive_empty_readings).toBe(1);
+      // Not a range fault
       expect(updated!.failed_readings).toBe(0);
     });
 

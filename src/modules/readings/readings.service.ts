@@ -146,6 +146,20 @@ export class ReadingsService {
         return null;
       }
 
+      // Check for empty (null) sensor readings — distinct from out-of-range
+      const bothEmpty = rawTemp == null && rawHum == null;
+
+      if (bothEmpty) {
+        unit = await this.picoUnitsService.addEmptyReading(unit);
+        this.logger.warn(
+          `Empty sensor reading on unit ${unit.handle} — consecutive: ${unit.consecutive_empty_readings}`,
+        );
+        return null; // No reading row persisted
+      }
+
+      // At least one sensor value is present — reset empty counter
+      unit = await this.picoUnitsService.resetEmptyReadings(unit);
+
       // Sensor range validation (DHT11 plausible bounds)
       if (!isReadingInRange(rawTemp, rawHum)) {
         this.logger.warn(

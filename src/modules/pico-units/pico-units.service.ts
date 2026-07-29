@@ -253,6 +253,17 @@ export class PicoUnitsService {
     return this.picoUnitRepo.save(unit);
   }
 
+  async addEmptyReading(unit: PicoUnit): Promise<PicoUnit> {
+    unit.consecutive_empty_readings =
+      (unit.consecutive_empty_readings ?? 0) + 1;
+    return this.picoUnitRepo.save(unit);
+  }
+
+  async resetEmptyReadings(unit: PicoUnit): Promise<PicoUnit> {
+    unit.consecutive_empty_readings = 0;
+    return this.picoUnitRepo.save(unit);
+  }
+
   async touchAndResetFailedCalls(
     unit: PicoUnit,
     mac?: string,

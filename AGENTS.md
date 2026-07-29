@@ -126,6 +126,7 @@ readings/     — readings storage and time-range queries
 batches/      — batch CRUD + lifecycle rules + recipe linking
 control/      — proxy: setpoints, outputs, setup, control loop toggle (each triggers an immediate trailing poll via `callPollAndUpdate`)  
 cron/         — scheduled polling of all enabled Pico units
+dashboard/    — aggregated summary endpoint (unit health, batches, recipes, stats, warnings)
 monitoring/   — /ping, /health, /metrics (VERSION_NEUTRAL — unversioned)
 swagger/      — OpenAPI setup with global error schemas + operationIdFactory; provider registered in AppModule, invoked manually in main.ts; also powers spec:export
 ```
@@ -238,6 +239,7 @@ Scripts that import TypeScript source using `src/*` path aliases (e.g. `spec/gen
 | GET/PATCH/DELETE | `/v1/recipes/:recipeId`                         | CRUD                                                                           |
 | GET              | `/v1/recipes/:recipeId/batches`                 | Batches using this recipe                                                      |
 | PUT/DELETE       | `/v1/recipes/:recipeId/image`                   | Recipe image upload/removal                                                    |
+| GET              | `/v1/dashboard/summary`                         | Aggregated dashboard snapshot (units, batches, recipes, stats, warnings)       |
 | GET              | `/ping` + `/health` + `/metrics`                | Liveness / full health / Prometheus (unversioned, VERSION_NEUTRAL)             |
 
 ## Cron Polling
@@ -247,6 +249,8 @@ Scripts that import TypeScript source using `src/*` path aliases (e.g. `spec/gen
 **Readings ingestion funnel**: `ReadingsService.createFromDeviceResponse()` is the **only** write path for the `readings` table — there is no direct POST endpoint for readings and no batch-side writes. Any quality filter or validation rule for incoming readings belongs in `ReadingsService.pollReadingsFromUnit()` (the caller), not in `createFromDeviceResponse` itself, which should remain a pure mapper/persister. Failed units increment `failed_calls` but are not auto-disabled. Uses error-safe wrappers (`applyBatchSettingsSafe`) to avoid crashing the cron job.
 
 **Sensor range validation**: out-of-range DHT11 readings (outside `SENSOR_RANGE` in `pico-units.constant.ts`: temperature 0–50°C, humidity 10–90%) increment `failed_readings` on the PicoUnit instead of persisting a reading row. `failed_readings` resets to 0 on the next valid in-range reading (consecutive-failure model, independent from `failed_calls`). Temperature > 40°C logs a warning but does not block persistence (valid sensor data — safety threshold only). The range gate lives in `pollReadingsFromUnit()`, not in `DeviceResponseDto` (which is a structural validator, not a data-quality gate).
+
+**Empty-readings tracking**: when both `temperature` and `humidity` are `null` (sensor returned no data), `consecutive_empty_readings` on the PicoUnit is incremented and no reading row is persisted. When at least one sensor value is non-null, `consecutive_empty_readings` resets to 0. This is distinct from `failed_readings` (out-of-range) and `failed_calls` (unreachable). The empty-readings gate runs after the zero-value skip and before the range check in `pollReadingsFromUnit()`.
 
 `CronService` also runs an immediate startup sweep via `OnApplicationBootstrap` in addition to the `@Cron(EVERY_MINUTE)` tick; both delegate to the same private `runReadingsSweep()` method so behaviour stays uniform. The startup sweep is fire-and-forget (`void …catch()`) to avoid blocking the HTTP server bind.
 

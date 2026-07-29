@@ -7431,6 +7431,150 @@
           "control"
         ]
       }
+    },
+    "/v1/dashboard/summary": {
+      "get": {
+        "description": "Aggregated snapshot: unit health, active/approaching/recently-finished batches, top recipes, global counts, and current warnings.",
+        "operationId": "DashboardController_getSummary_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Dashboard summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardSummaryDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 422
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Unprocessable Entity"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": [
+                        "propertyA has wrong value \"...\", [constrains]",
+                        "propertyB has wrong value \"...\", [constrains]",
+                        "..."
+                      ],
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Generic unknown error produced by an unidentified exception",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 500
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Internal Server Error"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Internal server error",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The event loop is lagging and no more requests can be attended right now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 503
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Service Unavailable"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Server is too busy",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get dashboard summary",
+        "tags": [
+          "dashboard"
+        ]
+      }
     }
   },
   "info": {
@@ -7678,6 +7822,11 @@
             "description": "Consecutive out-of-range DHT11 readings (0-50°C, 10-90% humidity). Resets to 0 on a valid reading.",
             "example": 0
           },
+          "consecutive_empty_readings": {
+            "type": "integer",
+            "description": "Consecutive polls where both temp and humidity were null (sensor returned no data). Resets to 0 when at least one value is non-null.",
+            "example": 0
+          },
           "address": {
             "type": "string",
             "description": "Local mDNS address for the pico unit's REST API",
@@ -7703,6 +7852,7 @@
           "host",
           "failed_calls",
           "failed_readings",
+          "consecutive_empty_readings",
           "address",
           "ipAddress",
           "latest_reading"
@@ -8298,6 +8448,405 @@
         },
         "required": [
           "enabled"
+        ]
+      },
+      "DashboardLastReadingDto": {
+        "type": "object",
+        "properties": {
+          "temperature": {
+            "type": "number",
+            "nullable": true
+          },
+          "humidity": {
+            "type": "number",
+            "nullable": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "timestamp"
+        ]
+      },
+      "DashboardActiveBatchDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "in-progress"
+            ]
+          },
+          "daysRemaining": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status",
+          "daysRemaining"
+        ]
+      },
+      "DashboardUnitItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "handle": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "healthy",
+              "degraded",
+              "offline"
+            ]
+          },
+          "lastSeenSecondsAgo": {
+            "type": "integer",
+            "nullable": true
+          },
+          "uptimeHours": {
+            "type": "number"
+          },
+          "failedCalls": {
+            "type": "integer"
+          },
+          "failedReadings": {
+            "type": "integer"
+          },
+          "consecutiveEmptyReadings": {
+            "type": "integer"
+          },
+          "controlLoopEnabled": {
+            "type": "boolean"
+          },
+          "lastReading": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DashboardLastReadingDto"
+              }
+            ]
+          },
+          "activeBatch": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DashboardActiveBatchDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "handle",
+          "status",
+          "uptimeHours",
+          "failedCalls",
+          "failedReadings",
+          "consecutiveEmptyReadings",
+          "controlLoopEnabled"
+        ]
+      },
+      "DashboardUnitsDto": {
+        "type": "object",
+        "properties": {
+          "healthy": {
+            "type": "integer"
+          },
+          "degraded": {
+            "type": "integer"
+          },
+          "offline": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardUnitItemDto"
+            }
+          }
+        },
+        "required": [
+          "healthy",
+          "degraded",
+          "offline",
+          "total",
+          "items"
+        ]
+      },
+      "DashboardApproachingBatchDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "species": {
+            "type": "string"
+          },
+          "daysRemaining": {
+            "type": "integer"
+          },
+          "finishAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "picoUnitHandle": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "species",
+          "daysRemaining",
+          "finishAt",
+          "picoUnitHandle"
+        ]
+      },
+      "DashboardFinishedBatchDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "species": {
+            "type": "string"
+          },
+          "finishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "picoUnitHandle": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "species",
+          "finishedAt",
+          "picoUnitHandle"
+        ]
+      },
+      "DashboardBatchesDto": {
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "approachingCompletion": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardApproachingBatchDto"
+            }
+          },
+          "recentlyFinished": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardFinishedBatchDto"
+            }
+          }
+        },
+        "required": [
+          "active",
+          "total",
+          "approachingCompletion",
+          "recentlyFinished"
+        ]
+      },
+      "DashboardTopRecipeDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "species": {
+            "type": "string"
+          },
+          "batchCount": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "species",
+          "batchCount"
+        ]
+      },
+      "DashboardRecipesDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer"
+          },
+          "mostUsed": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardTopRecipeDto"
+            }
+          },
+          "topCount": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "mostUsed",
+          "topCount"
+        ]
+      },
+      "DashboardStatsDto": {
+        "type": "object",
+        "properties": {
+          "totalReadings": {
+            "type": "integer"
+          },
+          "totalBatches": {
+            "type": "integer"
+          },
+          "oldestActiveBatchDays": {
+            "type": "integer",
+            "nullable": true
+          }
+        },
+        "required": [
+          "totalReadings",
+          "totalBatches"
+        ]
+      },
+      "DashboardWarningReadingDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "number",
+            "description": "Actual sensor value (temp or humidity depending on warning type)"
+          },
+          "target": {
+            "type": "number",
+            "description": "Target setpoint value"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "value",
+          "target",
+          "timestamp"
+        ]
+      },
+      "DashboardWarningDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "temp_deviation",
+              "humidity_deviation",
+              "unit_degraded",
+              "unit_offline",
+              "empty_readings"
+            ]
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "warning",
+              "error"
+            ]
+          },
+          "unitId": {
+            "type": "integer"
+          },
+          "handle": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "reading": {
+            "$ref": "#/components/schemas/DashboardWarningReadingDto"
+          },
+          "failedCalls": {
+            "type": "integer"
+          },
+          "failedReadings": {
+            "type": "integer"
+          },
+          "consecutiveEmptyReadings": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "type",
+          "severity",
+          "unitId",
+          "handle",
+          "message"
+        ]
+      },
+      "DashboardSummaryDto": {
+        "type": "object",
+        "properties": {
+          "units": {
+            "$ref": "#/components/schemas/DashboardUnitsDto"
+          },
+          "batches": {
+            "$ref": "#/components/schemas/DashboardBatchesDto"
+          },
+          "recipes": {
+            "$ref": "#/components/schemas/DashboardRecipesDto"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/DashboardStatsDto"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardWarningDto"
+            }
+          }
+        },
+        "required": [
+          "units",
+          "batches",
+          "recipes",
+          "stats",
+          "warnings"
         ]
       }
     }
