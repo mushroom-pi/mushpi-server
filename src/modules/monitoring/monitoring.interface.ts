@@ -25,9 +25,24 @@ export interface ServerStatus {
   appVersion: string;
 }
 
+export interface TableSize {
+  name: string;
+  sizeMb: number | null;
+  rowCount?: number;
+}
+
+export interface DatabaseSizeStatus {
+  totalMb: number | null;
+  inMemory: boolean;
+  path: string;
+  tables: TableSize[];
+  overheadMb: number | null;
+}
+
 export interface DatabaseStatus {
   read: boolean;
   write: boolean;
+  size?: DatabaseSizeStatus;
 }
 
 export interface ServiceStatus {

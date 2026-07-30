@@ -7713,6 +7713,64 @@
           "appVersion"
         ]
       },
+      "TableSizeDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "readings"
+          },
+          "sizeMb": {
+            "type": "number",
+            "nullable": true,
+            "example": 0.82
+          },
+          "rowCount": {
+            "type": "number",
+            "example": 1234
+          }
+        },
+        "required": [
+          "name",
+          "sizeMb"
+        ]
+      },
+      "DatabaseSizeDto": {
+        "type": "object",
+        "properties": {
+          "totalMb": {
+            "type": "number",
+            "nullable": true,
+            "example": 1.24
+          },
+          "inMemory": {
+            "type": "boolean",
+            "example": false
+          },
+          "path": {
+            "type": "string",
+            "example": "./data/app.sqlite"
+          },
+          "tables": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TableSizeDto"
+            }
+          },
+          "overheadMb": {
+            "type": "number",
+            "nullable": true,
+            "example": 0.12
+          }
+        },
+        "required": [
+          "totalMb",
+          "inMemory",
+          "path",
+          "tables",
+          "overheadMb"
+        ]
+      },
       "DatabaseMockDto": {
         "type": "object",
         "properties": {
@@ -7723,11 +7781,25 @@
           "write": {
             "type": "boolean",
             "description": "Check that the provided credentials have write privileges"
+          },
+          "size": {
+            "$ref": "#/components/schemas/DatabaseSizeDto"
           }
         },
         "required": [
           "read",
           "write"
+        ]
+      },
+      "DatabasesDto": {
+        "type": "object",
+        "properties": {
+          "sqlite": {
+            "$ref": "#/components/schemas/DatabaseMockDto"
+          }
+        },
+        "required": [
+          "sqlite"
         ]
       },
       "ServiceMockDto": {
@@ -7769,7 +7841,7 @@
             "description": "Check any database that the microservice needs to operate",
             "allOf": [
               {
-                "$ref": "#/components/schemas/DatabaseMockDto"
+                "$ref": "#/components/schemas/DatabasesDto"
               }
             ]
           },

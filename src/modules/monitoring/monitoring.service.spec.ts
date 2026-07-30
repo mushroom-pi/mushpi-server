@@ -17,8 +17,16 @@ jest.mock('os', () => ({
 describe('MonitoringService', () => {
   let service: MonitoringService;
 
+  const defaultSizeMock = {
+    totalMb: null,
+    inMemory: true,
+    path: ':memory:',
+    tables: [],
+  };
+
   const sqliteHealthMock = {
     checkSQLiteDbStatus: jest.fn(),
+    getDatabaseSize: jest.fn().mockResolvedValue(defaultSizeMock),
   };
 
   beforeEach(async () => {
@@ -120,6 +128,7 @@ describe('MonitoringService', () => {
       sqliteHealthMock.checkSQLiteDbStatus.mockResolvedValue({
         read: true,
         write: true,
+        size: defaultSizeMock,
       });
 
       const res = await (service as any)['checkDatabaseStatus']('sqlite');
@@ -127,6 +136,7 @@ describe('MonitoringService', () => {
       expect(res).toEqual({
         read: true,
         write: true,
+        size: defaultSizeMock,
       });
       expect(sqliteHealthMock.checkSQLiteDbStatus).toHaveBeenCalledTimes(1);
     });
@@ -135,6 +145,7 @@ describe('MonitoringService', () => {
       sqliteHealthMock.checkSQLiteDbStatus.mockResolvedValue({
         read: true,
         write: false,
+        size: defaultSizeMock,
       });
 
       const res = await (service as any)['checkDatabaseStatus']('sqlite');
@@ -142,6 +153,7 @@ describe('MonitoringService', () => {
       expect(res).toEqual({
         read: true,
         write: false,
+        size: defaultSizeMock,
       });
     });
   });

@@ -148,6 +148,34 @@ class ServicesDto {
   serviceMock?: ServiceMockDto;
 }
 
+class TableSizeDto {
+  @ApiProperty({ type: String, example: 'readings' })
+  readonly name: string;
+
+  @ApiProperty({ type: Number, nullable: true, example: 0.82 })
+  readonly sizeMb: number | null;
+
+  @ApiProperty({ type: Number, required: false, example: 1234 })
+  readonly rowCount?: number;
+}
+
+class DatabaseSizeDto {
+  @ApiProperty({ type: Number, nullable: true, example: 1.24 })
+  readonly totalMb: number | null;
+
+  @ApiProperty({ type: Boolean, example: false })
+  readonly inMemory: boolean;
+
+  @ApiProperty({ type: String, example: './data/app.sqlite' })
+  readonly path: string;
+
+  @ApiProperty({ type: [TableSizeDto] })
+  readonly tables: TableSizeDto[];
+
+  @ApiProperty({ type: Number, nullable: true, example: 0.12 })
+  readonly overheadMb: number | null;
+}
+
 class DatabaseMockDto {
   @ApiProperty({
     type: Boolean,
@@ -160,6 +188,9 @@ class DatabaseMockDto {
     description: 'Check that the provided credentials have write privileges',
   })
   write: boolean;
+
+  @ApiProperty({ type: DatabaseSizeDto, required: false })
+  readonly size?: DatabaseSizeDto;
 }
 
 class DatabasesDto {
@@ -172,7 +203,7 @@ export class HealthCheckResponseDto {
   server?: ServerDto;
 
   @ApiProperty({
-    type: DatabaseMockDto,
+    type: DatabasesDto,
     description: 'Check any database that the microservice needs to operate',
   })
   databases?: DatabasesDto;

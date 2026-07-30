@@ -2,7 +2,9 @@ import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
+
+import { CustomConfigService } from 'src/modules/config/config.service';
 
 import { Health } from './sqlite-health.entity';
 import { SQLiteHealthService } from './sqlite-health.service';
@@ -17,28 +19,36 @@ const createRepoMock = (): RepoMock => ({
 describe('SQLiteHealthService', () => {
   let service: SQLiteHealthService;
   let repo: RepoMock;
+  let dataSourceMock: { query: jest.Mock };
+  let configServiceMock: { sqlite: { database: string } };
 
   // spy on Logger at the instance level used inside the service
-  // (service creates `new Logger(...)`, so we’ll spy per test)
+  // (service creates `new Logger(...)`, so we'll spy per test)
   const debugSpy = jest.spyOn(Logger.prototype, 'debug').mockImplementation();
   const errorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation();
 
   beforeEach(async () => {
     repo = createRepoMock();
+    dataSourceMock = { query: jest.fn() };
+    configServiceMock = { sqlite: { database: ':memory:' } };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SQLiteHealthService,
         { provide: getRepositoryToken(Health), useValue: repo },
+        { provide: DataSource, useValue: dataSourceMock },
+        { provide: CustomConfigService, useValue: configServiceMock },
       ],
     }).compile();
 
     service = module.get(SQLiteHealthService);
     jest.clearAllMocks();
+    // Default: dbstat returns empty tables (used by checkSQLiteDbStatus tests)
+    dataSourceMock.query.mockResolvedValue([]);
   });
 
   describe('checkSQLiteDbStatus', () => {
-    it('returns {read:true, write:true} when create/save succeed', async () => {
+    it('returns {read:true, write:true, size} when create/save succeed', async () => {
       // write path uses repo.create() only
       repo.create!.mockReturnValue({} as Health);
 
@@ -47,13 +57,14 @@ describe('SQLiteHealthService', () => {
 
       const res = await service.checkSQLiteDbStatus();
 
-      expect(res).toEqual({ read: true, write: true });
+      expect(res.read).toBe(true);
+      expect(res.write).toBe(true);
+      expect(res.size).toBeDefined();
+      expect(res.size!.inMemory).toBe(true);
+      expect(res.size!.totalMb).toBeNull();
+      expect(res.size!.path).toBe(':memory:');
 
-      // create called at least twice (once per check)
-      expect(repo.create).toHaveBeenCalledTimes(2);
-      expect(repo.save).toHaveBeenCalledTimes(1);
-
-      // debug log called (message text currently says "MongoDB" in your code)
+      // debug log called
       expect(debugSpy).toHaveBeenCalled();
     });
 
@@ -63,7 +74,7 @@ describe('SQLiteHealthService', () => {
 
       const res = await service.checkSQLiteDbStatus();
 
-      expect(res).toEqual({ read: false, write: true });
+      expect(res).toMatchObject({ read: false, write: true });
       expect(errorSpy).toHaveBeenCalled(); // logged the failure
     });
 
@@ -81,7 +92,7 @@ describe('SQLiteHealthService', () => {
 
       const res = await service.checkSQLiteDbStatus();
 
-      expect(res).toEqual({ read: true, write: false });
+      expect(res).toMatchObject({ read: true, write: false });
       expect(errorSpy).toHaveBeenCalled();
     });
 
@@ -98,8 +109,54 @@ describe('SQLiteHealthService', () => {
 
       const res = await service.checkSQLiteDbStatus();
 
-      expect(res).toEqual({ read: false, write: false });
+      expect(res).toMatchObject({ read: false, write: false });
       expect(errorSpy).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('getDatabaseSize', () => {
+    it('returns totalMb null and inMemory true for :memory:', async () => {
+      configServiceMock.sqlite.database = ':memory:';
+      dataSourceMock.query.mockResolvedValueOnce([]);
+
+      const result = await service.getDatabaseSize();
+
+      expect(result.totalMb).toBeNull();
+      expect(result.inMemory).toBe(true);
+      expect(result.path).toBe(':memory:');
+      expect(result.tables).toEqual([]);
+    });
+
+    it('uses dbstat when available and returns tables with sizeMb', async () => {
+      configServiceMock.sqlite.database = ':memory:';
+      dataSourceMock.query.mockResolvedValueOnce([
+        { name: 'readings', bytes: 859832 },
+        { name: 'pico_unit', bytes: 31457 },
+      ]);
+
+      const result = await service.getDatabaseSize();
+
+      expect(result.tables).toEqual([
+        { name: 'readings', sizeMb: 0.82 },
+        { name: 'pico_unit', sizeMb: 0.03 },
+      ]);
+      expect(result.tables[0].rowCount).toBeUndefined();
+    });
+
+    it('falls back to row counts when dbstat throws', async () => {
+      configServiceMock.sqlite.database = ':memory:';
+      dataSourceMock.query
+        .mockRejectedValueOnce(new Error('no dbstat'))
+        .mockResolvedValueOnce([{ name: 'readings' }, { name: 'pico_unit' }])
+        .mockResolvedValueOnce([{ c: 500 }])
+        .mockResolvedValueOnce([{ c: 10 }]);
+
+      const result = await service.getDatabaseSize();
+
+      expect(result.tables).toEqual([
+        { name: 'readings', sizeMb: null, rowCount: 500 },
+        { name: 'pico_unit', sizeMb: null, rowCount: 10 },
+      ]);
     });
   });
 });

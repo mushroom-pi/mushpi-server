@@ -73,13 +73,27 @@ describe('AppController (e2e)', () => {
 
         const sqlite = res.body.databases.sqlite;
 
-        // Typical shape: { read, write }
+        // Typical shape: { read, write, size }
         expect(typeof sqlite.read).toBe('boolean');
         expect(typeof sqlite.write).toBe('boolean');
 
         // With :memory: + synchronize:true, both should be true
         expect(sqlite.read).toBe(true);
         expect(sqlite.write).toBe(true);
+
+        // Database size block
+        expect(sqlite.size).toBeDefined();
+        expect(sqlite.size.totalMb).toBeNull(); // :memory: in test env
+        expect(sqlite.size.inMemory).toBe(true);
+        expect(sqlite.size.path).toBe(':memory:');
+        expect(sqlite.size.tables).toBeInstanceOf(Array);
+        expect(sqlite.size.tables.length).toBeGreaterThan(0);
+        const tableNames = sqlite.size.tables.map(
+          (t: { name: string }) => t.name,
+        );
+        expect(tableNames).toContain('pico_unit');
+        expect(tableNames).toContain('batch');
+        expect(tableNames).toContain('readings');
       });
 
       it('should include server + sqlite when both requested', async () => {
