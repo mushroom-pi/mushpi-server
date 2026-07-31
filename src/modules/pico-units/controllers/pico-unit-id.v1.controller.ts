@@ -34,6 +34,7 @@ import {
 } from '../pico-unit.dto';
 import { PicoUnit } from '../pico-unit.entity';
 import { PicoUnitsService } from '../pico-units.service';
+import { PollPicoUnitResponseDto } from '../poll-pico-unit-response.dto';
 
 @ApiTags('pico-units')
 @Controller('pico-units/:picoUnitId')
@@ -87,7 +88,7 @@ export class PicoUnitIdV1Controller {
       'Trigger an on-demand poll of the Pico unit and return updated unit data',
   })
   @ApiOkResponse({
-    type: PicoUnit,
+    type: PollPicoUnitResponseDto,
     description: 'Unit after a fresh reading was stored',
   })
   @ApiAxiosErrorResponses()
@@ -97,8 +98,12 @@ export class PicoUnitIdV1Controller {
     description: 'This Pico unit is already being polled',
   })
   async poll(@GetPicoUnit() unit: PicoUnit) {
-    await this.readingsService.pollReadingsFromUnit(unit);
-    return this.readingsService.getPicoUnitWithLatestReadingById(unit.id);
+    const { response } = await this.readingsService.pollReadingsFromUnit(unit);
+    const full = await this.readingsService.getPicoUnitWithLatestReadingById(
+      unit.id,
+    );
+    (full as any).devices = response.devices;
+    return full;
   }
 
   @ApiTags('proxy')

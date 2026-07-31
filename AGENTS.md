@@ -224,10 +224,10 @@ Scripts that import TypeScript source using `src/*` path aliases (e.g. `spec/gen
 | GET/PATCH/DELETE | `/v1/pico-units/:picoUnitId`                    | CRUD                                                                           |
 | GET              | `/v1/pico-units/:picoUnitId/ping`               | Proxy → Pico `/`                                                               |
 | PUT              | `/v1/pico-units/:picoUnitId/control/setpoints`  | Proxy → Pico `/setpoints`                                                      |
-| PUT              | `/v1/pico-units/:picoUnitId/control/setup`      | Proxy → Pico `/setup`                                                          |
+| PUT              | `/v1/pico-units/:picoUnitId/control/setup`      | Proxy → Pico `/setup`; validates GPIO pins (0–22, 26–28) + no-duplicate constraint    |
 | PUT              | `/v1/pico-units/:picoUnitId/control/outputs`    | Proxy → Pico `/outputs`                                                        |
 | PUT              | `/v1/pico-units/:picoUnitId/control/loop`       | Proxy → Pico `/control` toggle                                                 |
-| POST             | `/v1/pico-units/:picoUnitId/poll`               | On-demand Pico poll → store reading → return PicoUnit with `latest_reading`    |
+| POST             | `/v1/pico-units/:picoUnitId/poll`               | On-demand Pico poll → store reading → return `PollPicoUnitResponseDto` (PicoUnit + optional `devices` block)    |
 | PUT              | `/v1/pico-units/:picoUnitId/reboot`             | Proxy → Pico POST /reboot (soft/hard reset); returns 202                       |
 | GET              | `/v1/pico-units/:picoUnitId/readings`           | Filterable by time range + limit                                               |
 | GET              | `/v1/pico-units/:picoUnitId/batches`            | + `/current`                                                                   |
@@ -263,6 +263,30 @@ Cron-side state changes that are time-anchored (e.g. disabling the control loop 
 ### State-visibility split: proxy vs. batch-orchestrated changes
 
 Control-proxy endpoints (`setpoints`, `outputs`, `setup`, `control`) use `callPollAndUpdate` which POSTs to the Pico then immediately polls, so `latest_reading` reflects the new state right away. Batch-orchestrated changes (`applyBatchSettings`, `applyControlLoopDisable`, `applyUnitDisabled`) use `callSilent` — the Pico is updated but **no trailing poll** occurs. The server's `latest_reading` therefore lags the Pico's actual state by up to 60 s (the next cron tick). This is intentional: batch-driven changes are bulk operations where a per-unit poll would serialize and block the cron loop. The `POST /pico-units/:picoUnitId/poll` endpoint exists for the frontend to force an immediate poll when needed.
+
+### PUT-on-server → POST-to-Pico verb mismatch
+
+Every control proxy endpoint (`setpoints`, `outputs`, `setup`, `control`, `reboot`) uses `postWithFallback` (axios POST) to communicate with the Pico, regardless of the server's HTTP method. The server endpoint may be `PUT /v1/pico-units/:id/control/setup`, but the underlying call to the Pico is always `POST /setup`. Do **not** assume the server's HTTP method carries through to the Pico — `control.service.ts` calls `postWithFallback` unconditionally.
+
+### Pass-through fields (non-persisted response fields)
+
+Certain fields appear in API responses but are **not stored** in any database column. Two sanctioned approaches exist:
+
+**(a) Entity-attached `@ApiProperty` for shared computed fields**: Used when the field is meaningful across multiple endpoints. `latest_reading` on `PicoUnit` is the prime example — it is added via `@Expose()` getter or service-level enrichment (not a real column, loaded via relation), and returned by `GET /v1/pico-units/:id`, `POST …/poll`, and dashboard summary endpoints. Declare it on the **entity itself** with `@ApiProperty({ nullable: true })` so it appears in every Swagger response that includes the entity.
+
+**(b) Wrapper DTO via `IntersectionType` for endpoint-specific ephemeral fields**: Used when the field is only meaningful on one endpoint. `devices` (live pin mapping from the Pico) is the prime example — it is only returned by `POST /v1/pico-units/:id/poll`. Create a `DevicesMixin` class and merge it with `PicoUnit` via `IntersectionType(PicoUnit, DevicesMixin)` to produce `PollPicoUnitResponseDto`. This keeps the shared `PicoUnit` entity schema untouched while adding the endpoint-specific field.
+
+### `devices` block — not persisted
+
+The `devices` block (`active_high`, `pins.dht`, `pins.humidifier`, `pins.fan`, `pins.heater`) is read directly from the Pico's `GET /` response during polling. It is **validated** via `class-transformer`/`class-validator` but **never persisted** to any database table. It passes through from the Pico to the client via `PollPicoUnitResponseDto`. There is no `devices` column on `PicoUnit` and no migration adding one — the canonical source is the Pico itself, queried fresh on every poll.
+
+### Validation pipe safety (`flattenValidationErrors`)
+
+The global `ValidationPipe`'s `exceptionFactory` must **recursively flatten `ValidationError.children`** for nested DTOs annotated with `@ValidateNested()`. Parent-level errors from nested validation have `constraints: undefined` — accessing them directly causes a 500 internal server error instead of a proper 422. The `flattenValidationErrors()` function in `src/common/pipes/validation.pipe.ts` walks the `children` array and only reads `constraints` when defined. Any new `@ValidateNested()` usage must go through this pipe — do not use the default `ValidationPipe.exceptionFactory`.
+
+### Pin validation for setup proxy
+
+`PUT /v1/pico-units/:id/control/setup` validates GPIO pins against `VALID_USER_GPIO_PINS` from `src/common/constants/hardware.constants.ts` — valid user I/O GPIOs are 0–22, 26–28 (GP23/24/25/29 are WiFi-reserved on Pico 2W). A `NoDuplicatePinsConstraint` class-level validator rejects configs where two devices share the same GPIO (returns 422).
 
 ## Date Handling & Timezone
 

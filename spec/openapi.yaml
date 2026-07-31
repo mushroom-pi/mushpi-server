@@ -1220,7 +1220,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PicoUnit'
+                $ref: '#/components/schemas/PollPicoUnitResponseDto'
         '404':
           description: PicoUnit not found
           content:
@@ -5175,37 +5175,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DashboardSummaryDto'
-        '422':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  statusCode:
-                    type: number
-                    example: 422
-                  error:
-                    type: string
-                    example: Unprocessable Entity
-                  message:
-                    type: string
-                    example:
-                      - propertyA has wrong value "...", [constrains]
-                      - propertyB has wrong value "...", [constrains]
-                      - '...'
-                    description: The sort of error message you can expect
-                  emitter:
-                    type: string
-                    example: ErrorProducerModule
-                    description: If the error was produced within the codebase, the name of the module where it was created
-                  timestamp:
-                    type: string
-                    example: '2024-09-14T22:00:00.000Z'
-                  path:
-                    type: string
-                    example: /path/of/the/failing/route
-                    description: Endpoint responsible for the production of the error
         '500':
           description: Generic unknown error produced by an unidentified exception
           content:
@@ -5265,6 +5234,7 @@ paths:
       summary: Get dashboard summary
       tags:
         - dashboard
+        - no-validation
   /v1/settings:
     get:
       description: Returns the current settings. The timezone defaults to the OS timezone when no row exists.
@@ -5277,37 +5247,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SettingsResponseDto'
-        '422':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  statusCode:
-                    type: number
-                    example: 422
-                  error:
-                    type: string
-                    example: Unprocessable Entity
-                  message:
-                    type: string
-                    example:
-                      - propertyA has wrong value "...", [constrains]
-                      - propertyB has wrong value "...", [constrains]
-                      - '...'
-                    description: The sort of error message you can expect
-                  emitter:
-                    type: string
-                    example: ErrorProducerModule
-                    description: If the error was produced within the codebase, the name of the module where it was created
-                  timestamp:
-                    type: string
-                    example: '2024-09-14T22:00:00.000Z'
-                  path:
-                    type: string
-                    example: /path/of/the/failing/route
-                    description: Endpoint responsible for the production of the error
         '500':
           description: Generic unknown error produced by an unidentified exception
           content:
@@ -5367,6 +5306,7 @@ paths:
       summary: Get settings
       tags:
         - settings
+        - no-validation
     patch:
       description: Partial update of settings. Only provided fields are changed.
       operationId: SettingsController_updateSettings_v1
@@ -5932,6 +5872,57 @@ components:
           description: 'Cosmetic hex color assigned to the unit (e.g. #4CAF50).'
           example: '#4CAF50'
           pattern: ^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$
+    DevicesDto:
+      type: object
+      properties: {}
+    PollPicoUnitResponseDto:
+      type: object
+      properties:
+        host:
+          type: string
+          description: mDNS hostname derived from handle
+          example: unit-01.local
+        failed_calls:
+          type: integer
+          description: Consecutive unreachable polls from the server cron
+          example: 0
+        failed_readings:
+          type: integer
+          description: Consecutive out-of-range DHT11 readings (0-50°C, 10-90% humidity). Resets to 0 on a valid reading.
+          example: 0
+        consecutive_empty_readings:
+          type: integer
+          description: >-
+            Consecutive polls where both temp and humidity were null (sensor returned no data). Resets to 0 when at
+            least one value is non-null.
+          example: 0
+        address:
+          type: string
+          description: Local mDNS address for the pico unit's REST API
+          example: http://unit-01.local:5000
+        ipAddress:
+          type: string
+          description: IP-based address for the pico unit (fallback)
+          example: http://192.168.1.50:5000
+          nullable: true
+        latest_reading:
+          nullable: true
+          description: Latest reading row for this unit (computed, not stored)
+          allOf:
+            - $ref: '#/components/schemas/Readings'
+        devices:
+          nullable: true
+          description: Live devices block from the latest Pico poll response — not persisted
+          allOf:
+            - $ref: '#/components/schemas/DevicesDto'
+      required:
+        - host
+        - failed_calls
+        - failed_readings
+        - consecutive_empty_readings
+        - address
+        - ipAddress
+        - latest_reading
     RebootDto:
       type: object
       properties:
@@ -6244,9 +6235,6 @@ components:
           description: >-
             A flag that should be true if the relay's circuits are connected to the NO (Normally Open) port, and false
             if they are connected through NC (Normally Closed).
-    DevicesDto:
-      type: object
-      properties: {}
     ChangeOutputsDto:
       type: object
       properties:

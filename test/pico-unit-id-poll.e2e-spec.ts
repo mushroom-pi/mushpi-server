@@ -93,6 +93,16 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
       0,
     );
 
+    // devices block is passed through from the live Pico response
+    expect(res.body.devices).toBeDefined();
+    expect(res.body.devices.active_high).toBe(false);
+    expect(res.body.devices.pins).toEqual({
+      fan: 7,
+      dht: 4,
+      humidifier: 6,
+      heater: 8,
+    });
+
     const readingCount = await readingsRepo.count();
     expect(readingCount).toBe(1);
 
@@ -370,6 +380,10 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
       // latest_reading should be absent (no reading stored)
       expect(res.body.latest_reading).toBeUndefined();
 
+      // devices block is still returned even when reading is filtered
+      expect(res.body.devices).toBeDefined();
+      expect(res.body.devices.pins.fan).toBe(7);
+
       // last_seen is still updated (touchAndResetFailedCalls runs before filter)
       const updated = await picoRepo.findOneBy({ id: unit.id });
       expect(updated!.last_seen).not.toBeNull();
@@ -489,6 +503,8 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
         .expect(201);
 
       expect(res.body.latest_reading).toBeUndefined();
+      expect(res.body.devices).toBeDefined();
+      expect(res.body.devices.pins.fan).toBe(7);
       const readingCount = await readingsRepo.count();
       expect(readingCount).toBe(0);
 
@@ -697,6 +713,40 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
 
       const updated = await picoRepo.findOneBy({ id: unit.id });
       expect(updated!.failed_readings).toBe(1);
+    });
+  });
+
+  describe('devices block passthrough', () => {
+    it('returns the live devices block from the Pico response even when reading is filtered', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-devices-pass',
+        port: 5130,
+      });
+
+      // Zero-value filter → no reading row persisted
+      mockedAxios.get.mockResolvedValueOnce({
+        data: withSensorOverrides({ temperature: 0, humidity: 45 }),
+        status: 200,
+      });
+
+      const res = await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      // No reading persisted
+      expect(res.body.latest_reading).toBeUndefined();
+      const readingCount = await readingsRepo.count();
+      expect(readingCount).toBe(0);
+
+      // devices block is still returned from the live Pico response
+      expect(res.body.devices).toBeDefined();
+      expect(res.body.devices.active_high).toBe(false);
+      expect(res.body.devices.pins).toEqual({
+        fan: 7,
+        dht: 4,
+        humidifier: 6,
+        heater: 8,
+      });
     });
   });
 });

@@ -3,11 +3,16 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsIn,
   IsInt,
   IsOptional,
   Max,
   Min,
+  Validate,
   ValidateNested,
+  ValidationArguments,
+  ValidatorConstraint,
+  ValidatorConstraintInterface,
 } from 'class-validator';
 
 import {
@@ -16,10 +21,7 @@ import {
   TEMPERATURE_MAX,
   TEMPERATURE_MIN,
 } from 'src/common/constants/climate.constants';
-import {
-  GPIO_PIN_MAX,
-  GPIO_PIN_MIN,
-} from 'src/common/constants/hardware.constants';
+import { VALID_USER_GPIO_PINS } from 'src/common/constants/hardware.constants';
 
 export class ChangeSetPointsDto {
   @ApiPropertyOptional({
@@ -51,61 +53,84 @@ export class ChangeSetPointsDto {
   humidity?: number;
 }
 
+@ValidatorConstraint({ name: 'noDuplicatePins', async: false })
+export class NoDuplicatePinsConstraint implements ValidatorConstraintInterface {
+  validate(_value: unknown, args: ValidationArguments) {
+    const pins = args.object as ChangeDevicePinsDto;
+    const assigned = [pins.dht, pins.humidifier, pins.fan, pins.heater].filter(
+      (v): v is number => v !== undefined && v !== null,
+    );
+    return new Set(assigned).size === assigned.length;
+  }
+  defaultMessage() {
+    return 'Two devices cannot be assigned to the same GPIO pin';
+  }
+}
+
 class ChangeDevicePinsDto {
   @ApiPropertyOptional({
     type: Number,
-    description: 'Change the GPIO pin assigned to the DHT11 sensor',
+    description:
+      'Change the GPIO pin assigned to the DHT11 sensor. Must be a valid user I/O pin (excludes GP23-25, GP29 which are WiFi-reserved on Pico 2W).',
     example: 4,
-    minimum: GPIO_PIN_MIN,
-    maximum: GPIO_PIN_MAX,
+    enum: VALID_USER_GPIO_PINS,
   })
+  @Validate(NoDuplicatePinsConstraint)
   @IsOptional()
   @Type(() => Number)
   @IsInt()
-  @Min(GPIO_PIN_MIN)
-  @Max(GPIO_PIN_MAX)
+  @IsIn(VALID_USER_GPIO_PINS, {
+    message:
+      'GPIO must be a valid user I/O pin (excludes GP23-25, GP29 which are WiFi-reserved)',
+  })
   dht?: number;
 
   @ApiPropertyOptional({
     type: Number,
-    description: 'Change the GPIO pin assigned to the humidifier',
+    description:
+      'Change the GPIO pin assigned to the humidifier. Must be a valid user I/O pin (excludes GP23-25, GP29 which are WiFi-reserved on Pico 2W).',
     example: 6,
-    minimum: GPIO_PIN_MIN,
-    maximum: GPIO_PIN_MAX,
+    enum: VALID_USER_GPIO_PINS,
   })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
-  @Min(GPIO_PIN_MIN)
-  @Max(GPIO_PIN_MAX)
+  @IsIn(VALID_USER_GPIO_PINS, {
+    message:
+      'GPIO must be a valid user I/O pin (excludes GP23-25, GP29 which are WiFi-reserved)',
+  })
   humidifier?: number;
 
   @ApiPropertyOptional({
     type: Number,
-    description: 'Change the GPIO pin assigned to the fan',
+    description:
+      'Change the GPIO pin assigned to the fan. Must be a valid user I/O pin (excludes GP23-25, GP29 which are WiFi-reserved on Pico 2W).',
     example: 7,
-    minimum: GPIO_PIN_MIN,
-    maximum: GPIO_PIN_MAX,
+    enum: VALID_USER_GPIO_PINS,
   })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
-  @Min(GPIO_PIN_MIN)
-  @Max(GPIO_PIN_MAX)
+  @IsIn(VALID_USER_GPIO_PINS, {
+    message:
+      'GPIO must be a valid user I/O pin (excludes GP23-25, GP29 which are WiFi-reserved)',
+  })
   fan?: number;
 
   @ApiPropertyOptional({
     type: Number,
-    description: 'Change the GPIO pin assigned to the heater',
+    description:
+      'Change the GPIO pin assigned to the heater. Must be a valid user I/O pin (excludes GP23-25, GP29 which are WiFi-reserved on Pico 2W).',
     example: 8,
-    minimum: GPIO_PIN_MIN,
-    maximum: GPIO_PIN_MAX,
+    enum: VALID_USER_GPIO_PINS,
   })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
-  @Min(GPIO_PIN_MIN)
-  @Max(GPIO_PIN_MAX)
+  @IsIn(VALID_USER_GPIO_PINS, {
+    message:
+      'GPIO must be a valid user I/O pin (excludes GP23-25, GP29 which are WiFi-reserved)',
+  })
   heater?: number;
 }
 

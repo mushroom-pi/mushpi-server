@@ -119,7 +119,9 @@ export class ReadingsService {
     return this.readingsRepo.save(created);
   }
 
-  async pollReadingsFromUnit(unit: PicoUnit): Promise<Readings | null> {
+  async pollReadingsFromUnit(
+    unit: PicoUnit,
+  ): Promise<{ reading: Readings | null; response: DeviceResponseDto }> {
     if (this.pollingUnits.has(unit.id))
       throw LockedException({
         description: `This Pico unit (${unit.id}) is already being polled`,
@@ -143,7 +145,7 @@ export class ReadingsService {
           `Skipping zero-value sensor reading for unit ${unit.id} ` +
             `(temp=${rawTemp}, humidity=${rawHum}) — treated as sensor noise`,
         );
-        return null;
+        return { reading: null, response };
       }
 
       // Check for empty (null) sensor readings — distinct from out-of-range
@@ -154,7 +156,7 @@ export class ReadingsService {
         this.logger.warn(
           `Empty sensor reading on unit ${unit.handle} — consecutive: ${unit.consecutive_empty_readings}`,
         );
-        return null; // No reading row persisted
+        return { reading: null, response }; // No reading row persisted
       }
 
       // At least one sensor value is present — reset empty counter
@@ -166,7 +168,7 @@ export class ReadingsService {
           `Out-of-range DHT11 reading for unit ${unit.id} (temp=${rawTemp}, humidity=${rawHum})`,
         );
         await this.picoUnitsService.addFailedReading(unit);
-        return null;
+        return { reading: null, response };
       }
 
       // Danger-temperature warning (in-range but hazardous — does NOT block persistence)
@@ -185,7 +187,7 @@ export class ReadingsService {
       // Successful persist — reset the sensor fault counter
       await this.picoUnitsService.resetFailedReadings(unit);
 
-      return reading;
+      return { reading, response };
     } catch (e) {
       await this.picoUnitsService.addFailedCall(unit);
       throw e;
