@@ -127,6 +127,7 @@ batches/      — batch CRUD + lifecycle rules + recipe linking
 control/      — proxy: setpoints, outputs, setup, control loop toggle (each triggers an immediate trailing poll via `callPollAndUpdate`)  
 cron/         — scheduled polling of all enabled Pico units
 dashboard/    — aggregated summary endpoint (unit health, batches, recipes, stats, warnings)
+settings/     — GET/PATCH /v1/settings for timezone config; global TimezoneInterceptor converts all response dates
 monitoring/   — /ping, /health, /metrics (VERSION_NEUTRAL — unversioned)
 swagger/      — OpenAPI setup with global error schemas + operationIdFactory; provider registered in AppModule, invoked manually in main.ts; also powers spec:export
 ```
@@ -240,6 +241,7 @@ Scripts that import TypeScript source using `src/*` path aliases (e.g. `spec/gen
 | GET              | `/v1/recipes/:recipeId/batches`                 | Batches using this recipe                                                      |
 | PUT/DELETE       | `/v1/recipes/:recipeId/image`                   | Recipe image upload/removal                                                    |
 | GET              | `/v1/dashboard/summary`                         | Aggregated dashboard snapshot (units, batches, recipes, stats, warnings)       |
+| GET/PATCH        | `/v1/settings`                                  | Get/update display timezone (defaults to OS timezone); IANA tz name validated  |
 | GET              | `/ping` + `/health` + `/metrics`                | Liveness / full health (server, system, databases, services — query-param gated) / Prometheus (unversioned, VERSION_NEUTRAL)             |
 
 ## Cron Polling
@@ -261,6 +263,34 @@ Cron-side state changes that are time-anchored (e.g. disabling the control loop 
 ### State-visibility split: proxy vs. batch-orchestrated changes
 
 Control-proxy endpoints (`setpoints`, `outputs`, `setup`, `control`) use `callPollAndUpdate` which POSTs to the Pico then immediately polls, so `latest_reading` reflects the new state right away. Batch-orchestrated changes (`applyBatchSettings`, `applyControlLoopDisable`, `applyUnitDisabled`) use `callSilent` — the Pico is updated but **no trailing poll** occurs. The server's `latest_reading` therefore lags the Pico's actual state by up to 60 s (the next cron tick). This is intentional: batch-driven changes are bulk operations where a per-unit poll would serialize and block the cron loop. The `POST /pico-units/:picoUnitId/poll` endpoint exists for the frontend to force an immediate poll when needed.
+
+## Date Handling & Timezone
+
+All database timestamps are stored as UTC ISO-8601 strings (`2026-07-31T10:30:00.000Z`) — TypeORM's `.toISOString()` always produces UTC regardless of host timezone. This is relied upon by the `TimezoneInterceptor`.
+
+### Settings Module
+
+`GET /v1/settings` and `PATCH /v1/settings` manage the display timezone:
+
+- **Storage**: `Settings` entity — single-row table (`id=1`), upsert-on-write
+- **Default**: OS timezone via `Intl.DateTimeFormat().resolvedOptions().timeZone` when no persisted row exists
+- **Service**: `SettingsService` with in-memory cache (`getTimezone()` / `setTimezone()` / `resetCache()`) — hits DB only on first read post-boot and after writes
+- **Module**: `@Global()` `SettingsModule` so the interceptor can inject `SettingsService`
+
+### TimezoneInterceptor
+
+A global `APP_INTERCEPTOR` that recursively walks all API responses and converts:
+
+- `Date` instances → `dayjs.utc(value).tz(tz).format('YYYY-MM-DDTHH:mm:ssZ')`
+- Strings matching ISO-8601 UTC (`...Z`) → same conversion
+- Arrays/Objects → recursed
+- Primitive/non-date strings → passthrough
+
+**Fast path**: when `timezone === 'UTC'`, the interceptor is a zero-cost passthrough (`next.handle()` without any body walk). All existing e2e tests pass unchanged.
+
+**Output format**: `2026-07-31T12:30:00+02:00` — explicit offset, unambiguous for clients.
+
+**Note**: Dates are always serialized as UTC ISO-8601 (`...Z`) strings by the app. If a future feature emits naive datetime strings (no `Z`/offset), they will bypass conversion — always use `.toISOString()` for date serialization.
 
 ## Logging Conventions
 

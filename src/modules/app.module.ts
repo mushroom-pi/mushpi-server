@@ -1,5 +1,5 @@
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ServeStaticModule } from '@nestjs/serve-static';
@@ -9,6 +9,7 @@ import * as path from 'path';
 import { DataSource } from 'typeorm';
 
 import { TooManyRequestsGuard } from 'src/common/guards/too-many-requests.guard';
+import { TimezoneInterceptor } from 'src/common/interceptors/timezone.interceptor';
 import { PicoUnitByIdMiddleware } from 'src/common/middleware/pico-unit-by-id.middleware';
 
 import { BatchesModule } from './batches/batches.module';
@@ -22,6 +23,7 @@ import { PicoUnitsModule } from './pico-units/pico-units.module';
 import { PinoLoggerModule } from './pino-logger.module';
 import { ReadingsModule } from './readings/readings.module';
 import { RecipesModule } from './recipes/recipes.module';
+import { SettingsModule } from './settings/settings.module';
 import { SQLiteModule } from './sqlite/sqlite.module';
 import { SwaggerModule } from './swagger/swagger.module';
 
@@ -74,11 +76,16 @@ import { SwaggerModule } from './swagger/swagger.module';
     BatchesModule,
     RecipesModule,
     DashboardModule,
+    SettingsModule,
   ],
   providers: [
     {
       provide: APP_GUARD,
       useClass: TooManyRequestsGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TimezoneInterceptor,
     },
   ],
 })

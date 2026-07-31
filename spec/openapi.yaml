@@ -5265,6 +5265,215 @@ paths:
       summary: Get dashboard summary
       tags:
         - dashboard
+  /v1/settings:
+    get:
+      description: Returns the current settings. The timezone defaults to the OS timezone when no row exists.
+      operationId: SettingsController_getSettings_v1
+      parameters: []
+      responses:
+        '200':
+          description: Current settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SettingsResponseDto'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: number
+                    example: 422
+                  error:
+                    type: string
+                    example: Unprocessable Entity
+                  message:
+                    type: string
+                    example:
+                      - propertyA has wrong value "...", [constrains]
+                      - propertyB has wrong value "...", [constrains]
+                      - '...'
+                    description: The sort of error message you can expect
+                  emitter:
+                    type: string
+                    example: ErrorProducerModule
+                    description: If the error was produced within the codebase, the name of the module where it was created
+                  timestamp:
+                    type: string
+                    example: '2024-09-14T22:00:00.000Z'
+                  path:
+                    type: string
+                    example: /path/of/the/failing/route
+                    description: Endpoint responsible for the production of the error
+        '500':
+          description: Generic unknown error produced by an unidentified exception
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: number
+                    example: 500
+                  error:
+                    type: string
+                    example: Internal Server Error
+                  message:
+                    type: string
+                    example: Internal server error
+                    description: The sort of error message you can expect
+                  emitter:
+                    type: string
+                    example: ErrorProducerModule
+                    description: If the error was produced within the codebase, the name of the module where it was created
+                  timestamp:
+                    type: string
+                    example: '2024-09-14T22:00:00.000Z'
+                  path:
+                    type: string
+                    example: /path/of/the/failing/route
+                    description: Endpoint responsible for the production of the error
+        '503':
+          description: The event loop is lagging and no more requests can be attended right now
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: number
+                    example: 503
+                  error:
+                    type: string
+                    example: Service Unavailable
+                  message:
+                    type: string
+                    example: Server is too busy
+                    description: The sort of error message you can expect
+                  emitter:
+                    type: string
+                    example: ErrorProducerModule
+                    description: If the error was produced within the codebase, the name of the module where it was created
+                  timestamp:
+                    type: string
+                    example: '2024-09-14T22:00:00.000Z'
+                  path:
+                    type: string
+                    example: /path/of/the/failing/route
+                    description: Endpoint responsible for the production of the error
+      summary: Get settings
+      tags:
+        - settings
+    patch:
+      description: Partial update of settings. Only provided fields are changed.
+      operationId: SettingsController_updateSettings_v1
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSettingsDto'
+      responses:
+        '200':
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SettingsResponseDto'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: number
+                    example: 422
+                  error:
+                    type: string
+                    example: Unprocessable Entity
+                  message:
+                    type: string
+                    example:
+                      - propertyA has wrong value "...", [constrains]
+                      - propertyB has wrong value "...", [constrains]
+                      - '...'
+                    description: The sort of error message you can expect
+                  emitter:
+                    type: string
+                    example: ErrorProducerModule
+                    description: If the error was produced within the codebase, the name of the module where it was created
+                  timestamp:
+                    type: string
+                    example: '2024-09-14T22:00:00.000Z'
+                  path:
+                    type: string
+                    example: /path/of/the/failing/route
+                    description: Endpoint responsible for the production of the error
+        '500':
+          description: Generic unknown error produced by an unidentified exception
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: number
+                    example: 500
+                  error:
+                    type: string
+                    example: Internal Server Error
+                  message:
+                    type: string
+                    example: Internal server error
+                    description: The sort of error message you can expect
+                  emitter:
+                    type: string
+                    example: ErrorProducerModule
+                    description: If the error was produced within the codebase, the name of the module where it was created
+                  timestamp:
+                    type: string
+                    example: '2024-09-14T22:00:00.000Z'
+                  path:
+                    type: string
+                    example: /path/of/the/failing/route
+                    description: Endpoint responsible for the production of the error
+        '503':
+          description: The event loop is lagging and no more requests can be attended right now
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: number
+                    example: 503
+                  error:
+                    type: string
+                    example: Service Unavailable
+                  message:
+                    type: string
+                    example: Server is too busy
+                    description: The sort of error message you can expect
+                  emitter:
+                    type: string
+                    example: ErrorProducerModule
+                    description: If the error was produced within the codebase, the name of the module where it was created
+                  timestamp:
+                    type: string
+                    example: '2024-09-14T22:00:00.000Z'
+                  path:
+                    type: string
+                    example: /path/of/the/failing/route
+                    description: Endpoint responsible for the production of the error
+      summary: Update settings
+      tags:
+        - settings
 info:
   title: mushpi-server
   description: A backend for the Mushroom Pi project
@@ -6342,3 +6551,18 @@ components:
         - recipes
         - stats
         - warnings
+    SettingsResponseDto:
+      type: object
+      properties:
+        timezone:
+          type: string
+          example: Europe/Madrid
+          description: IANA timezone name for display
+      required:
+        - timezone
+    UpdateSettingsDto:
+      type: object
+      properties:
+        timezone:
+          type: string
+          example: Europe/Madrid

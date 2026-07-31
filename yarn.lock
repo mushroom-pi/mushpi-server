@@ -4299,6 +4299,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"dayjs@npm:^1.11.21":
+  version: 1.11.21
+  resolution: "dayjs@npm:1.11.21"
+  checksum: 10c0/bd97dfdc4bfea3c66268635690313828b386faa040fbc1f829ff42a2bd748b72c9d9b3c8f9616ce9e61fcb78923f1461a462c969c54b1084458ae1b715898fb0
+  languageName: node
+  linkType: hard
+
 "debug@npm:4":
   version: 4.4.1
   resolution: "debug@npm:4.4.1"
@@ -7262,6 +7269,7 @@ __metadata:
     better-sqlite3: "npm:^12.4.1"
     class-transformer: "npm:^0.5.1"
     class-validator: "npm:^0.14.2"
+    dayjs: "npm:^1.11.21"
     dotenv: "npm:^17.4.2"
     eslint: "npm:^9.36.0"
     eslint-config-prettier: "npm:^10.1.8"

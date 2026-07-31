@@ -10,6 +10,7 @@ export class DashboardV1Controller {
   constructor(private readonly svc: DashboardService) {}
 
   @Get('summary')
+  @ApiTags('no-validation')
   @ApiOperation({
     summary: 'Get dashboard summary',
     description:
