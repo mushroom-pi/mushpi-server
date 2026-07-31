@@ -8,11 +8,43 @@ interface MemoryUsage {
   arrayBuffers: number;
 }
 
-interface UpTime {
+export interface UpTime {
   seconds: number;
   minutes: number;
   hours: number;
   days: number;
+}
+
+export interface OsInfo {
+  platform: string;
+  type: string;
+  release: string;
+  hostname: string;
+  arch: string;
+}
+
+export interface CpuInfo {
+  model: string;
+  cores: number;
+}
+
+export interface SystemMemory {
+  totalMb: number;
+  freeMb: number;
+}
+
+export interface DiskInfo {
+  path: string;
+  totalMb: number | null;
+  freeMb: number | null;
+}
+
+export interface SystemInfo {
+  os: OsInfo;
+  cpu: CpuInfo;
+  memory: SystemMemory;
+  upTime: UpTime;
+  disk: DiskInfo;
 }
 
 export interface ServerStatus {
@@ -53,12 +85,14 @@ export interface ServiceStatus {
 
 export interface HealthCheckResponse {
   server?: ServerStatus;
+  system?: SystemInfo;
   databases?: Record<string, DatabaseStatus>;
   services?: Record<string, ServiceStatus>;
 }
 
 export interface HealthCheckInput {
   server?: 'true' | 'false';
+  system?: 'true' | 'false';
   databases?: string;
   services?: string;
 }

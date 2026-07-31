@@ -128,6 +128,19 @@
             }
           },
           {
+            "name": "system",
+            "required": false,
+            "in": "query",
+            "description": "Include or remove system health information",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
             "name": "databases",
             "required": false,
             "in": "query",
@@ -7713,6 +7726,123 @@
           "appVersion"
         ]
       },
+      "OsInfoDto": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "example": "linux"
+          },
+          "type": {
+            "type": "string",
+            "example": "Linux"
+          },
+          "release": {
+            "type": "string",
+            "example": "5.15.0-v8+"
+          },
+          "hostname": {
+            "type": "string",
+            "example": "raspberrypi"
+          },
+          "arch": {
+            "type": "string",
+            "example": "arm64"
+          }
+        },
+        "required": [
+          "platform",
+          "type",
+          "release",
+          "hostname",
+          "arch"
+        ]
+      },
+      "CpuInfoDto": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string",
+            "example": "ARM Cortex-A72"
+          },
+          "cores": {
+            "type": "number",
+            "example": 4
+          }
+        },
+        "required": [
+          "model",
+          "cores"
+        ]
+      },
+      "SystemMemoryDto": {
+        "type": "object",
+        "properties": {
+          "totalMb": {
+            "type": "number",
+            "example": 8192
+          },
+          "freeMb": {
+            "type": "number",
+            "example": 3456
+          }
+        },
+        "required": [
+          "totalMb",
+          "freeMb"
+        ]
+      },
+      "DiskInfoDto": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "example": "/home/pi/data"
+          },
+          "totalMb": {
+            "type": "number",
+            "nullable": true,
+            "example": 29440
+          },
+          "freeMb": {
+            "type": "number",
+            "nullable": true,
+            "example": 21500
+          }
+        },
+        "required": [
+          "path",
+          "totalMb",
+          "freeMb"
+        ]
+      },
+      "SystemInfoDto": {
+        "type": "object",
+        "properties": {
+          "os": {
+            "$ref": "#/components/schemas/OsInfoDto"
+          },
+          "cpu": {
+            "$ref": "#/components/schemas/CpuInfoDto"
+          },
+          "memory": {
+            "$ref": "#/components/schemas/SystemMemoryDto"
+          },
+          "upTime": {
+            "$ref": "#/components/schemas/UpTime"
+          },
+          "disk": {
+            "$ref": "#/components/schemas/DiskInfoDto"
+          }
+        },
+        "required": [
+          "os",
+          "cpu",
+          "memory",
+          "upTime",
+          "disk"
+        ]
+      },
       "TableSizeDto": {
         "type": "object",
         "properties": {
@@ -7836,6 +7966,9 @@
         "properties": {
           "server": {
             "$ref": "#/components/schemas/ServerDto"
+          },
+          "system": {
+            "$ref": "#/components/schemas/SystemInfoDto"
           },
           "databases": {
             "description": "Check any database that the microservice needs to operate",

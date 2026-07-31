@@ -240,7 +240,7 @@ Scripts that import TypeScript source using `src/*` path aliases (e.g. `spec/gen
 | GET              | `/v1/recipes/:recipeId/batches`                 | Batches using this recipe                                                      |
 | PUT/DELETE       | `/v1/recipes/:recipeId/image`                   | Recipe image upload/removal                                                    |
 | GET              | `/v1/dashboard/summary`                         | Aggregated dashboard snapshot (units, batches, recipes, stats, warnings)       |
-| GET              | `/ping` + `/health` + `/metrics`                | Liveness / full health / Prometheus (unversioned, VERSION_NEUTRAL)             |
+| GET              | `/ping` + `/health` + `/metrics`                | Liveness / full health (server, system, databases, services — query-param gated) / Prometheus (unversioned, VERSION_NEUTRAL)             |
 
 ## Cron Polling
 

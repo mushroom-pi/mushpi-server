@@ -25,6 +25,17 @@ export class HealthCheckQueryDto {
   @ApiProperty({
     required: false,
     type: String,
+    enum: ['true', 'false'],
+    description: 'Include or remove system health information',
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn(['true', 'false'])
+  readonly system?: 'true' | 'false';
+
+  @ApiProperty({
+    required: false,
+    type: String,
     enum: ['all', 'none'].concat(databases),
     description: 'Comma-separated list of database names to check',
   })
@@ -62,7 +73,7 @@ class MemoryUsageDto {
   readonly arrayBuffers: number;
 }
 
-class UpTime {
+export class UpTime {
   @ApiProperty({
     type: Number,
     description: 'Total time the server has been running in seconds',
@@ -198,9 +209,73 @@ class DatabasesDto {
   'sqlite'?: DatabaseMockDto;
 }
 
+class OsInfoDto {
+  @ApiProperty({ type: String, example: 'linux' })
+  readonly platform: string;
+
+  @ApiProperty({ type: String, example: 'Linux' })
+  readonly type: string;
+
+  @ApiProperty({ type: String, example: '5.15.0-v8+' })
+  readonly release: string;
+
+  @ApiProperty({ type: String, example: 'raspberrypi' })
+  readonly hostname: string;
+
+  @ApiProperty({ type: String, example: 'arm64' })
+  readonly arch: string;
+}
+
+class CpuInfoDto {
+  @ApiProperty({ type: String, example: 'ARM Cortex-A72' })
+  readonly model: string;
+
+  @ApiProperty({ type: Number, example: 4 })
+  readonly cores: number;
+}
+
+class SystemMemoryDto {
+  @ApiProperty({ type: Number, example: 8192 })
+  readonly totalMb: number;
+
+  @ApiProperty({ type: Number, example: 3456 })
+  readonly freeMb: number;
+}
+
+class DiskInfoDto {
+  @ApiProperty({ type: String, example: '/home/pi/data' })
+  readonly path: string;
+
+  @ApiProperty({ type: Number, nullable: true, example: 29440 })
+  readonly totalMb: number | null;
+
+  @ApiProperty({ type: Number, nullable: true, example: 21500 })
+  readonly freeMb: number | null;
+}
+
+class SystemInfoDto {
+  @ApiProperty({ type: OsInfoDto })
+  readonly os: OsInfoDto;
+
+  @ApiProperty({ type: CpuInfoDto })
+  readonly cpu: CpuInfoDto;
+
+  @ApiProperty({ type: SystemMemoryDto })
+  readonly memory: SystemMemoryDto;
+
+  @ApiProperty({ type: UpTime })
+  readonly upTime: UpTime;
+
+  @ApiProperty({ type: DiskInfoDto })
+  readonly disk: DiskInfoDto;
+}
+
 export class HealthCheckResponseDto {
   @ApiProperty({ type: ServerDto, required: false })
   server?: ServerDto;
+
+  @ApiProperty({ type: SystemInfoDto, required: false })
+  system?: SystemInfoDto;
 
   @ApiProperty({
     type: DatabasesDto,

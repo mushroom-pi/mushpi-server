@@ -23,8 +23,25 @@ describe('AppController (e2e)', () => {
 
   describe('GET /health', () => {
     describe('without any query parameters', () => {
-      it('should return health checks with status 200', () => {
-        return request(app.getHttpServer()).get('/health').expect(200);
+      it('should return health checks with status 200', async () => {
+        const res = await request(app.getHttpServer())
+          .get('/health')
+          .expect(200);
+
+        // system block assertions
+        expect(res.body).toHaveProperty('system');
+        expect(res.body).toHaveProperty('system.os');
+        expect(res.body).toHaveProperty('system.cpu');
+        expect(res.body).toHaveProperty('system.memory');
+        expect(res.body).toHaveProperty('system.upTime');
+        expect(res.body).toHaveProperty('system.disk');
+
+        // Loose type checks
+        expect(typeof res.body.system.os.platform).toBe('string');
+        expect(typeof res.body.system.cpu.cores).toBe('number');
+        expect(typeof res.body.system.memory.totalMb).toBe('number');
+        expect(typeof res.body.system.upTime.seconds).toBe('number');
+        expect(typeof res.body.system.disk.path).toBe('string');
       });
     });
 
@@ -58,6 +75,38 @@ describe('AppController (e2e)', () => {
         expect(response.body.message[2]).toContain(
           "services must be 'all', 'none', or a comma-separated list of valid values",
         );
+      });
+    });
+
+    describe('system health', () => {
+      it('should include system when system=true and exclude databases/services', async () => {
+        const res = await request(app.getHttpServer())
+          .get('/health')
+          .query({ system: 'true', databases: 'none', services: 'none' })
+          .expect(200);
+
+        expect(res.body).toHaveProperty('system');
+        expect(res.body).toHaveProperty('system.os');
+        expect(res.body).toHaveProperty('system.cpu');
+        expect(res.body).toHaveProperty('system.memory');
+        expect(res.body).toHaveProperty('system.upTime');
+        expect(res.body).toHaveProperty('system.disk');
+        expect(res.body).not.toHaveProperty('databases');
+        expect(res.body).not.toHaveProperty('services');
+      });
+
+      it('should omit system when system=false', async () => {
+        const res = await request(app.getHttpServer())
+          .get('/health')
+          .query({
+            system: 'false',
+            server: 'false',
+            databases: 'none',
+            services: 'none',
+          })
+          .expect(200);
+
+        expect(res.body).not.toHaveProperty('system');
       });
     });
 

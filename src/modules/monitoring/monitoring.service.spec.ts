@@ -5,13 +5,36 @@ import { version } from 'package.json';
 import { CustomConfigService } from 'src/modules/config/config.service';
 import { SQLiteHealthService } from 'src/modules/sqlite-health/sqlite-health.service';
 
-import { HealthCheckInput, HealthCheckResponse } from './monitoring.interface';
+import {
+  HealthCheckInput,
+  HealthCheckResponse,
+  SystemInfo,
+} from './monitoring.interface';
 import { MonitoringService } from './monitoring.service';
 
 const upTimeSeconds = 12345.67;
 jest.mock('os', () => ({
   loadavg: jest.fn(() => [0.123, 0.456, 0.789]),
   uptime: jest.fn(() => upTimeSeconds),
+  platform: jest.fn(() => 'linux'),
+  type: jest.fn(() => 'Linux'),
+  release: jest.fn(() => '5.15.0-v8+'),
+  hostname: jest.fn(() => 'raspberrypi'),
+  arch: jest.fn(() => 'arm64'),
+  cpus: jest.fn(() => [
+    { model: 'ARM Cortex-A72' },
+    { model: 'ARM Cortex-A72' },
+    { model: 'ARM Cortex-A72' },
+    { model: 'ARM Cortex-A72' },
+  ]),
+  totalmem: jest.fn(() => 8 * 1024 * 1024 * 1024),
+  freemem: jest.fn(() => 4 * 1024 * 1024 * 1024),
+}));
+
+const mockStatfsSync = jest.fn();
+jest.mock('fs', () => ({
+  ...jest.requireActual('fs'),
+  statfsSync: (...args: unknown[]) => mockStatfsSync(...args),
 }));
 
 describe('MonitoringService', () => {
@@ -37,6 +60,7 @@ describe('MonitoringService', () => {
           provide: CustomConfigService,
           useValue: {
             server: { nodeEnv: process.env.NODE_ENV },
+            sqlite: { database: ':memory:' },
           },
         },
         {
@@ -123,6 +147,97 @@ describe('MonitoringService', () => {
     });
   });
 
+  describe('buildUpTime', () => {
+    it('should compute seconds, minutes, hours, days correctly', () => {
+      const result = service['buildUpTime'](90061); // 1 day, 1 hour, 1 minute, 1 second
+      expect(result).toEqual({
+        seconds: 90061,
+        minutes: Math.round((100 * 90061) / 60) / 100,
+        hours: Math.round((100 * 90061) / (60 * 60)) / 100,
+        days: Math.round((100 * 90061) / (60 * 60 * 24)) / 100,
+      });
+    });
+  });
+
+  describe('checkSystemStatus', () => {
+    function verifySystemInfoShape(result: SystemInfo) {
+      // os
+      expect(result).toHaveProperty('os');
+      expect(typeof result.os.platform).toBe('string');
+      expect(typeof result.os.type).toBe('string');
+      expect(typeof result.os.release).toBe('string');
+      expect(typeof result.os.hostname).toBe('string');
+      expect(typeof result.os.arch).toBe('string');
+
+      // cpu
+      expect(result).toHaveProperty('cpu');
+      expect(typeof result.cpu.model).toBe('string');
+      expect(typeof result.cpu.cores).toBe('number');
+
+      // memory
+      expect(result).toHaveProperty('memory');
+      expect(typeof result.memory.totalMb).toBe('number');
+      expect(typeof result.memory.freeMb).toBe('number');
+
+      // upTime
+      expect(result).toHaveProperty('upTime');
+      expect(typeof result.upTime.seconds).toBe('number');
+      expect(typeof result.upTime.minutes).toBe('number');
+      expect(typeof result.upTime.hours).toBe('number');
+      expect(typeof result.upTime.days).toBe('number');
+
+      // disk
+      expect(result).toHaveProperty('disk');
+      expect(typeof result.disk.path).toBe('string');
+    }
+
+    it('should return system info with :memory: disk', () => {
+      const result = service['checkSystemStatus']();
+      verifySystemInfoShape(result);
+
+      expect(result.os).toEqual({
+        platform: 'linux',
+        type: 'Linux',
+        release: '5.15.0-v8+',
+        hostname: 'raspberrypi',
+        arch: 'arm64',
+      });
+      expect(result.cpu).toEqual({
+        model: 'ARM Cortex-A72',
+        cores: 4,
+      });
+      expect(result.memory.totalMb).toBe(8192);
+      expect(result.memory.freeMb).toBe(4096);
+      expect(result.disk).toEqual({
+        path: ':memory:',
+        totalMb: null,
+        freeMb: null,
+      });
+    });
+
+    it('should return disk with null values when statfsSync throws', () => {
+      // Override config to use a real path that will trigger statfsSync
+      mockStatfsSync.mockImplementation(() => {
+        throw new Error('EPERM');
+      });
+
+      // Temporarily override configService.sqlite.database
+      const origSqlite = (service as any).configService.sqlite;
+      (service as any).configService.sqlite = { database: '/tmp/test.db' };
+
+      const result = service['checkSystemStatus']();
+      expect(result.disk).toEqual({
+        path: '/tmp',
+        totalMb: null,
+        freeMb: null,
+      });
+
+      // Restore
+      (service as any).configService.sqlite = origSqlite;
+      mockStatfsSync.mockReset();
+    });
+  });
+
   describe('checkDatabaseStatus("sqlite")', () => {
     it('should return connected/read/write from SQLiteHealthService (all ok)', async () => {
       sqliteHealthMock.checkSQLiteDbStatus.mockResolvedValue({
@@ -174,18 +289,20 @@ describe('MonitoringService', () => {
   });
 
   describe('health', () => {
-    it('should return health check response with server, databases, and services status', async () => {
+    it('should return health check response with server, system, databases, and services status', async () => {
       const input: HealthCheckInput = {};
       const result: HealthCheckResponse = await service.health(input);
 
       expect(result).toHaveProperty('server');
+      expect(result).toHaveProperty('system');
       expect(result).toHaveProperty('databases');
       expect(result).toHaveProperty('services');
     });
 
-    it('should return an empty response if server, databases, and services are false or none', async () => {
+    it('should return an empty response if server, system, databases, and services are false or none', async () => {
       const input: HealthCheckInput = {
         server: 'false',
+        system: 'false',
         databases: 'none',
         services: 'none',
       };
@@ -201,8 +318,35 @@ describe('MonitoringService', () => {
       const result: HealthCheckResponse = await service.health(input);
 
       expect(result).toHaveProperty('server');
+      expect(result).toHaveProperty('system');
       expect(result).not.toHaveProperty('databases');
       expect(result).toHaveProperty('services');
+    });
+
+    it('should omit system when system is "false"', async () => {
+      const input: HealthCheckInput = {
+        server: 'false',
+        system: 'false',
+        databases: 'none',
+        services: 'none',
+      };
+      const result: HealthCheckResponse = await service.health(input);
+      expect(result).not.toHaveProperty('system');
+    });
+
+    it('should include system by default', async () => {
+      const input: HealthCheckInput = {
+        server: 'false',
+        databases: 'none',
+        services: 'none',
+      };
+      const result: HealthCheckResponse = await service.health(input);
+      expect(result).toHaveProperty('system');
+      expect(result.system).toHaveProperty('os');
+      expect(result.system).toHaveProperty('cpu');
+      expect(result.system).toHaveProperty('memory');
+      expect(result.system).toHaveProperty('upTime');
+      expect(result.system).toHaveProperty('disk');
     });
   });
 });

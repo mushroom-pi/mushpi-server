@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+import * as fs from 'fs';
 import * as os from 'os';
 import { version } from 'package.json';
+import * as path from 'path';
 import client from 'prom-client';
 
 import {
@@ -17,6 +19,8 @@ import {
   HealthCheckResponse,
   ServerStatus,
   ServiceStatus,
+  SystemInfo,
+  UpTime,
 } from './monitoring.interface';
 
 @Injectable()
@@ -35,6 +39,15 @@ export class MonitoringService {
     return parseFloat((n / 1024 / 1024).toFixed(2));
   }
 
+  private buildUpTime(seconds: number): UpTime {
+    return {
+      seconds,
+      minutes: Math.round((100 * seconds) / 60) / 100,
+      hours: Math.round((100 * seconds) / (60 * 60)) / 100,
+      days: Math.round((100 * seconds) / (60 * 60 * 24)) / 100,
+    };
+  }
+
   private checkServerStatus(): ServerStatus {
     const loadAverage = os.loadavg().map((avg) => parseFloat(avg.toFixed(2)));
     const memoryUsage = process.memoryUsage();
@@ -50,12 +63,49 @@ export class MonitoringService {
       nodeVersion: process.version,
       loadAverage,
       memoryUsageInMB: memoryUsage,
-      upTime: {
-        seconds: upTimeSeconds,
-        minutes: Math.round((100 * upTimeSeconds) / 60) / 100,
-        hours: Math.round((100 * upTimeSeconds) / (60 * 60)) / 100,
-        days: Math.round((100 * upTimeSeconds) / (60 * 60 * 24)) / 100,
+      upTime: this.buildUpTime(upTimeSeconds),
+    };
+  }
+
+  private checkSystemStatus(): SystemInfo {
+    const cpus = os.cpus();
+    const dbPath = this.configService.sqlite.database;
+
+    let disk: SystemInfo['disk'];
+    if (dbPath === ':memory:') {
+      disk = { path: dbPath, totalMb: null, freeMb: null };
+    } else {
+      const dir = path.dirname(path.resolve(dbPath));
+      try {
+        const stat = fs.statfsSync(dir);
+        disk = {
+          path: dir,
+          totalMb: this.toMB(stat.bsize * stat.blocks),
+          freeMb: this.toMB(stat.bsize * stat.bfree),
+        };
+      } catch {
+        disk = { path: dir, totalMb: null, freeMb: null };
+      }
+    }
+
+    return {
+      os: {
+        platform: os.platform(),
+        type: os.type(),
+        release: os.release(),
+        hostname: os.hostname(),
+        arch: os.arch(),
       },
+      cpu: {
+        model: cpus[0]?.model ?? 'unknown',
+        cores: cpus.length,
+      },
+      memory: {
+        totalMb: this.toMB(os.totalmem()),
+        freeMb: this.toMB(os.freemem()),
+      },
+      upTime: this.buildUpTime(os.uptime()),
+      disk,
     };
   }
 
@@ -106,6 +156,7 @@ export class MonitoringService {
 
   async health({
     server,
+    system,
     databases,
     services,
   }: HealthCheckInput): Promise<HealthCheckResponse> {
@@ -113,6 +164,10 @@ export class MonitoringService {
 
     if (server !== 'false') {
       healthCheck.server = this.checkServerStatus();
+    }
+
+    if (system !== 'false') {
+      healthCheck.system = this.checkSystemStatus();
     }
 
     const dbList = this.makeList(databases, configDb);
