@@ -22,7 +22,7 @@ import {
 import { ApiPicoUnit } from 'src/common/decorators/docs/api-pico-unit.decorator';
 import { ApiAxiosErrorResponses } from 'src/common/decorators/docs/axios-errors.decorator';
 import { ApiEmptyOkResponse } from 'src/common/decorators/docs/empty-ok-response.decorator';
-import { OnlyEnabledPicoUnits } from 'src/common/decorators/docs/only-enabled-pico-unit.decorator';
+import { OnlyMonitoredPicoUnits } from 'src/common/decorators/docs/only-monitored-pico-unit.decorator';
 import { GetPicoUnit } from 'src/common/decorators/get-pico-unit.decorator';
 import { ErrorDto } from 'src/common/dto/error.dto';
 import { ReadingsService } from 'src/modules/readings/readings.service';
@@ -81,7 +81,7 @@ export class PicoUnitIdV1Controller {
   }
 
   @ApiTags('proxy')
-  @OnlyEnabledPicoUnits()
+  @OnlyMonitoredPicoUnits()
   @Post('poll')
   @ApiOperation({
     summary:
@@ -107,7 +107,7 @@ export class PicoUnitIdV1Controller {
   }
 
   @ApiTags('proxy')
-  @OnlyEnabledPicoUnits()
+  @OnlyMonitoredPicoUnits()
   @Put('reboot')
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiOperation({

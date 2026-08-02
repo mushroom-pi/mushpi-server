@@ -1,5 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+import {
+  PICO_UNIT_STATUSES,
+  PicoUnitStatus,
+} from '../../pico-units/pico-unit.type';
+
 // ─── Leaf DTOs ────────────────────────────────────────────────────────────────
 
 export class DashboardLastReadingDto {
@@ -54,8 +59,8 @@ export class DashboardUnitItemDto {
   @ApiPropertyOptional({ type: 'string', nullable: true })
   name!: string | null;
 
-  @ApiProperty({ enum: ['healthy', 'degraded', 'offline'] })
-  status!: 'healthy' | 'degraded' | 'offline';
+  @ApiProperty({ enum: PICO_UNIT_STATUSES })
+  status!: PicoUnitStatus;
 
   @ApiPropertyOptional({ type: 'integer', nullable: true })
   lastSeenSecondsAgo!: number | null;
@@ -93,6 +98,9 @@ export class DashboardUnitsDto {
 
   @ApiProperty({ type: 'integer' })
   offline!: number;
+
+  @ApiProperty({ example: 2 })
+  paused!: number;
 
   @ApiProperty({ type: 'integer' })
   total!: number;

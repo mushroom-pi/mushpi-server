@@ -198,7 +198,7 @@ export class ReadingsService {
   }
 
   async pollReadingsFromAllEnabled(): Promise<void> {
-    const picoUnits = await this.picoUnitsService.listEnabled();
+    const picoUnits = await this.picoUnitsService.listMonitored();
 
     for (const picoUnit of picoUnits) {
       try {

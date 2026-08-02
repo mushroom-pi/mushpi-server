@@ -17,7 +17,7 @@ export async function seedPicoUnitPartial(
     handle: data.handle ?? `unit-${Math.random().toString(16).slice(2, 6)}`,
     host: data.host ?? '127.0.0.1',
     port: data.port ?? 5000,
-    enabled: data.enabled ?? true,
+    monitored: data.monitored ?? true,
     last_seen: data.last_seen ?? undefined,
     name: data.name,
     description: data.description,

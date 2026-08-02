@@ -36,6 +36,8 @@ When new functionality is added, **propose and write e2e tests** (see the `nestj
 
 All stored columns use **snake_case property names** (e.g. `last_seen`, `micropython_version`, `face_color`, `mac`) that match the database column name directly — no `@Column({ name })` overrides needed. This is the convention across the SQL entity definitions. Computed `@Expose()` getters use camelCase (e.g. `host`, `address`, `ipAddress`).
 
+**Sanctioned exception**: `PicoUnit.monitored` uses `@Column({ name: 'enabled' })` to preserve backward compatibility with the existing SQLite column name while exposing a clearer property name. This is the only `@Column({ name })` override in the project — do not replicate this pattern for new columns.
+
 ### DTO partial-update contract
 
 `PicoUnitsService.update()` uses `Object.assign(unit, dto)` for partial PATCH. This means **DTO fields must have no initializers** (no `?: string = ''`). Omitted fields are not own-enumerable properties, so `Object.assign` skips them. Adding a default value or initializer to any `UpdateXxxDto` field will incorrectly overwrite stored values on PATCH.
@@ -50,6 +52,14 @@ Use `@IsInt()`, `{ type: 'integer' }` in TypeORM, `{ type: 'integer' }` in Swagg
 - `'in-progress'`: `(finish_at IS NULL OR finish_at > now) AND start_at < now`
 - `'finished'`: `finish_at < now`
   Requires `@Expose()` + `@ApiProperty()` to serialize.
+
+### PicoUnit `status` — computed, not stored
+
+- `'unmonitored'`: `monitored === false`
+- `'offline'`: `monitored === true && failed_calls >= OFFLINE_FAILED_CALLS_THRESHOLD (3)`
+- `'degraded'`: `monitored === true && (failed_readings > 0 || consecutive_empty_readings > 0)`
+- `'healthy'`: `monitored === true && failed_calls < 3 && failed_readings === 0 && consecutive_empty_readings === 0`
+  Requires `@Expose()` + `@ApiProperty({ enum: PICO_UNIT_STATUSES })` to serialize. The canonical status values array and type live in `pico-unit.type.ts` — all consumers import from there.
 
 ### Batch lifecycle constraints
 
@@ -125,7 +135,7 @@ pico-units/   — CRUD + ping proxy
 readings/     — readings storage and time-range queries
 batches/      — batch CRUD + lifecycle rules + recipe linking
 control/      — proxy: setpoints, outputs, setup, control loop toggle (each triggers an immediate trailing poll via `callPollAndUpdate`)  
-cron/         — scheduled polling of all enabled Pico units
+cron/         — scheduled polling of all monitored Pico units
 dashboard/    — aggregated summary endpoint (unit health, batches, recipes, stats, warnings)
 settings/     — GET/PATCH /v1/settings for timezone config; global TimezoneInterceptor converts all response dates
 monitoring/   — /ping, /health, /metrics (VERSION_NEUTRAL — unversioned)
@@ -246,7 +256,7 @@ Scripts that import TypeScript source using `src/*` path aliases (e.g. `spec/gen
 
 ## Cron Polling
 
-`CronService` polls all **enabled** PicoUnits every minute: `GET /` → creates `Readings` → updates `last_seen` + `failed_calls` + `failed_readings` + board metadata.
+`CronService` polls all **monitored** PicoUnits every minute: `GET /` → creates `Readings` → updates `last_seen` + `failed_calls` + `failed_readings` + board metadata.
 
 **Readings ingestion funnel**: `ReadingsService.createFromDeviceResponse()` is the **only** write path for the `readings` table — there is no direct POST endpoint for readings and no batch-side writes. Any quality filter or validation rule for incoming readings belongs in `ReadingsService.pollReadingsFromUnit()` (the caller), not in `createFromDeviceResponse` itself, which should remain a pure mapper/persister. Failed units increment `failed_calls` but are not auto-disabled. Uses error-safe wrappers (`applyBatchSettingsSafe`) to avoid crashing the cron job.
 
@@ -335,8 +345,8 @@ This ensures one canonical log entry per exception. Non-exception responses (404
 
 ## Guards
 
-- `IsPicoUnitEnabledGuard` (410 Gone for disabled units) — used via `@OnlyEnabledPicoUnits()` decorator
-- `IsControlLoopEnabledGuard` (409 Conflict when control loop active, prevents manual output changes) — used via `@OnlyEnabledPicoUnitsWithControlLoop()`
+- `IsPicoUnitMonitoredGuard` (410 Gone for unmonitored units) — used via `@OnlyMonitoredPicoUnits()` decorator
+- `IsControlLoopEnabledGuard` (409 Conflict when control loop active, prevents manual output changes) — used via `@OnlyMonitoredPicoUnitsWithControlLoop()`
 - `PicoAnnounceSecretGuard` (401 Unauthorized, validates `X-Pico-Secret` header against `PICO_ANNOUNCE_SECRET`) — used via `@PicoAnnounceSecret()` composite decorator
 - `TooManyRequestsGuard` — `@nestjs/throttler` rate limiting
 - `AppSecretBearerMiddleware` — optional Bearer token auth from `APP_SECRET`

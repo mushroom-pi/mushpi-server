@@ -2,14 +2,14 @@ import { UseGuards, applyDecorators } from '@nestjs/common';
 import { ApiGoneResponse } from '@nestjs/swagger';
 
 import { ErrorDto } from 'src/common/dto/error.dto';
-import { IsPicoUnitEnabledGuard } from 'src/common/guards/is-pico-unit-enabled.guard';
+import { IsPicoUnitMonitoredGuard } from 'src/common/guards/is-pico-unit-monitored.guard';
 
-export function OnlyEnabledPicoUnits() {
+export function OnlyMonitoredPicoUnits() {
   return applyDecorators(
-    UseGuards(IsPicoUnitEnabledGuard),
+    UseGuards(IsPicoUnitMonitoredGuard),
     ApiGoneResponse({
       description:
-        'This action can only be implemented with enabled Pico Units',
+        'This action can only be implemented with monitored Pico Units',
       type: ErrorDto,
     }),
   );

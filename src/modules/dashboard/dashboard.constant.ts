@@ -1,6 +1,4 @@
 export const DASHBOARD_TOP_RECIPES_LIMIT = 3;
-export const UNIT_OFFLINE_THRESHOLD_SECONDS = 300; // 5 minutes
-export const UNIT_OFFLINE_FAILED_CALLS = 5;
 export const UNIT_DEGRADED_FAILED_READINGS = 5;
 export const EMPTY_READINGS_THRESHOLD = 5;
 export const TEMP_DEVIATION_C = 2;

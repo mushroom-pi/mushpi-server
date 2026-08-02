@@ -5,6 +5,7 @@ import { Between, IsNull, LessThan, MoreThan, Repository } from 'typeorm';
 
 import { Batch } from 'src/modules/batches/batches.entity';
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
+import { OFFLINE_FAILED_CALLS_THRESHOLD } from 'src/modules/pico-units/pico-units.constant';
 import { Readings } from 'src/modules/readings/readings.entity';
 import { Recipe } from 'src/modules/recipes/recipes.entity';
 
@@ -17,8 +18,6 @@ import {
   RECENTLY_FINISHED_LIMIT,
   TEMP_DEVIATION_C,
   UNIT_DEGRADED_FAILED_READINGS,
-  UNIT_OFFLINE_FAILED_CALLS,
-  UNIT_OFFLINE_THRESHOLD_SECONDS,
 } from './dashboard.constant';
 import {
   DashboardApproachingBatchDto,
@@ -54,6 +53,7 @@ export class DashboardService {
     // 1. Run independent queries in Promise.all
     const [
       allUnits,
+      pausedCount,
       totalBatches,
       totalReadings,
       totalRecipes,
@@ -61,7 +61,8 @@ export class DashboardService {
       recentlyFinished,
       mostUsedRecipesRaw,
     ] = await Promise.all([
-      this.picoRepo.find({ where: { enabled: true } }),
+      this.picoRepo.find({ where: { monitored: true } }),
+      this.picoRepo.count({ where: { monitored: false } }),
       this.batchRepo.count(),
       this.readingsRepo.count(),
       this.recipeRepo.count(),
@@ -127,17 +128,10 @@ export class DashboardService {
       const lastSeenSecondsAgo = unit.last_seen
         ? Math.floor((now.getTime() - unit.last_seen.getTime()) / 1000)
         : null;
-      const online =
-        lastSeenSecondsAgo != null &&
-        lastSeenSecondsAgo <= UNIT_OFFLINE_THRESHOLD_SECONDS;
-      const degraded =
-        online &&
-        ((unit.failed_readings ?? 0) > 0 ||
-          (unit.consecutive_empty_readings ?? 0) > 0);
-      const healthy = online && !degraded;
+      const unitStatus = unit.status;
 
-      if (healthy) healthyCount++;
-      else if (degraded) degradedCount++;
+      if (unitStatus === 'healthy') healthyCount++;
+      else if (unitStatus === 'degraded') degradedCount++;
       else offlineCount++;
 
       const activeBatch = activeBatchByUnit.get(unit.id);
@@ -151,7 +145,7 @@ export class DashboardService {
         id: unit.id,
         handle: unit.handle,
         name: unit.name ?? null,
-        status: healthy ? 'healthy' : degraded ? 'degraded' : 'offline',
+        status: unitStatus,
         lastSeenSecondsAgo,
         uptimeHours: lastReading?.board_uptime_s
           ? Math.round((lastReading.board_uptime_s / 3600) * 100) / 100
@@ -240,7 +234,7 @@ export class DashboardService {
     for (const item of unitItems) {
       const lastReading = latestReadingsMap.get(item.id);
 
-      if (item.failedCalls >= UNIT_OFFLINE_FAILED_CALLS) {
+      if (item.failedCalls >= OFFLINE_FAILED_CALLS_THRESHOLD) {
         warnings.push({
           type: 'unit_offline',
           severity: 'error',
@@ -321,6 +315,7 @@ export class DashboardService {
       healthy: healthyCount,
       degraded: degradedCount,
       offline: offlineCount,
+      paused: pausedCount,
       total: allUnits.length,
       items: unitItems,
     };

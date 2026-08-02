@@ -124,10 +124,10 @@ describe('BatchesService sync queries (e2e)', () => {
       expect(result).toEqual([]);
     });
 
-    it('excludes disabled unit with a finished batch', async () => {
+    it('excludes unmonitored unit with a finished batch', async () => {
       const pico = await seedPicoUnit(app, {
         port: 7013,
-        enabled: false,
+        monitored: false,
       });
       await seedBatch(app, pico.id, { start_at: farPast, finish_at: past });
 

@@ -3,8 +3,8 @@ import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { ApiPicoUnit } from 'src/common/decorators/docs/api-pico-unit.decorator';
 import { ApiAxiosErrorResponses } from 'src/common/decorators/docs/axios-errors.decorator';
-import { OnlyEnabledPicoUnitsWithControlLoop } from 'src/common/decorators/docs/only-enabled-pico-unit-with-control-loop.decorator';
-import { OnlyEnabledPicoUnits } from 'src/common/decorators/docs/only-enabled-pico-unit.decorator';
+import { OnlyMonitoredPicoUnitsWithControlLoop } from 'src/common/decorators/docs/only-monitored-pico-unit-with-control-loop.decorator';
+import { OnlyMonitoredPicoUnits } from 'src/common/decorators/docs/only-monitored-pico-unit.decorator';
 import { GetPicoUnit } from 'src/common/decorators/get-pico-unit.decorator';
 import {
   DevicesDto,
@@ -29,7 +29,7 @@ export class PicoUnitIdControlV1Controller {
   constructor(private readonly svc: ControlService) {}
 
   @Put('setpoints')
-  @OnlyEnabledPicoUnits()
+  @OnlyMonitoredPicoUnits()
   @ApiOperation({
     summary: 'Change temperature and/or humidity targets',
     description:
@@ -41,7 +41,7 @@ export class PicoUnitIdControlV1Controller {
   }
 
   @Put('setup')
-  @OnlyEnabledPicoUnits()
+  @OnlyMonitoredPicoUnits()
   @ApiOperation({
     summary: 'Change connections setup',
     description:
@@ -53,7 +53,7 @@ export class PicoUnitIdControlV1Controller {
   }
 
   @Put('outputs')
-  @OnlyEnabledPicoUnitsWithControlLoop()
+  @OnlyMonitoredPicoUnitsWithControlLoop()
   @ApiOperation({
     summary: 'Turn devices on and/or off',
     description:
@@ -65,7 +65,7 @@ export class PicoUnitIdControlV1Controller {
   }
 
   @Put('loop')
-  @OnlyEnabledPicoUnits()
+  @OnlyMonitoredPicoUnits()
   @ApiOperation({
     summary: 'Turn control loop on or off',
     description:

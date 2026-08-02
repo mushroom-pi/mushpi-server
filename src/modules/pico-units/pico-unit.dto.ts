@@ -194,11 +194,12 @@ export class UpdatePicoUnitDto {
   @ApiProperty({
     required: false,
     default: true,
-    description: 'A flag that is true if the unit is active and reachable.',
+    description:
+      'A flag that is true when the unit is being monitored for readings.',
   })
   @IsOptional()
   @IsBoolean()
-  enabled?: boolean;
+  monitored?: boolean;
 
   @ApiProperty({
     required: false,
@@ -235,10 +236,10 @@ export class ListPicoUnitsQueryDto {
   @Max(PAGINATION_MAX_LIMIT)
   limit?: number = PAGINATION_DEFAULT_LIMIT;
 
-  @ApiProperty({ required: false, description: 'Filter by enabled' })
+  @ApiProperty({ required: false, description: 'Filter by monitored status' })
   @IsOptional()
   @IsBoolean()
-  enabled?: boolean;
+  monitored?: boolean;
 
   @ApiProperty({ required: false, description: 'Search in handle/name/ip' })
   @IsOptional()

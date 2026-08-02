@@ -1,6 +1,8 @@
 import { RebootType } from './pico-unit.type';
 
 export const failsToUnhealthy = 3;
+// A monitored unit is considered offline once failed_calls >= this threshold (3 consecutive unreachable cron polls).
+export const OFFLINE_FAILED_CALLS_THRESHOLD = failsToUnhealthy;
 export const reboot: RebootType[] = ['hard', 'soft'];
 
 export const SENSOR_RANGE = {

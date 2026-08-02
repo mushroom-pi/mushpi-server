@@ -4,6 +4,8 @@ import { Expose, Transform } from 'class-transformer';
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 
 import { Readings } from '../readings/readings.entity';
+import { PICO_UNIT_STATUSES, PicoUnitStatus } from './pico-unit.type';
+import { OFFLINE_FAILED_CALLS_THRESHOLD } from './pico-units.constant';
 
 @Entity('pico_unit')
 export class PicoUnit {
@@ -44,8 +46,8 @@ export class PicoUnit {
   @Column({ type: 'integer', default: 5000 })
   port!: number;
 
-  @Column({ type: 'boolean', default: true })
-  enabled!: boolean;
+  @Column({ type: 'boolean', default: true, name: 'enabled' }) // Column 'enabled' kept for backward compat; property renamed for clarity.
+  monitored!: boolean;
 
   @Column({ type: 'datetime', nullable: true })
   last_seen?: Date;
@@ -113,6 +115,24 @@ export class PicoUnit {
   })
   get ipAddress(): string | undefined {
     return this.ip ? `http://${this.ip}:${this.port}` : undefined;
+  }
+
+  @Expose()
+  @ApiProperty({
+    enum: PICO_UNIT_STATUSES,
+    description:
+      'Computed health status: unmonitored (not being polled), healthy (reachable, no faults), degraded (sensor issues), offline (unreachable for >= 3 polls)',
+  })
+  get status(): PicoUnitStatus {
+    if (!this.monitored) return 'unmonitored';
+    if ((this.failed_calls ?? 0) >= OFFLINE_FAILED_CALLS_THRESHOLD)
+      return 'offline';
+    if (
+      (this.failed_readings ?? 0) > 0 ||
+      (this.consecutive_empty_readings ?? 0) > 0
+    )
+      return 'degraded';
+    return 'healthy';
   }
 
   @OneToMany(() => Readings, (r) => r.pico_unit)

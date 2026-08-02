@@ -637,10 +637,10 @@
             }
           },
           {
-            "name": "enabled",
+            "name": "monitored",
             "required": false,
             "in": "query",
-            "description": "Filter by enabled",
+            "description": "Filter by monitored status",
             "schema": {
               "type": "boolean"
             }
@@ -1778,7 +1778,7 @@
             }
           },
           "410": {
-            "description": "This action can only be implemented with enabled Pico Units",
+            "description": "This action can only be implemented with monitored Pico Units",
             "content": {
               "application/json": {
                 "schema": {
@@ -2015,7 +2015,7 @@
             }
           },
           "410": {
-            "description": "This action can only be implemented with enabled Pico Units",
+            "description": "This action can only be implemented with monitored Pico Units",
             "content": {
               "application/json": {
                 "schema": {
@@ -3082,7 +3082,7 @@
             }
           },
           "404": {
-            "description": "The provided pico_unit_id doesn't correspond to any existing and enabled Pico Unit",
+            "description": "The provided pico_unit_id doesn't correspond to any existing and monitored Pico Unit",
             "content": {
               "application/json": {
                 "schema": {
@@ -6586,7 +6586,7 @@
             }
           },
           "410": {
-            "description": "This action can only be implemented with enabled Pico Units",
+            "description": "This action can only be implemented with monitored Pico Units",
             "content": {
               "application/json": {
                 "schema": {
@@ -6813,7 +6813,7 @@
             }
           },
           "410": {
-            "description": "This action can only be implemented with enabled Pico Units",
+            "description": "This action can only be implemented with monitored Pico Units",
             "content": {
               "application/json": {
                 "schema": {
@@ -7050,7 +7050,7 @@
             }
           },
           "410": {
-            "description": "This action can only be implemented with enabled Pico Units",
+            "description": "This action can only be implemented with monitored Pico Units",
             "content": {
               "application/json": {
                 "schema": {
@@ -7277,7 +7277,7 @@
             }
           },
           "410": {
-            "description": "This action can only be implemented with enabled Pico Units",
+            "description": "This action can only be implemented with monitored Pico Units",
             "content": {
               "application/json": {
                 "schema": {
@@ -8255,6 +8255,16 @@
             "example": "http://192.168.1.50:5000",
             "nullable": true
           },
+          "status": {
+            "type": "string",
+            "enum": [
+              "unmonitored",
+              "healthy",
+              "degraded",
+              "offline"
+            ],
+            "description": "Computed health status: unmonitored (not being polled), healthy (reachable, no faults), degraded (sensor issues), offline (unreachable for >= 3 polls)"
+          },
           "latest_reading": {
             "nullable": true,
             "description": "Latest reading row for this unit (computed, not stored)",
@@ -8272,6 +8282,7 @@
           "consecutive_empty_readings",
           "address",
           "ipAddress",
+          "status",
           "latest_reading"
         ]
       },
@@ -8407,10 +8418,10 @@
             "description": "Optional notes about this particular unit.",
             "maxLength": 512
           },
-          "enabled": {
+          "monitored": {
             "type": "boolean",
             "default": true,
-            "description": "A flag that is true if the unit is active and reachable."
+            "description": "A flag that is true when the unit is being monitored for readings."
           },
           "face_color": {
             "type": "string",
@@ -8458,6 +8469,16 @@
             "example": "http://192.168.1.50:5000",
             "nullable": true
           },
+          "status": {
+            "type": "string",
+            "enum": [
+              "unmonitored",
+              "healthy",
+              "degraded",
+              "offline"
+            ],
+            "description": "Computed health status: unmonitored (not being polled), healthy (reachable, no faults), degraded (sensor issues), offline (unreachable for >= 3 polls)"
+          },
           "latest_reading": {
             "nullable": true,
             "description": "Latest reading row for this unit (computed, not stored)",
@@ -8484,6 +8505,7 @@
           "consecutive_empty_readings",
           "address",
           "ipAddress",
+          "status",
           "latest_reading"
         ]
       },
@@ -8992,6 +9014,7 @@
           "status": {
             "type": "string",
             "enum": [
+              "unmonitored",
               "healthy",
               "degraded",
               "offline"
@@ -9056,6 +9079,10 @@
           "offline": {
             "type": "integer"
           },
+          "paused": {
+            "type": "number",
+            "example": 2
+          },
           "total": {
             "type": "integer"
           },
@@ -9070,6 +9097,7 @@
           "healthy",
           "degraded",
           "offline",
+          "paused",
           "total",
           "items"
         ]

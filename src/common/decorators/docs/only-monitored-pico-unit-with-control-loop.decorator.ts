@@ -3,11 +3,11 @@ import { ApiConflictResponse, ApiGoneResponse } from '@nestjs/swagger';
 
 import { ErrorDto } from 'src/common/dto/error.dto';
 import { IsControlLoopEnabledGuard } from 'src/common/guards/is-control-loop-enabled.guard';
-import { IsPicoUnitEnabledGuard } from 'src/common/guards/is-pico-unit-enabled.guard';
+import { IsPicoUnitMonitoredGuard } from 'src/common/guards/is-pico-unit-monitored.guard';
 
-export function OnlyEnabledPicoUnitsWithControlLoop() {
+export function OnlyMonitoredPicoUnitsWithControlLoop() {
   return applyDecorators(
-    UseGuards(IsPicoUnitEnabledGuard, IsControlLoopEnabledGuard),
+    UseGuards(IsPicoUnitMonitoredGuard, IsControlLoopEnabledGuard),
     ApiConflictResponse({
       description:
         "This endpoint cannot be used as long as the Pico Unit's control loop is activated",
@@ -15,7 +15,7 @@ export function OnlyEnabledPicoUnitsWithControlLoop() {
     }),
     ApiGoneResponse({
       description:
-        'This action can only be implemented with enabled Pico Units',
+        'This action can only be implemented with monitored Pico Units',
       type: ErrorDto,
     }),
   );

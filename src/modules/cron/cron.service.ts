@@ -14,8 +14,8 @@ import { ControlService } from 'src/modules/control/control.service';
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
 import {
   PICO_UNIT_EVENTS,
-  PicoUnitDisabledEvent,
-  PicoUnitEnabledEvent,
+  PicoUnitMonitoringStartedEvent,
+  PicoUnitMonitoringStoppedEvent,
   PicoUnitRegisteredEvent,
 } from 'src/modules/pico-units/pico-unit.events';
 import { ReadingsService } from 'src/modules/readings/readings.service';
@@ -40,7 +40,7 @@ export class CronService implements OnApplicationBootstrap {
 
   async onApplicationBootstrap(): Promise<void> {
     this.logger.log(
-      'Startup sweep — polling all enabled pico units immediately',
+      'Startup sweep — polling all monitored pico units immediately',
     );
     void this.runReadingsSweep().catch((error) => {
       this.logger.error(`Startup sweep failed: ${JSON.stringify(error)}`);
@@ -98,17 +98,23 @@ export class CronService implements OnApplicationBootstrap {
     await this.applyBatchSettingsSafe(batch);
   }
 
-  @OnEvent(PICO_UNIT_EVENTS.DISABLED)
-  async handlePicoUnitDisabled({ unit }: PicoUnitDisabledEvent) {
+  @OnEvent(PICO_UNIT_EVENTS.MONITORING_STOPPED)
+  async handlePicoUnitMonitoringStopped({
+    unit,
+  }: PicoUnitMonitoringStoppedEvent) {
     this.logger.log(
-      `Pico unit ${unit.id} disabled — turning off control loop and all outputs`,
+      `Pico unit ${unit.id} monitoring stopped — turning off control loop and all outputs`,
     );
     await this.applyUnitDisabledSafe(unit);
   }
 
-  @OnEvent(PICO_UNIT_EVENTS.ENABLED)
-  async handlePicoUnitEnabled({ unit }: PicoUnitEnabledEvent) {
-    this.logger.log(`Pico unit ${unit.id} enabled — resuming readings`);
+  @OnEvent(PICO_UNIT_EVENTS.MONITORING_STARTED)
+  async handlePicoUnitMonitoringStarted({
+    unit,
+  }: PicoUnitMonitoringStartedEvent) {
+    this.logger.log(
+      `Pico unit ${unit.id} monitoring started — resuming readings`,
+    );
     try {
       await this.readingsService.pollReadingsFromUnit(unit);
     } catch (error) {
@@ -117,7 +123,7 @@ export class CronService implements OnApplicationBootstrap {
     const batch = await this.batchesService.findInProgressForUnit(unit.id);
     if (!batch) return;
     this.logger.log(
-      `Pico unit ${unit.id} enabled — applying active batch ${batch.id} settings`,
+      `Pico unit ${unit.id} monitoring started — applying active batch ${batch.id} settings`,
     );
     await this.applyBatchSettingsSafe(batch);
   }
@@ -151,12 +157,12 @@ export class CronService implements OnApplicationBootstrap {
       const changed = await this.controlService.applyUnitDisabled(unit);
       if (changed) {
         this.logger.log(
-          `Turned off control loop and outputs for disabled pico unit ${unit.id}`,
+          `Turned off control loop and outputs for unmonitored pico unit ${unit.id}`,
         );
       }
     } catch (error) {
       this.logger.error(
-        `Failed to turn off outputs for disabled pico unit ${unit.id}: ${JSON.stringify(error)}`,
+        `Failed to turn off outputs for unmonitored pico unit ${unit.id}: ${JSON.stringify(error)}`,
       );
     }
   }

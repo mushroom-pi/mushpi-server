@@ -7,7 +7,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import axios from 'axios';
-import { ILike, MoreThan, Repository } from 'typeorm';
+import { ILike, MoreThanOrEqual, Repository } from 'typeorm';
 
 import { PORT_DEFAULT } from 'src/common/constants/hardware.constants';
 import { FailedDependencyException } from 'src/common/exceptions/failed-dependency.exception';
@@ -29,11 +29,11 @@ import { PicoUnit } from './pico-unit.entity';
 import {
   PICO_UNIT_EVENTS,
   PicoUnitCreatedEvent,
-  PicoUnitDisabledEvent,
-  PicoUnitEnabledEvent,
+  PicoUnitMonitoringStartedEvent,
+  PicoUnitMonitoringStoppedEvent,
   PicoUnitRegisteredEvent,
 } from './pico-unit.events';
-import { failsToUnhealthy } from './pico-units.constant';
+import { OFFLINE_FAILED_CALLS_THRESHOLD } from './pico-units.constant';
 
 @Injectable()
 export class PicoUnitsService {
@@ -128,7 +128,7 @@ export class PicoUnitsService {
     onlyEnabled: boolean = false,
   ): Promise<PicoUnit> {
     const unit = await this.picoUnitRepo.findOne({ where: { id } });
-    if (!unit || (onlyEnabled && !unit.enabled)) {
+    if (!unit || (onlyEnabled && !unit.monitored)) {
       throw new NotFoundException(`PicoUnit ${id} not found`);
     }
 
@@ -136,11 +136,11 @@ export class PicoUnitsService {
   }
 
   async list(query: ListPicoUnitsQueryDto) {
-    const { page = 1, limit = 20, enabled, q } = query;
+    const { page = 1, limit = 20, monitored, q } = query;
 
     const where: any[] = [];
     const base: any = {};
-    if (typeof enabled === 'boolean') base.enabled = enabled;
+    if (typeof monitored === 'boolean') base.monitored = monitored;
 
     if (q && q.trim()) {
       const like = ILike(`%${q.trim()}%`);
@@ -168,33 +168,36 @@ export class PicoUnitsService {
     };
   }
 
-  async listEnabled(): Promise<PicoUnit[]> {
+  async listMonitored(): Promise<PicoUnit[]> {
     return this.picoUnitRepo.find({
-      where: { enabled: true },
+      where: { monitored: true },
     });
   }
 
   async listUnhealthy(): Promise<PicoUnit[]> {
     return this.picoUnitRepo.find({
-      where: { enabled: true, failed_calls: MoreThan(failsToUnhealthy) },
+      where: {
+        monitored: true,
+        failed_calls: MoreThanOrEqual(OFFLINE_FAILED_CALLS_THRESHOLD),
+      },
       order: { last_seen: 'DESC' },
     });
   }
 
   async update(unit: PicoUnit, dto: UpdatePicoUnitDto): Promise<PicoUnit> {
-    const wasEnabled = unit.enabled;
+    const wasMonitored = unit.monitored;
     Object.assign(unit, dto);
     const saved = await this.picoUnitRepo.save(unit);
 
-    if (wasEnabled && !saved.enabled) {
+    if (wasMonitored && !saved.monitored) {
       this.eventEmitter.emit(
-        PICO_UNIT_EVENTS.DISABLED,
-        new PicoUnitDisabledEvent(saved),
+        PICO_UNIT_EVENTS.MONITORING_STOPPED,
+        new PicoUnitMonitoringStoppedEvent(saved),
       );
-    } else if (!wasEnabled && saved.enabled) {
+    } else if (!wasMonitored && saved.monitored) {
       this.eventEmitter.emit(
-        PICO_UNIT_EVENTS.ENABLED,
-        new PicoUnitEnabledEvent(saved),
+        PICO_UNIT_EVENTS.MONITORING_STARTED,
+        new PicoUnitMonitoringStartedEvent(saved),
       );
     }
 

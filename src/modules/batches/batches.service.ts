@@ -254,7 +254,10 @@ export class BatchesService {
 
     const unitMap = new Map<number, PicoUnit>();
     for (const batch of recentlyFinished) {
-      if (!activeUnitIds.has(batch.pico_unit_id) && batch.pico_unit?.enabled) {
+      if (
+        !activeUnitIds.has(batch.pico_unit_id) &&
+        batch.pico_unit?.monitored
+      ) {
         unitMap.set(batch.pico_unit_id, batch.pico_unit);
       }
     }

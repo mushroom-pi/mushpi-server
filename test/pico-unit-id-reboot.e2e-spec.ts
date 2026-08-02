@@ -179,11 +179,11 @@ describe('PUT /pico-units/:picoUnitId/reboot (e2e)', () => {
       .expect(422);
   });
 
-  it('disabled unit: returns 410', async () => {
+  it('unmonitored unit: returns 410', async () => {
     const unit = await seedPicoUnit(app, {
       handle: 'reboot-disabled',
       port: 9006,
-      enabled: false,
+      monitored: false,
     });
 
     await request(app.getHttpServer())

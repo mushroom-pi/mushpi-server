@@ -57,7 +57,7 @@ describe('Pico Units (e2e)', () => {
         host: 'alpha.local',
         port: 5001,
         ip: '192.168.1.50',
-        enabled: true,
+        monitored: true,
         software_version: '0.1.0',
         micropython_version: 'v1.26.0 on 2025-08-09 (GNU 14.2.0 MinSizeRel)',
       });

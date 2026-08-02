@@ -3,8 +3,8 @@ import { PicoUnit } from './pico-unit.entity';
 export const PICO_UNIT_EVENTS = {
   CREATED: 'pico-unit.created',
   REGISTERED: 'pico-unit.registered',
-  ENABLED: 'pico-unit.enabled',
-  DISABLED: 'pico-unit.disabled',
+  MONITORING_STARTED: 'pico-unit.monitoring_started',
+  MONITORING_STOPPED: 'pico-unit.monitoring_stopped',
 } as const;
 
 export class PicoUnitCreatedEvent {
@@ -15,10 +15,10 @@ export class PicoUnitRegisteredEvent {
   constructor(public readonly unit: PicoUnit) {}
 }
 
-export class PicoUnitEnabledEvent {
+export class PicoUnitMonitoringStartedEvent {
   constructor(public readonly unit: PicoUnit) {}
 }
 
-export class PicoUnitDisabledEvent {
+export class PicoUnitMonitoringStoppedEvent {
   constructor(public readonly unit: PicoUnit) {}
 }

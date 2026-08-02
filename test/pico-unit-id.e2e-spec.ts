@@ -95,7 +95,7 @@ describe('Pico Units (e2e)', () => {
   });
 
   describe('PATCH /pico-units/:picoUnitId', () => {
-    it('updates name/description/enabled', async () => {
+    it('updates name/description/monitored', async () => {
       const unit = await seedPicoUnit(app, {
         handle: 'editme',
         port: 6000,
@@ -103,14 +103,14 @@ describe('Pico Units (e2e)', () => {
 
       const res = await request(app.getHttpServer())
         .patch(`/v1/pico-units/${unit.id}`)
-        .send({ name: 'New Name', description: 'Updated', enabled: false })
+        .send({ name: 'New Name', description: 'Updated', monitored: false })
         .expect(200);
 
       expect(res.body).toMatchObject({
         id: unit.id,
         name: 'New Name',
         description: 'Updated',
-        enabled: false,
+        monitored: false,
       });
     });
   });

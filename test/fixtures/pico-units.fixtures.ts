@@ -23,7 +23,7 @@ export async function seedPicoUnit(
     handle: 'unit-' + Math.random().toString(16).slice(2, 6),
     ip: '127.0.0.1',
     port: 5000,
-    enabled: true,
+    monitored: true,
     micropython_version: 'v1.26.0 on 2025-08-09 (GNU 14.2.0 MinSizeRel)',
     software_version: '0.1.1',
     board: 'Raspberry Pi Pico 2 W with RP2350',
@@ -48,7 +48,7 @@ export async function seedManyPicoUnits(
       handle: base.handle ?? `unit-${i + 1}`,
       name: base.name,
       description: base.description,
-      enabled: base.enabled ?? true,
+      monitored: base.monitored ?? true,
     });
     out.push(unit);
   }

@@ -40,7 +40,7 @@ export class BatchesV1Controller {
   })
   @ApiNotFoundResponse({
     description:
-      "The provided pico_unit_id doesn't correspond to any existing and enabled Pico Unit",
+      "The provided pico_unit_id doesn't correspond to any existing and monitored Pico Unit",
     type: ErrorDto,
   })
   @ApiConflictErrorResponse({

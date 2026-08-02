@@ -47,7 +47,7 @@ function makeUnit(overrides: Partial<PicoUnit> = {}): PicoUnit {
     id: 1,
     handle: 'unit-test',
     port: 5000,
-    enabled: true,
+    monitored: true,
     ...overrides,
   });
 }

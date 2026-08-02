@@ -50,11 +50,11 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
       .expect(404);
   });
 
-  it('returns 410 Gone when unit is disabled', async () => {
+  it('returns 410 Gone when unit is unmonitored', async () => {
     const unit = await seedPicoUnit(app, {
       handle: 'poll-disabled',
       port: 5100,
-      enabled: false,
+      monitored: false,
     });
 
     await request(app.getHttpServer())
