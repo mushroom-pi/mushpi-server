@@ -2232,6 +2232,20 @@
             }
           },
           {
+            "name": "order",
+            "required": false,
+            "in": "query",
+            "description": "Sort order for the ts column. Use DESC to fetch newest readings first.",
+            "schema": {
+              "default": "ASC",
+              "type": "string",
+              "enum": [
+                "ASC",
+                "DESC"
+              ]
+            }
+          },
+          {
             "name": "picoUnitId",
             "required": true,
             "in": "path",
@@ -2665,6 +2679,20 @@
               "maximum": 500,
               "example": 100,
               "type": "number"
+            }
+          },
+          {
+            "name": "order",
+            "required": false,
+            "in": "query",
+            "description": "Sort order for the ts column. Use DESC to fetch newest readings first.",
+            "schema": {
+              "default": "ASC",
+              "type": "string",
+              "enum": [
+                "ASC",
+                "DESC"
+              ]
             }
           },
           {

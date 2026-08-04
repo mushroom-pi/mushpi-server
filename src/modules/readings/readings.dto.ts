@@ -6,7 +6,14 @@ import {
 } from '@nestjs/swagger';
 
 import { Type } from 'class-transformer';
-import { IsDateString, IsInt, IsOptional, Max, Min } from 'class-validator';
+import {
+  IsDateString,
+  IsIn,
+  IsInt,
+  IsOptional,
+  Max,
+  Min,
+} from 'class-validator';
 
 import {
   PAGINATION_DEFAULT_PAGE,
@@ -65,6 +72,16 @@ export class ListReadingsQueryDto extends OptionalTimeLimitsQueryDto {
   @Min(PAGINATION_MIN_LIMIT)
   @Max(READINGS_MAX_LIMIT)
   limit?: number = READINGS_DEFAULT_LIMIT;
+
+  @ApiPropertyOptional({
+    enum: ['ASC', 'DESC'],
+    default: 'ASC',
+    description:
+      'Sort order for the ts column. Use DESC to fetch newest readings first.',
+  })
+  @IsOptional()
+  @IsIn(['ASC', 'DESC'])
+  order?: 'ASC' | 'DESC' = 'ASC';
 }
 
 @ApiExtraModels(Readings)

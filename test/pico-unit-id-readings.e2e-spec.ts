@@ -201,5 +201,59 @@ describe('Readings endpoints (e2e)', () => {
         expect(res.body).toHaveProperty('message');
       });
     });
+
+    describe('order query param', () => {
+      let unit: PicoUnit;
+      let a: Readings;
+      let b: Readings;
+      let c: Readings;
+
+      beforeEach(async () => {
+        unit = await seedPicoUnitPartial(app, {
+          handle: 'order-test',
+          port: 5040,
+        });
+
+        a = await seedReadingForUnit(app, unit, {
+          ts: new Date(Date.now() - 30000),
+          temperature: 20,
+        });
+        b = await seedReadingForUnit(app, unit, {
+          ts: new Date(Date.now() - 20000),
+          temperature: 21,
+        });
+        c = await seedReadingForUnit(app, unit, {
+          ts: new Date(Date.now() - 10000),
+          temperature: 22,
+        });
+      });
+
+      it('returns newest-first when order=DESC', async () => {
+        const res = await request(app.getHttpServer())
+          .get(`/v1/pico-units/${unit.id}/readings`)
+          .query({ order: 'DESC' })
+          .expect(200);
+
+        const returnedIds = res.body.items.map((it: any) => it.id);
+        expect(returnedIds).toEqual([c.id, b.id, a.id]);
+      });
+
+      it('returns oldest-first when order=ASC (default)', async () => {
+        const res = await request(app.getHttpServer())
+          .get(`/v1/pico-units/${unit.id}/readings`)
+          .query({ order: 'ASC' })
+          .expect(200);
+
+        const returnedIds = res.body.items.map((it: any) => it.id);
+        expect(returnedIds).toEqual([a.id, b.id, c.id]);
+      });
+
+      it('returns 422 for invalid order value', async () => {
+        await request(app.getHttpServer())
+          .get(`/v1/pico-units/${unit.id}/readings`)
+          .query({ order: 'SORTA' })
+          .expect(422);
+      });
+    });
   });
 });

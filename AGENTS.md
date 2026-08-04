@@ -239,11 +239,11 @@ Scripts that import TypeScript source using `src/*` path aliases (e.g. `spec/gen
 | PUT              | `/v1/pico-units/:picoUnitId/control/loop`       | Proxy → Pico `/control` toggle                                                 |
 | POST             | `/v1/pico-units/:picoUnitId/poll`               | On-demand Pico poll → store reading → return `PollPicoUnitResponseDto` (PicoUnit + optional `devices` block)    |
 | PUT              | `/v1/pico-units/:picoUnitId/reboot`             | Proxy → Pico POST /reboot (soft/hard reset); returns 202                       |
-| GET              | `/v1/pico-units/:picoUnitId/readings`           | Filterable by time range + limit                                               |
+| GET              | `/v1/pico-units/:picoUnitId/readings`           | Filterable by time range + limit + order (ASC/DESC, default ASC)               |
 | GET              | `/v1/pico-units/:picoUnitId/batches`            | + `/current`                                                                   |
 | GET/POST         | `/v1/batches`                                   | List (paginated) / Create                                                      |
 | GET/PATCH/DELETE | `/v1/batches/:batchId`                          | CRUD                                                                           |
-| GET              | `/v1/batches/:batchId/readings`                 | Readings for a batch                                                           |
+| GET              | `/v1/batches/:batchId/readings`                 | Readings for a batch (supports order ASC/DESC)                                  |
 | POST             | `/v1/batches/:batchId/recipe`                   | Link recipe to batch                                                           |
 | PUT/DELETE       | `/v1/batches/:batchId/images/:filename`         | Batch image upload (append, max 5) / removal                                   |
 | GET/POST         | `/v1/recipes`                                   | List / Create                                                                  |

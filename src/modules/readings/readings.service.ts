@@ -309,7 +309,7 @@ export class ReadingsService {
 
     const [items, total] = await this.readingsRepo.findAndCount({
       where,
-      order: { ts: 'ASC' }, // chronological: oldest first
+      order: { ts: query.order ?? 'ASC' },
       take,
       skip,
     });
@@ -338,6 +338,7 @@ export class ReadingsService {
       // keep page/limit/potential other fields
       page: query.page,
       limit: query.limit,
+      order: query.order,
       start,
       end,
     } as ListReadingsQueryDto;

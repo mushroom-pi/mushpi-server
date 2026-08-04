@@ -254,4 +254,39 @@ describe('Batch readings endpoint (e2e)', () => {
     expect(res.body).toHaveProperty('statusCode', 400);
     expect(res.body).toHaveProperty('message');
   });
+
+  it('returns newest-first when order=DESC (propagated from query)', async () => {
+    const pico = await seedPicoUnit(app, {
+      handle: 'batch-unit-7',
+      port: 5406,
+    });
+
+    const base = Date.now();
+    const r1 = await seedReadingForUnit(app, pico, {
+      ts: new Date(base - 30000),
+      temperature: 10,
+    });
+    const r2 = await seedReadingForUnit(app, pico, {
+      ts: new Date(base - 20000),
+      temperature: 11,
+    });
+    const r3 = await seedReadingForUnit(app, pico, {
+      ts: new Date(base - 10000),
+      temperature: 12,
+    });
+
+    const batch = await seedBatch(app, pico.id, {
+      start_at: new Date(base - 30000),
+      finish_at: new Date(base - 10000),
+    });
+
+    const res = await request(app.getHttpServer())
+      .get(`/v1/batches/${batch.id}/readings`)
+      .query({ order: 'DESC' })
+      .expect(200);
+
+    const ids = res.body.items.map((it: any) => it.id);
+    expect(ids).toEqual([r3.id, r2.id, r1.id]);
+    expect(res.body.total).toBe(3);
+  });
 });
