@@ -1,30 +1,12 @@
-import {
-  ApiExtraModels,
-  ApiProperty,
-  ApiPropertyOptional,
-  PartialType,
-} from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 
 import { Type } from 'class-transformer';
-import {
-  IsDateString,
-  IsIn,
-  IsInt,
-  IsOptional,
-  Max,
-  Min,
-} from 'class-validator';
+import { IsDateString, IsInt, IsOptional, Max, Min } from 'class-validator';
 
 import {
-  PAGINATION_DEFAULT_PAGE,
-  PAGINATION_MIN_LIMIT,
-  PAGINATION_MIN_PAGE,
-  READINGS_DEFAULT_LIMIT,
-  READINGS_MAX_LIMIT,
+  READINGS_MAX_POINTS,
+  READINGS_MIN_POINTS,
 } from 'src/common/constants/pagination.constants';
-import { PaginatedDto } from 'src/common/dto/paginated-response.dto';
-
-import { Readings } from './readings.entity';
 
 export class TimeLimitsQueryDto {
   @ApiProperty({
@@ -48,41 +30,134 @@ export class OptionalTimeLimitsQueryDto extends PartialType(
   TimeLimitsQueryDto,
 ) {}
 
-export class ListReadingsQueryDto extends OptionalTimeLimitsQueryDto {
+export class DownsamplingQueryDto extends OptionalTimeLimitsQueryDto {
   @ApiPropertyOptional({
-    description: 'Page number (1-based)',
-    example: 1,
-    minimum: PAGINATION_MIN_PAGE,
-  })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(PAGINATION_MIN_PAGE)
-  page?: number = PAGINATION_DEFAULT_PAGE;
-
-  @ApiPropertyOptional({
-    description: `Page size (max ${READINGS_MAX_LIMIT})`,
-    example: READINGS_DEFAULT_LIMIT,
-    minimum: PAGINATION_MIN_LIMIT,
-    maximum: READINGS_MAX_LIMIT,
-  })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(PAGINATION_MIN_LIMIT)
-  @Max(READINGS_MAX_LIMIT)
-  limit?: number = READINGS_DEFAULT_LIMIT;
-
-  @ApiPropertyOptional({
-    enum: ['ASC', 'DESC'],
-    default: 'ASC',
     description:
-      'Sort order for the ts column. Use DESC to fetch newest readings first.',
+      'Target number of aggregated data points to return (actual may be fewer if there are fewer readings).',
+    example: 200,
+    minimum: READINGS_MIN_POINTS,
+    maximum: READINGS_MAX_POINTS,
   })
   @IsOptional()
-  @IsIn(['ASC', 'DESC'])
-  order?: 'ASC' | 'DESC' = 'ASC';
+  @Type(() => Number)
+  @IsInt()
+  @Min(READINGS_MIN_POINTS)
+  @Max(READINGS_MAX_POINTS)
+  points?: number;
 }
 
-@ApiExtraModels(Readings)
-export class ReadingsListResponseDto extends PaginatedDto(Readings) {}
+export class AggregatedReadingDto {
+  @ApiProperty({
+    description: 'First timestamp in the aggregation bucket (ISO 8601)',
+    example: '2025-10-01T00:00:00.000Z',
+  })
+  timestamp!: string;
+
+  @ApiProperty({
+    description: 'Average temperature in the bucket (rounded to 1 decimal)',
+    nullable: true,
+    example: 22.5,
+  })
+  temperature!: number | null;
+
+  @ApiProperty({
+    description: 'Average humidity in the bucket (rounded to 1 decimal)',
+    nullable: true,
+    example: 55.3,
+  })
+  humidity!: number | null;
+
+  @ApiProperty({
+    description: 'Minimum temperature in the bucket (raw value)',
+    nullable: true,
+    example: 20.1,
+  })
+  tempMin!: number | null;
+
+  @ApiProperty({
+    description: 'Maximum temperature in the bucket (raw value)',
+    nullable: true,
+    example: 24.8,
+  })
+  tempMax!: number | null;
+
+  @ApiProperty({
+    description: 'Minimum humidity in the bucket (raw value)',
+    nullable: true,
+    example: 50,
+  })
+  humidityMin!: number | null;
+
+  @ApiProperty({
+    description: 'Maximum humidity in the bucket (raw value)',
+    nullable: true,
+    example: 60,
+  })
+  humidityMax!: number | null;
+
+  @ApiProperty({
+    description: 'Number of raw readings in this bucket',
+    example: 7,
+  })
+  readingCount!: number;
+
+  @ApiProperty({
+    description: 'Count of readings in this bucket where the fan relay was on',
+    example: 3,
+  })
+  fanOnCount!: number;
+
+  @ApiProperty({
+    description:
+      'Count of readings in this bucket where the humidifier relay was on',
+    example: 5,
+  })
+  humidifierOnCount!: number;
+
+  @ApiProperty({
+    description:
+      'Count of readings in this bucket where the heater relay was on',
+    example: 2,
+  })
+  heaterOnCount!: number;
+
+  @ApiProperty({
+    description:
+      'Count of readings in this bucket where the control loop was enabled',
+    example: 7,
+  })
+  controlLoopEnabledCount!: number;
+
+  @ApiProperty({
+    description:
+      'Temperature setpoint during this bucket (MAX — constant within bucket)',
+    nullable: true,
+    example: 25,
+  })
+  temperatureSet!: number | null;
+
+  @ApiProperty({
+    description:
+      'Humidity setpoint during this bucket (MAX — constant within bucket)',
+    nullable: true,
+    example: 60,
+  })
+  humiditySet!: number | null;
+}
+
+export class AggregatedReadingsResponseDto {
+  @ApiProperty({ type: [AggregatedReadingDto] })
+  data!: AggregatedReadingDto[];
+
+  @ApiProperty({
+    description: 'Requested number of aggregation points',
+    example: 200,
+  })
+  points!: number;
+
+  @ApiProperty({
+    description: 'Total number of raw readings in the time window',
+    example: 1440,
+  })
+  actualReadings!: number;
+}

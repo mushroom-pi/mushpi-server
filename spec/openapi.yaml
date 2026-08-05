@@ -1513,8 +1513,8 @@ paths:
   /v1/pico-units/{picoUnitId}/readings:
     get:
       description: >-
-        Extracts requested readings from the database (without calling the Pico Unit) and displays them chronologically.
-        Results can be framed by time.
+        Returns NTILE-aggregated readings (averages, min/max, bucket counts) for chart display. Accepts optional time
+        window and target point count.
       operationId: PicoUnitIdReadingsController_listForUnit_v1
       parameters:
         - name: start
@@ -1531,33 +1531,15 @@ paths:
           schema:
             example: '2025-10-09T23:59:59Z'
             type: string
-        - name: page
+        - name: points
           required: false
           in: query
-          description: Page number (1-based)
+          description: Target number of aggregated data points to return (actual may be fewer if there are fewer readings).
           schema:
-            minimum: 1
-            example: 1
+            minimum: 10
+            maximum: 2000
+            example: 200
             type: number
-        - name: limit
-          required: false
-          in: query
-          description: Page size (max 500)
-          schema:
-            minimum: 1
-            maximum: 500
-            example: 100
-            type: number
-        - name: order
-          required: false
-          in: query
-          description: Sort order for the ts column. Use DESC to fetch newest readings first.
-          schema:
-            default: ASC
-            type: string
-            enum:
-              - ASC
-              - DESC
         - name: picoUnitId
           required: true
           in: path
@@ -1572,7 +1554,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ReadingsListResponseDto'
+                $ref: '#/components/schemas/AggregatedReadingsResponseDto'
         '400':
           description: Invalid requested time frame
           content:
@@ -1678,7 +1660,7 @@ paths:
                     type: string
                     example: /path/of/the/failing/route
                     description: Endpoint responsible for the production of the error
-      summary: List readings for a pico unit
+      summary: List downsampled readings for a pico unit
       tags:
         - readings
   /v1/pico-units/{picoUnitId}/readings/export:
@@ -1827,8 +1809,8 @@ paths:
   /v1/batches/{batchId}/readings:
     get:
       description: >-
-        Extracts requested readings from the database and displays them chronologically. Results can be framed by time,
-        but if the provided time limits are beyond the batch's, they won't be applied.
+        Returns NTILE-aggregated readings for chart display, clamped to the batch's time window. Accepts optional time
+        window narrowing and target point count.
       operationId: BatchIdReadingsController_listForBatch_v1
       parameters:
         - name: start
@@ -1845,33 +1827,15 @@ paths:
           schema:
             example: '2025-10-09T23:59:59Z'
             type: string
-        - name: page
+        - name: points
           required: false
           in: query
-          description: Page number (1-based)
+          description: Target number of aggregated data points to return (actual may be fewer if there are fewer readings).
           schema:
-            minimum: 1
-            example: 1
+            minimum: 10
+            maximum: 2000
+            example: 200
             type: number
-        - name: limit
-          required: false
-          in: query
-          description: Page size (max 500)
-          schema:
-            minimum: 1
-            maximum: 500
-            example: 100
-            type: number
-        - name: order
-          required: false
-          in: query
-          description: Sort order for the ts column. Use DESC to fetch newest readings first.
-          schema:
-            default: ASC
-            type: string
-            enum:
-              - ASC
-              - DESC
         - name: batchId
           required: true
           in: path
@@ -1886,7 +1850,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ReadingsListResponseDto'
+                $ref: '#/components/schemas/AggregatedReadingsResponseDto'
         '400':
           description: Invalid requested time frame
           content:
@@ -1992,7 +1956,7 @@ paths:
                     type: string
                     example: /path/of/the/failing/route
                     description: Endpoint responsible for the production of the error
-      summary: List readings for a batch
+      summary: List downsampled readings for a batch
       tags:
         - readings
   /v1/batches/{batchId}/readings/export:
@@ -5994,36 +5958,107 @@ components:
       required:
         - message
         - type
-    ReadingsListResponseDto:
+    AggregatedReadingDto:
       type: object
       properties:
-        items:
+        timestamp:
+          type: string
+          description: First timestamp in the aggregation bucket (ISO 8601)
+          example: '2025-10-01T00:00:00.000Z'
+        temperature:
+          type: number
+          description: Average temperature in the bucket (rounded to 1 decimal)
+          nullable: true
+          example: 22.5
+        humidity:
+          type: number
+          description: Average humidity in the bucket (rounded to 1 decimal)
+          nullable: true
+          example: 55.3
+        tempMin:
+          type: number
+          description: Minimum temperature in the bucket (raw value)
+          nullable: true
+          example: 20.1
+        tempMax:
+          type: number
+          description: Maximum temperature in the bucket (raw value)
+          nullable: true
+          example: 24.8
+        humidityMin:
+          type: number
+          description: Minimum humidity in the bucket (raw value)
+          nullable: true
+          example: 50
+        humidityMax:
+          type: number
+          description: Maximum humidity in the bucket (raw value)
+          nullable: true
+          example: 60
+        readingCount:
+          type: number
+          description: Number of raw readings in this bucket
+          example: 7
+        fanOnCount:
+          type: number
+          description: Count of readings in this bucket where the fan relay was on
+          example: 3
+        humidifierOnCount:
+          type: number
+          description: Count of readings in this bucket where the humidifier relay was on
+          example: 5
+        heaterOnCount:
+          type: number
+          description: Count of readings in this bucket where the heater relay was on
+          example: 2
+        controlLoopEnabledCount:
+          type: number
+          description: Count of readings in this bucket where the control loop was enabled
+          example: 7
+        temperatureSet:
+          type: number
+          description: Temperature setpoint during this bucket (MAX — constant within bucket)
+          nullable: true
+          example: 25
+        humiditySet:
+          type: number
+          description: Humidity setpoint during this bucket (MAX — constant within bucket)
+          nullable: true
+          example: 60
+      required:
+        - timestamp
+        - temperature
+        - humidity
+        - tempMin
+        - tempMax
+        - humidityMin
+        - humidityMax
+        - readingCount
+        - fanOnCount
+        - humidifierOnCount
+        - heaterOnCount
+        - controlLoopEnabledCount
+        - temperatureSet
+        - humiditySet
+    AggregatedReadingsResponseDto:
+      type: object
+      properties:
+        data:
           type: array
           items:
-            $ref: '#/components/schemas/Readings'
-        page:
+            $ref: '#/components/schemas/AggregatedReadingDto'
+        points:
           type: number
-          example: 1
-          minimum: 1
-        limit:
+          description: Requested number of aggregation points
+          example: 200
+        actualReadings:
           type: number
-          example: 20
-          minimum: 1
-          maximum: 500
-        total:
-          type: number
-          example: 42
-          minimum: 0
-        pages:
-          type: number
-          example: 3
-          minimum: 0
+          description: Total number of raw readings in the time window
+          example: 1440
       required:
-        - items
-        - page
-        - limit
-        - total
-        - pages
+        - data
+        - points
+        - actualReadings
     CreateBatchDto:
       type: object
       properties:

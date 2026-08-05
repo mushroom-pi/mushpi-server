@@ -15,9 +15,9 @@ import { ErrorDto } from 'src/common/dto/error.dto';
 import { Batch } from 'src/modules/batches/batches.entity';
 
 import {
-  ListReadingsQueryDto,
+  AggregatedReadingsResponseDto,
+  DownsamplingQueryDto,
   OptionalTimeLimitsQueryDto,
-  ReadingsListResponseDto,
 } from '../readings.dto';
 import { ReadingsService } from '../readings.service';
 
@@ -29,18 +29,18 @@ export class BatchIdReadingsV1Controller {
 
   @Get()
   @ApiOperation({
-    summary: 'List readings for a batch',
+    summary: 'List downsampled readings for a batch',
     description:
-      "Extracts requested readings from the database and displays them chronologically. Results can be framed by time, but if the provided time limits are beyond the batch's, they won't be applied.",
+      "Returns NTILE-aggregated readings for chart display, clamped to the batch's time window. Accepts optional time window narrowing and target point count.",
   })
-  @ApiOkResponse({ type: ReadingsListResponseDto })
+  @ApiOkResponse({ type: AggregatedReadingsResponseDto })
   @ApiBadRequestResponse({
     description: 'Invalid requested time frame',
     type: ErrorDto,
   })
   async listForBatch(
     @GetBatch() batch: Batch,
-    @Query() query: ListReadingsQueryDto,
+    @Query() query: DownsamplingQueryDto,
   ) {
     return this.svc.listForBatch(batch.id, query);
   }

@@ -239,11 +239,11 @@ Scripts that import TypeScript source using `src/*` path aliases (e.g. `spec/gen
 | PUT              | `/v1/pico-units/:picoUnitId/control/loop`       | Proxy → Pico `/control` toggle                                                 |
 | POST             | `/v1/pico-units/:picoUnitId/poll`               | On-demand Pico poll → store reading → return `PollPicoUnitResponseDto` (PicoUnit + optional `devices` block)    |
 | PUT              | `/v1/pico-units/:picoUnitId/reboot`             | Proxy → Pico POST /reboot (soft/hard reset); returns 202                       |
-| GET              | `/v1/pico-units/:picoUnitId/readings`           | Filterable by time range + limit + order (ASC/DESC, default ASC)               |
+| GET              | `/v1/pico-units/:picoUnitId/readings`           | Time-range filtered + `points`-based server-side aggregation (NTILE). Returns `AggregatedReading[]` with per-bucket avg/min/max + relay counts + setpoints. No pagination. |
 | GET              | `/v1/pico-units/:picoUnitId/batches`            | + `/current`                                                                   |
 | GET/POST         | `/v1/batches`                                   | List (paginated) / Create                                                      |
 | GET/PATCH/DELETE | `/v1/batches/:batchId`                          | CRUD                                                                           |
-| GET              | `/v1/batches/:batchId/readings`                 | Readings for a batch (supports order ASC/DESC)                                  |
+| GET              | `/v1/batches/:batchId/readings`                 | Same aggregation model as unit readings; window clamped to batch start/finish.  |
 | POST             | `/v1/batches/:batchId/recipe`                   | Link recipe to batch                                                           |
 | PUT/DELETE       | `/v1/batches/:batchId/images/:filename`         | Batch image upload (append, max 5) / removal                                   |
 | GET/POST         | `/v1/recipes`                                   | List / Create                                                                  |
@@ -401,6 +401,15 @@ Schema changes for production (`NODE_ENV=prod`, where `synchronize: false`) requ
 ## Config
 
 `CustomConfigService` exposes typed getters grouped by **domain area** — not by "what kind of value" (string, secret, etc.). The `security` getter is reserved for **cross-cutting/infra** concerns (global auth, rate limiting, event-loop protection, CORS). Domain-specific secrets belong in their own domain getter (e.g., `pico.announceSecret` for Pico-hardware trust, not `security.picoAnnounceSecret`). This keeps domain concerns colocated and prevents the `security` getter from becoming a grab-bag.
+
+## Raw SQL + SQLite Datetime Format
+
+When using `repository.query()` for raw SQL (e.g., window functions like `NTILE`), the `ts` column (TypeORM `datetime` type) is stored as `YYYY-MM-DD HH:MM:SS.SSS` — no `T` and no `Z`. ISO strings from `Date.toISOString()` compare incorrectly via lexicographic ordering against this format. Always convert:
+
+- **Input**: `Date.toISOString()` → `YYYY-MM-DD HH:MM:SS.SSS` before passing to WHERE clauses.
+- **Output**: query result timestamps → ISO string (`replace(' ', 'T') + 'Z'`) before returning to callers.
+
+The `toSqliteDatetime()` helper (`src/common/utils/to-sqlite-datetime.ts`) handles input conversion. Raw query results come back with SQLite-native format — convert in the service before returning DTOs.
 
 ## E2E Testing Gotchas
 

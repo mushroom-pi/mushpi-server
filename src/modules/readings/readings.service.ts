@@ -23,6 +23,7 @@ import {
 } from 'typeorm';
 import { promisify } from 'util';
 
+import { READINGS_DEFAULT_POINTS } from 'src/common/constants/pagination.constants';
 import {
   DeviceResponseDto,
   validateDeviceResponse,
@@ -41,9 +42,9 @@ import { PicoUnitsService } from 'src/modules/pico-units/pico-units.service';
 import { Batch } from '../batches/batches.entity';
 import { isReadingInRange } from './readings-range.util';
 import {
-  ListReadingsQueryDto,
+  AggregatedReadingsResponseDto,
+  DownsamplingQueryDto,
   OptionalTimeLimitsQueryDto,
-  ReadingsListResponseDto,
   TimeLimitsQueryDto,
 } from './readings.dto';
 import { Readings } from './readings.entity';
@@ -212,6 +213,14 @@ export class ReadingsService {
     return;
   }
 
+  /**
+   * Convert a Date to SQLite's native datetime format (YYYY-MM-DD HH:MM:SS.SSS)
+   * for correct lexicographic comparison against stored `ts` values.
+   */
+  private toSqliteDatetime(date: Date): string {
+    return date.toISOString().replace('T', ' ').replace('Z', '');
+  }
+
   private validateTimeFrame(
     startIso?: string,
     endIso?: string,
@@ -298,50 +307,101 @@ export class ReadingsService {
 
   async listForUnit(
     pico_unit_id: number,
-    query: ListReadingsQueryDto,
-  ): Promise<ReadingsListResponseDto> {
-    const { start, end, page } = query;
-    const take = Math.min(query.limit, 500); // safety cap
-    const skip = (Math.max(page, 1) - 1) * take;
+    query: DownsamplingQueryDto,
+  ): Promise<AggregatedReadingsResponseDto> {
+    const points = query.points ?? READINGS_DEFAULT_POINTS;
+    const { start, end } = this.validateTimeFrame(query.start, query.end);
 
-    const { ts } = this.validateTimeFrame(start, end);
-    const where: any = { pico_unit_id, ts };
+    // Build dynamic WHERE clause
+    const conditions: string[] = ['pico_unit_id = ?'];
+    const params: (string | number)[] = [pico_unit_id];
 
-    const [items, total] = await this.readingsRepo.findAndCount({
-      where,
-      order: { ts: query.order ?? 'ASC' },
-      take,
-      skip,
-    });
+    if (start) {
+      conditions.push('ts >= ?');
+      params.push(this.toSqliteDatetime(start));
+    }
+    if (end) {
+      conditions.push('ts <= ?');
+      params.push(this.toSqliteDatetime(end));
+    }
 
-    return {
-      items,
-      page: Math.max(page, 1),
-      limit: take,
-      total,
-      pages: Math.ceil(total / take) || 0,
-    };
+    const whereClause = conditions.join(' AND ');
+
+    // Count actual readings in the window
+    const countRows = await this.readingsRepo.query(
+      `SELECT COUNT(*) AS cnt FROM readings WHERE ${whereClause}`,
+      params,
+    );
+    const actualReadings = Number(countRows[0]?.cnt ?? 0);
+
+    if (actualReadings === 0) {
+      return { data: [], points, actualReadings: 0 };
+    }
+
+    // NTILE aggregation query
+    const rows = await this.readingsRepo.query(
+      `SELECT
+        MIN(ts) AS timestamp,
+        ROUND(AVG(temperature), 1) AS temperature,
+        ROUND(AVG(humidity), 1) AS humidity,
+        MIN(temperature) AS tempMin,
+        MAX(temperature) AS tempMax,
+        MIN(humidity) AS humidityMin,
+        MAX(humidity) AS humidityMax,
+        COUNT(*) AS readingCount,
+        SUM(CASE WHEN fan_on = 1 THEN 1 ELSE 0 END) AS fanOnCount,
+        SUM(CASE WHEN humidifier_on = 1 THEN 1 ELSE 0 END) AS humidifierOnCount,
+        SUM(CASE WHEN heater_on = 1 THEN 1 ELSE 0 END) AS heaterOnCount,
+        SUM(CASE WHEN control_loop_enabled = 1 THEN 1 ELSE 0 END) AS controlLoopEnabledCount,
+        MAX(temperature_set) AS temperatureSet,
+        MAX(humidity_set) AS humiditySet
+      FROM (
+        SELECT ts, temperature, humidity, fan_on, humidifier_on, heater_on, control_loop_enabled, temperature_set, humidity_set, NTILE(?) OVER (ORDER BY ts) AS bucket
+        FROM readings
+        WHERE ${whereClause}
+      )
+      GROUP BY bucket
+      ORDER BY bucket`,
+      [points, ...params],
+    );
+
+    const data = rows.map((row: any) => ({
+      // SQLite stores datetime as 'YYYY-MM-DD HH:MM:SS.SSS' (no timezone).
+      // Treat as UTC by appending 'Z' after converting space to 'T'.
+      timestamp: new Date(row.timestamp.replace(' ', 'T') + 'Z').toISOString(),
+      temperature: row.temperature ?? null,
+      humidity: row.humidity ?? null,
+      tempMin: row.tempMin ?? null,
+      tempMax: row.tempMax ?? null,
+      humidityMin: row.humidityMin ?? null,
+      humidityMax: row.humidityMax ?? null,
+      readingCount: Number(row.readingCount),
+      fanOnCount: Number(row.fanOnCount),
+      humidifierOnCount: Number(row.humidifierOnCount),
+      heaterOnCount: Number(row.heaterOnCount),
+      controlLoopEnabledCount: Number(row.controlLoopEnabledCount),
+      temperatureSet: row.temperatureSet ?? null,
+      humiditySet: row.humiditySet ?? null,
+    }));
+
+    return { data, points, actualReadings };
   }
 
   async listForBatch(
     batchId: number,
-    query: ListReadingsQueryDto,
-  ): Promise<ReadingsListResponseDto> {
+    query: DownsamplingQueryDto,
+  ): Promise<AggregatedReadingsResponseDto> {
     const batch = await this.batchesService.getByIdOrThrow(batchId);
     const { start, end } = this.validateTimeFrameForBatch(batch, {
       start: query.start,
       end: query.end,
     });
 
-    // call listForUnit with the effective window as ISO strings (controller/service expects ISO)
-    const delegatedQuery: ListReadingsQueryDto = {
-      // keep page/limit/potential other fields
-      page: query.page,
-      limit: query.limit,
-      order: query.order,
+    const delegatedQuery: DownsamplingQueryDto = {
+      points: query.points,
       start,
       end,
-    } as ListReadingsQueryDto;
+    };
 
     return this.listForUnit(batch.pico_unit_id, delegatedQuery);
   }

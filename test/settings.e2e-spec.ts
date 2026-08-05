@@ -145,8 +145,8 @@ describe('Settings endpoints (e2e)', () => {
         .get(`/v1/pico-units/${unit.id}/readings`)
         .expect(200);
 
-      expect(res.body.items).toHaveLength(1);
-      const ts = res.body.items[0].ts;
+      expect(res.body.data).toHaveLength(1);
+      const ts = res.body.data[0].timestamp;
 
       // Should be converted to Europe/Madrid time (UTC+2 in June)
       // 2024-06-15T12:00:00Z → 2024-06-15T14:00:00.000+02:00
@@ -178,8 +178,8 @@ describe('Settings endpoints (e2e)', () => {
         .get(`/v1/pico-units/${unit.id}/readings`)
         .expect(200);
 
-      expect(res.body.items).toHaveLength(1);
-      const ts = res.body.items[0].ts;
+      expect(res.body.data).toHaveLength(1);
+      const ts = res.body.data[0].timestamp;
 
       // Should remain in UTC format (fast path)
       expect(ts).toMatch(/2024-06-15T12:00:00\.\d{3}Z/);

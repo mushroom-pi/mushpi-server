@@ -9,8 +9,8 @@ import { GetPicoUnit } from 'src/common/decorators/get-pico-unit.decorator';
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
 
 import {
-  ListReadingsQueryDto,
-  ReadingsListResponseDto,
+  AggregatedReadingsResponseDto,
+  DownsamplingQueryDto,
   TimeLimitsQueryDto,
 } from '../readings.dto';
 import { ReadingsService } from '../readings.service';
@@ -23,15 +23,15 @@ export class PicoUnitIdReadingsV1Controller {
 
   @Get()
   @ApiOperation({
-    summary: 'List readings for a pico unit',
+    summary: 'List downsampled readings for a pico unit',
     description:
-      'Extracts requested readings from the database (without calling the Pico Unit) and displays them chronologically. Results can be framed by time.',
+      'Returns NTILE-aggregated readings (averages, min/max, bucket counts) for chart display. Accepts optional time window and target point count.',
   })
-  @ApiOkResponse({ type: ReadingsListResponseDto })
+  @ApiOkResponse({ type: AggregatedReadingsResponseDto })
   @ApiInvalidTimeFrame()
   async listForUnit(
     @GetPicoUnit() unit: PicoUnit,
-    @Query() query: ListReadingsQueryDto,
+    @Query() query: DownsamplingQueryDto,
   ) {
     return this.svc.listForUnit(unit.id, query);
   }
