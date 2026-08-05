@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -37,6 +38,8 @@ import { OFFLINE_FAILED_CALLS_THRESHOLD } from './pico-units.constant';
 
 @Injectable()
 export class PicoUnitsService {
+  private readonly logger = new Logger(PicoUnitsService.name);
+
   constructor(
     @InjectRepository(PicoUnit) private picoUnitRepo: Repository<PicoUnit>,
     private readonly eventEmitter: EventEmitter2,
@@ -205,8 +208,13 @@ export class PicoUnitsService {
   }
 
   async removeById(id: number): Promise<void> {
-    await this.picoUnitRepo.delete(id);
-    return;
+    try {
+      await this.picoUnitRepo.delete(id);
+      this.logger.log(`Pico unit ${id} removed successfully`);
+      return;
+    } catch (error) {
+      this.logger.error(`Pico unit ${id} removal failed`, error);
+    }
   }
 
   async touch(unit: PicoUnit): Promise<PicoUnit> {
