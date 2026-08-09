@@ -22,6 +22,7 @@ export interface EnvironmentVariables {
   SQLITE_LOG: boolean;
   UPLOAD_DIR: string;
   PICO_ANNOUNCE_SECRET?: string;
+  READINGS_RETENTION_MONTHS: number;
 }
 
 export interface ServerConfig {
@@ -83,4 +84,8 @@ export interface UploadConfig {
 
 export interface PicoConfig {
   announceSecret?: string;
+}
+
+export interface ReadingsConfig {
+  retentionMonths: number;
 }

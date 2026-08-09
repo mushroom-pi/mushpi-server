@@ -20,7 +20,6 @@ export const logLevels: LogLevels[] = [
   'debug',
   'error',
   'fatal',
-  'trace',
   'warn',
 ];
 

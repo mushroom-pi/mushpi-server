@@ -35,6 +35,7 @@ import {
   getWithFallback,
 } from 'src/common/utils/http-fallback';
 import { BatchesService } from 'src/modules/batches/batches.service';
+import { CustomConfigService } from 'src/modules/config/config.service';
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
 import { DANGER_TEMPERATURE_C } from 'src/modules/pico-units/pico-units.constant';
 import { PicoUnitsService } from 'src/modules/pico-units/pico-units.service';
@@ -60,6 +61,7 @@ export class ReadingsService {
     @InjectRepository(Readings) private readingsRepo: Repository<Readings>,
     private readonly picoUnitsService: PicoUnitsService,
     private readonly batchesService: BatchesService,
+    private readonly configService: CustomConfigService,
   ) {
     configureAxiosRetry(axios);
   }
@@ -201,16 +203,16 @@ export class ReadingsService {
   async pollReadingsFromAllEnabled(): Promise<void> {
     const picoUnits = await this.picoUnitsService.listMonitored();
 
-    for (const picoUnit of picoUnits) {
-      try {
-        await this.pollReadingsFromUnit(picoUnit);
-      } catch (error) {
-        // We don't want conflicts while writting in the database
-        this.logger.warn(formatPollError(picoUnit, error));
+    const results = await Promise.allSettled(
+      picoUnits.map((unit) => this.pollReadingsFromUnit(unit)),
+    );
+
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i];
+      if (result.status === 'rejected') {
+        this.logger.warn(formatPollError(picoUnits[i], result.reason));
       }
     }
-
-    return;
   }
 
   /**
@@ -423,13 +425,15 @@ export class ReadingsService {
     return unit;
   }
 
-  async deleteOlderThanMonths(months = 6): Promise<number> {
-    if (months <= 0) {
+  async deleteOlderThanMonths(months?: number): Promise<number> {
+    const retentionMonths =
+      months ?? this.configService.readings.retentionMonths;
+    if (retentionMonths <= 0) {
       throw new BadRequestException('months must be a positive integer');
     }
 
     const cutoff = new Date();
-    cutoff.setMonth(cutoff.getMonth() - months);
+    cutoff.setMonth(cutoff.getMonth() - retentionMonths);
 
     const res = await this.readingsRepo
       .createQueryBuilder()
@@ -439,6 +443,10 @@ export class ReadingsService {
       .execute();
 
     return res.affected ?? 0;
+  }
+
+  async countAll(): Promise<number> {
+    return this.readingsRepo.count();
   }
 
   private async exportReadingsToCsv(

@@ -31,8 +31,11 @@ export class RecipeByIdMiddleware implements NestMiddleware {
       const recipe = await this.recipes.findOne(id);
       req.recipe = recipe;
       return next();
-    } catch {
-      return next(new NotFoundException(`Recipe ${id} not found`));
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        return next(new NotFoundException(`Recipe ${id} not found`));
+      }
+      return next(error);
     }
   }
 }

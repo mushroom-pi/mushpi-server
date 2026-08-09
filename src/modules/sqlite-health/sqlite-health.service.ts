@@ -30,7 +30,8 @@ export class SQLiteHealthService {
 
   private async checkWriteStatus(): Promise<boolean> {
     try {
-      this.healthRepo.create({});
+      const health = this.healthRepo.create({});
+      await this.healthRepo.save(health);
       return true;
     } catch (error) {
       this.logger.error(

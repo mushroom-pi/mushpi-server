@@ -49,10 +49,8 @@ describe('SQLiteHealthService', () => {
 
   describe('checkSQLiteDbStatus', () => {
     it('returns {read:true, write:true, size} when create/save succeed', async () => {
-      // write path uses repo.create() only
+      // both read and write paths use repo.create() + repo.save()
       repo.create!.mockReturnValue({} as Health);
-
-      // read path creates + saves
       repo.save!.mockResolvedValue({ id: 1 } as Health);
 
       const res = await service.checkSQLiteDbStatus();
@@ -68,14 +66,14 @@ describe('SQLiteHealthService', () => {
       expect(debugSpy).toHaveBeenCalled();
     });
 
-    it('returns {read:false, write:true} when save rejects (read failure)', async () => {
+    it('returns {read:false, write:false} when save rejects (both fail)', async () => {
       repo.create!.mockReturnValue({} as Health);
       repo.save!.mockRejectedValue(new Error('save failed'));
 
       const res = await service.checkSQLiteDbStatus();
 
-      expect(res).toMatchObject({ read: false, write: true });
-      expect(errorSpy).toHaveBeenCalled(); // logged the failure
+      expect(res).toMatchObject({ read: false, write: false });
+      expect(errorSpy).toHaveBeenCalledTimes(2); // logged both failures
     });
 
     it('returns {read:true, write:false} when create throws (write failure)', async () => {

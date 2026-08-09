@@ -98,4 +98,5 @@ export const validationSchema = Joi.object({
   SQLITE_LOG: Joi.boolean().truthy('true').falsy('false').default(false),
   UPLOAD_DIR: Joi.string().default('data'),
   PICO_ANNOUNCE_SECRET: picoAnnounceSecret,
+  READINGS_RETENTION_MONTHS: Joi.number().integer().min(1).default(6),
 });

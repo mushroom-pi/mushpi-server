@@ -10,6 +10,7 @@ import {
 } from 'src/modules/batches/batch.events';
 import { Batch } from 'src/modules/batches/batches.entity';
 import { BatchesService } from 'src/modules/batches/batches.service';
+import { CustomConfigService } from 'src/modules/config/config.service';
 import { ControlService } from 'src/modules/control/control.service';
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
 import {
@@ -20,22 +21,38 @@ import {
 } from 'src/modules/pico-units/pico-unit.events';
 import { ReadingsService } from 'src/modules/readings/readings.service';
 
+/** Safety net: if readings table exceeds this many rows, trigger cleanup regardless of age. */
+const READINGS_SAFETY_MAX_ROWS = 1_000_000;
+
 @Injectable()
 export class CronService implements OnApplicationBootstrap {
   private readonly logger = new Logger(CronService.name);
   private lastHandleBatchSyncAt: Date | null = null;
+  private isPolling = false;
 
   constructor(
     private readonly readingsService: ReadingsService,
     private readonly batchesService: BatchesService,
     private readonly controlService: ControlService,
+    private readonly configService: CustomConfigService,
   ) {
     this.logger.log('cron!');
   }
 
   @Cron(CronExpression.EVERY_MINUTE)
   async handleReadings() {
-    await this.runReadingsSweep();
+    if (this.isPolling) {
+      this.logger.warn(
+        'Previous poll cycle still running — skipping this tick',
+      );
+      return;
+    }
+    this.isPolling = true;
+    try {
+      await this.runReadingsSweep();
+    } finally {
+      this.isPolling = false;
+    }
   }
 
   async onApplicationBootstrap(): Promise<void> {
@@ -43,7 +60,9 @@ export class CronService implements OnApplicationBootstrap {
       'Startup sweep — polling all monitored pico units immediately',
     );
     void this.runReadingsSweep().catch((error) => {
-      this.logger.error(`Startup sweep failed: ${JSON.stringify(error)}`);
+      this.logger.error(
+        `Startup sweep failed: ${error?.message ?? String(error)}`,
+      );
     });
   }
 
@@ -129,9 +148,21 @@ export class CronService implements OnApplicationBootstrap {
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-  cleanReadings() {
-    this.logger.log('Cleaning readings table');
-    this.readingsService.deleteOlderThanMonths();
+  async cleanReadings() {
+    const rowCount = await this.readingsService.countAll();
+    const retentionMonths = this.configService.readings.retentionMonths;
+
+    if (rowCount > READINGS_SAFETY_MAX_ROWS) {
+      this.logger.warn(
+        `Readings table has ${rowCount} rows (exceeds safety cap of ${READINGS_SAFETY_MAX_ROWS}) — triggering cleanup`,
+      );
+    }
+
+    const deleted =
+      await this.readingsService.deleteOlderThanMonths(retentionMonths);
+    this.logger.log(
+      `Cleaned ${deleted} readings older than ${retentionMonths} months (table had ${rowCount} rows)`,
+    );
   }
 
   private async applyBatchSettingsSafe(batch: Batch): Promise<void> {
@@ -147,7 +178,7 @@ export class CronService implements OnApplicationBootstrap {
       }
     } catch (error) {
       this.logger.error(
-        `Failed to apply batch ${batch.id} settings to pico unit ${batch.pico_unit_id}: ${JSON.stringify(error)}`,
+        `Failed to apply batch ${batch.id} settings to pico unit ${batch.pico_unit_id}: ${formatPollError(batch.pico_unit, error)}`,
       );
     }
   }
@@ -162,7 +193,7 @@ export class CronService implements OnApplicationBootstrap {
       }
     } catch (error) {
       this.logger.error(
-        `Failed to turn off outputs for unmonitored pico unit ${unit.id}: ${JSON.stringify(error)}`,
+        `Failed to turn off outputs for unmonitored pico unit ${unit.id}: ${formatPollError(unit, error)}`,
       );
     }
   }
@@ -177,7 +208,7 @@ export class CronService implements OnApplicationBootstrap {
       }
     } catch (error) {
       this.logger.error(
-        `Failed to disable control loop on pico unit ${unit.id}: ${JSON.stringify(error)}`,
+        `Failed to disable control loop on pico unit ${unit.id}: ${formatPollError(unit, error)}`,
       );
     }
   }

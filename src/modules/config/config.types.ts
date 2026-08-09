@@ -7,7 +7,6 @@ export type LogLevels =
   | 'debug'
   | 'error'
   | 'fatal'
-  | 'trace'
   | 'warn';
 
 /**

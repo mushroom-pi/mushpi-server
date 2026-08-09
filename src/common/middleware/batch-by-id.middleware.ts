@@ -31,8 +31,11 @@ export class BatchByIdMiddleware implements NestMiddleware {
       const batch = await this.batches.getByIdOrThrow(id);
       req.batch = batch;
       return next();
-    } catch {
-      return next(new NotFoundException(`Batch ${id} not found`));
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        return next(new NotFoundException(`Batch ${id} not found`));
+      }
+      return next(error);
     }
   }
 }

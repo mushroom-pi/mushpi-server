@@ -32,8 +32,11 @@ export class PicoUnitByIdMiddleware implements NestMiddleware {
       const unit = await this.readings.getPicoUnitWithLatestReadingById(id);
       req.picoUnit = unit;
       return next();
-    } catch {
-      return next(new NotFoundException(`PicoUnit ${id} not found`));
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        return next(new NotFoundException(`PicoUnit ${id} not found`));
+      }
+      return next(error);
     }
   }
 }

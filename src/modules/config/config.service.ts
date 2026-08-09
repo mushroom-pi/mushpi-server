@@ -8,6 +8,7 @@ import {
   EnvironmentVariables,
   LogsConfig,
   PicoConfig,
+  ReadingsConfig,
   SQLiteConfig,
   SecurityConfig,
   ServerConfig,
@@ -114,6 +115,12 @@ export class CustomConfigService {
 
   get pico(): PicoConfig {
     return { announceSecret: this.configService.get('PICO_ANNOUNCE_SECRET') };
+  }
+
+  get readings(): ReadingsConfig {
+    return {
+      retentionMonths: this.configService.get('READINGS_RETENTION_MONTHS'),
+    };
   }
 
   is(env: NodeEnvironments): boolean {

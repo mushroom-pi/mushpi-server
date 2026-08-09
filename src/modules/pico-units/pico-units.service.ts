@@ -213,7 +213,8 @@ export class PicoUnitsService {
       this.logger.log(`Pico unit ${id} removed successfully`);
       return;
     } catch (error) {
-      this.logger.error(`Pico unit ${id} removal failed`, error);
+      this.logger.warn(`Pico unit ${id} removal failed`);
+      throw error;
     }
   }
 
