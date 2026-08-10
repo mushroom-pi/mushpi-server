@@ -67,7 +67,7 @@ async function bootstrap() {
         }),
       );
 
-    const swaggerModule = new SwaggerModule(configService);
+    const swaggerModule = app.get(SwaggerModule);
     swaggerModule.setupSwagger(app);
   }
 

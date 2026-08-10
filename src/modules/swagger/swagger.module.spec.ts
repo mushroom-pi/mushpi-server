@@ -17,7 +17,7 @@ jest.mock('./swagger-global-errors', () => ({
       statusCode: 400,
       description: 'Bad Request',
       messageExample: 'Invalid request',
-      overrideTag: 'no-invalid',
+      overrideTag: 'no-internal',
     },
   ],
 }));
@@ -114,7 +114,7 @@ describe('SwaggerModule', () => {
         },
         '/noerror': {
           get: {
-            tags: ['no-invalid'],
+            tags: ['no-internal'],
             responses: {},
           },
         },
@@ -126,7 +126,7 @@ describe('SwaggerModule', () => {
       error: 'Bad Request',
       description: 'Bad Request',
       messageExample: 'Invalid request',
-      overrideTag: 'no-invalid',
+      overrideTag: 'no-internal',
     });
 
     errorAdder(document);
@@ -194,7 +194,7 @@ describe('SwaggerModule', () => {
       const path = document.paths[pathKey];
       for (const methodKey in path) {
         const method = path[methodKey];
-        if (!method.tags.includes('no-invalid')) {
+        if (!method.tags.includes('no-internal')) {
           expect(method.responses['400']).toEqual({
             description: 'Bad Request',
             content: {
