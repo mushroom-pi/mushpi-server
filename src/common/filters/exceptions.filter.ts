@@ -58,9 +58,12 @@ export class ExceptionsFilter implements ExceptionFilter {
       message = 'Entity not found';
     }
 
+    const error =
+      httpStatus === HttpStatus.CONFLICT ? 'Conflict' : 'Not Acceptable';
+
     const responseBody: ExceptionResponseBody = {
       statusCode: httpStatus,
-      error: 'TypeORM error',
+      error,
       message,
       emitter: 'database',
     };
@@ -143,8 +146,11 @@ export class ExceptionsFilter implements ExceptionFilter {
     }
 
     if (!this.configService?.is('test')) {
+      const logErr = exception.isAxiosError
+        ? `${exception.message} [${exception.config?.url || 'no URL'}]`
+        : exception;
       this.logger.error(
-        exception,
+        logErr,
         exception.name || 'Unknown error',
         responseBody.emitter,
       );
@@ -158,8 +164,12 @@ export class ExceptionsFilter implements ExceptionFilter {
 
         if (!responseBody.emitter && exception instanceof Error)
           responseBody.emitter = this.getEmitter(exception);
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch (error) {}
+      } catch (error) {
+        this.logger.debug(
+          'Failed to enrich exception response with detail fields',
+          error,
+        );
+      }
     } else {
       delete responseBody.emitter;
       delete responseBody.description;

@@ -4,14 +4,14 @@ import { HttpExceptionArgs } from './exceptions.interfaces';
 
 export const FailedDependencyException = ({
   description,
-  emmitter,
+  emitter,
 }: HttpExceptionArgs): HttpException =>
   new HttpException(
     {
       error: 'Failed Dependency',
       statusCode: 424,
       description: description || 'Failed Dependency',
-      emmitter,
+      emitter,
     },
     424,
   );
