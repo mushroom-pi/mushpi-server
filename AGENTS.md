@@ -426,7 +426,10 @@ The `toSqliteDatetime()` helper (`src/common/utils/to-sqlite-datetime.ts`) handl
 
 ## E2E Testing Gotchas
 
-- `forceExit: true` + `maxWorkers: 1` in `jest-e2e.json` — cron timers survive `app.close()`; parallel workers cause SQLite lock contention.
+- `maxWorkers: 1` in `jest-e2e.json` — parallel workers cause SQLite lock contention. `forceExit` is **not** needed: `@nestjs/schedule` v6 clears cron jobs on `app.close()` and `@nestjs/typeorm` destroys the DataSource. If the suite ever hangs at exit, run `npx jest --config ./test/jest-e2e.json --detectOpenHandles` to diagnose.
+- **CronService is stubbed by default** in e2e via `createModuleFixture()` → `NoopCronService`. Scheduled sweeps and batch/pico-unit event handlers never issue real HTTP. Specs testing cron behaviour opt in via `createModuleFixture({ withCron: true })` + `createTestApp(moduleFixture)` and must keep `jest.mock('axios')`.
+- `process.env` mutations are contained per-file (Jest 30 node environment copies `process` per test file), but always restore env in `afterAll`/`afterEach` and use `delete process.env.X` (assigning `undefined` stores the string `"undefined"`).
+- Only `console.error`-level output surfaces in e2e runs (custom reporters drop `console.log`) — silence expected error-path logging with `jest.spyOn(logger, 'error')`.
 - Axios auto-mock makes `isAxiosError` return `undefined` — install manually in `beforeEach`:
   ```ts
   mockedAxios.isAxiosError = jest.fn(

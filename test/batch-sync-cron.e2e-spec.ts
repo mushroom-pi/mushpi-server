@@ -11,7 +11,7 @@ import { Readings } from 'src/modules/readings/readings.entity';
 import { clearBatches, seedBatch } from './fixtures/batches.fixtures';
 import { clearPicos, seedPicoUnit } from './fixtures/pico-units.fixtures';
 import { seedReadingForUnit } from './fixtures/readings.fixtures';
-import { closeTestApp, createTestApp } from './test-setup';
+import { closeTestApp, createModuleFixture, createTestApp } from './test-setup';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
@@ -21,17 +21,28 @@ describe('CronService.handleBatchSync() (e2e)', () => {
   let cronService: CronService;
   let batchesService: BatchesService;
   let readingsRepo: Repository<Readings>;
+  let loggerErrorSpy: jest.SpyInstance;
 
   const past = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const farPast = new Date(Date.now() - 48 * 60 * 60 * 1000);
   const future = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
   beforeAll(async () => {
-    app = await createTestApp();
+    // Opt in to the real CronService (default is NoopCronService) so we can
+    // exercise handleBatchSync / handleBatchStarted / etc. directly.
+    const moduleFixture = await createModuleFixture({ withCron: true });
+    app = await createTestApp(moduleFixture);
     await app.init();
     cronService = app.get(CronService);
     batchesService = app.get(BatchesService);
     readingsRepo = app.get(getRepositoryToken(Readings));
+
+    // Silence the intentional error-path logs from the error-isolation tests
+    // so they do not pollute the e2e output. The spy is asserted against in
+    // the tests that deliberately trigger failures.
+    loggerErrorSpy = jest
+      .spyOn((cronService as any).logger, 'error')
+      .mockImplementation(() => undefined);
   });
 
   afterAll(async () => {
@@ -45,6 +56,7 @@ describe('CronService.handleBatchSync() (e2e)', () => {
     await clearBatches(app);
     await clearPicos(app);
     (cronService as any).lastHandleBatchSyncAt = null;
+    loggerErrorSpy.mockClear();
   });
 
   it('does nothing when there are no batches', async () => {
@@ -288,6 +300,11 @@ describe('CronService.handleBatchSync() (e2e)', () => {
         'http://u7041.local:7041/setpoints',
         { temperature: 22, humidity: 70 },
       );
+
+      // The intentional failure for picoA was logged
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to apply batch'),
+      );
     });
   });
 
@@ -342,6 +359,10 @@ describe('CronService.handleBatchSync() (e2e)', () => {
       await expect(
         cronService.handleBatchStarted({ batch: hydrated }),
       ).resolves.not.toThrow();
+
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to apply batch'),
+      );
     });
   });
 
@@ -392,6 +413,10 @@ describe('CronService.handleBatchSync() (e2e)', () => {
       await expect(
         cronService.handleBatchFinished({ batch: hydrated }),
       ).resolves.not.toThrow();
+
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to disable control loop'),
+      );
     });
   });
 
@@ -442,6 +467,10 @@ describe('CronService.handleBatchSync() (e2e)', () => {
       await expect(
         cronService.handlePicoUnitRegistered({ unit: pico }),
       ).resolves.not.toThrow();
+
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to apply batch'),
+      );
     });
   });
 });

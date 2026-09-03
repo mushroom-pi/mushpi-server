@@ -18,6 +18,12 @@ describe('AppController (e2e)', () => {
   });
 
   describe('for NODE_ENV', () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+
+    afterEach(() => {
+      process.env.NODE_ENV = originalNodeEnv;
+    });
+
     it('should throw an error if NODE_ENV is invalid', async () => {
       process.env.NODE_ENV = 'invalid'; // Set an invalid NODE_ENV
 
@@ -42,6 +48,16 @@ describe('AppController (e2e)', () => {
 
   describe('ERRORS', () => {
     const invalidEndpoint = '/health?server=invalid';
+    const hadErrorsDetail = 'ERRORS_DETAIL' in process.env;
+    const originalErrorsDetail = process.env.ERRORS_DETAIL;
+
+    afterAll(() => {
+      if (hadErrorsDetail) {
+        process.env.ERRORS_DETAIL = originalErrorsDetail;
+      } else {
+        delete process.env.ERRORS_DETAIL;
+      }
+    });
 
     describe('with ERRORS_DETAIL undefined', () => {
       it('should return a full error', async () => {
@@ -92,7 +108,7 @@ describe('AppController (e2e)', () => {
       });
 
       afterAll(() => {
-        process.env.APP_SECRET = undefined;
+        delete process.env.APP_SECRET;
       });
 
       it('should return a 426 error when no secret is provided', async () => {
