@@ -364,10 +364,12 @@ Every guard must be bundled with its Swagger error responses into a composite de
 
 ## Migrations
 
-Schema changes for production (`NODE_ENV=prod`, where `synchronize: false`) require a migration file. Dev/local auto-syncs via `synchronize: !isProd`.
+Schema changes for production (`NODE_ENV=prod`, where `synchronize: false`) require a migration file. Dev/local/test auto-sync via `synchronize: true`.
 
 - **Directory**: `src/modules/sqlite/migrations/`
 - **Naming**: `<timestamp>-<DescriptiveName>.ts` (use `Date.now()` as timestamp)
+- **Barrel registration**: All migrations must be exported from `src/modules/sqlite/migrations/index.ts` as a static array `MIGRATIONS`. This barrel is consumed by BOTH `data-source.ts` (CLI) and `sqlite.module.ts` (runtime). Static import — no filesystem glob — so it works in the ncc single-file Docker bundle.
+- **Baseline migration convention**: The first migration (`InitSchema<timestamp>`) uses `CREATE TABLE IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS` throughout so it is safe to run against databases created historically via `synchronize: true`. Its `down()` is a no-op (reversing baseline = dropping all tables = data loss; not supported).
 - **Template**:
 
   ```ts
@@ -390,8 +392,9 @@ Schema changes for production (`NODE_ENV=prod`, where `synchronize: false`) requ
 
 - SQLite requires ≥ 3.35.0 for `DROP COLUMN` (bundled `better-sqlite3` satisfies this).
 - Entity changes also require registration in both `data-source.ts` (CLI) and `TypeOrmModule.forFeature` (runtime).
-- **Migrations are never auto-run on app boot.** They must be applied explicitly via `yarn migration:run` as part of the release process. `synchronize: !isProd` handles dev/local schema sync.
+- **Prod-only `migrationsRun: true`**: In production (`NODE_ENV=prod`), pending migrations are applied automatically on app boot via `migrationsRun: true` in `sqlite.module.ts`. Dev/local/test keep `synchronize: true` and do not run migrations. This is a deliberate convention: the Docker prod image is an ncc single-file bundle with no CLI access, so migrations must run at boot. Host-side CLI commands (`yarn migration:run`, `yarn migration:generate`) target `SQLITE_PATH=./data/app.sqlite` for development workflows.
 - **Data-only migrations** (no schema change, e.g. one-shot `DELETE`/`UPDATE`) are valid. When the operation is irreversible, `down()` should be a no-op with a comment explaining why.
+- **Generating migrations**: Use `yarn migration:generate src/modules/sqlite/migrations/<DescriptiveName>`. For a baseline migration, target an empty temp DB (`SQLITE_PATH=/tmp/opencode/empty.sqlite yarn migration:generate ...`). For incremental migrations, target the dev DB. The CLI does not load `.env` files — pass env vars explicitly.
 
 ## Environment Variables
 
