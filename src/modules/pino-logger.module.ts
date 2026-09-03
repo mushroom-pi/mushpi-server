@@ -51,7 +51,6 @@ export class PinoLoggerModule {
 
             return {
               pinoHttp: {
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 customProps: (_req: IncomingMessage, _res: ServerResponse) => ({
                   context: 'HTTP',
                 }),

@@ -131,7 +131,6 @@ export class InitSchema1788454880680 implements MigrationInterface {
     );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public async down(_queryRunner: QueryRunner): Promise<void> {
     // Baseline reversal = dropping all tables = data loss. Not supported.
   }
