@@ -1,18 +1,32 @@
 services:
-  mushpi-server:
-    build:
-      context: .
-      target: dev
+  mushpi:
+    # TODO: replace org after the GitHub migration (checkpoint 5).
+    image: ghcr.io/mushroom-pi/mushpi-server:latest
+
+    # Developer source build (uncomment; stage mushpi-client into ./client first):
+    #   build:
+    #     context: .
+    #     args:
+    #       CLIENT_SRC: client
+
+    restart: unless-stopped
+
     ports:
       - "3000:3000"
-    volumes:
-      # Persists SQLite database and log files across container restarts
-      - ./data:/data
+
     env_file:
-      - .env.prod
+      - .env          # PICO_ANNOUNCE_SECRET, optional APP_HOST
+
     environment:
       NODE_ENV: prod
+      PORT: "3000"
       SQLITE_PATH: /data/app.sqlite
-      LOGS_PATH: /data/logs
       UPLOAD_DIR: /data
-    restart: unless-stopped
+      LOGS_PATH: /data/logs
+
+    volumes:
+      # Persists SQLite DB + uploaded images + logs across restarts/reimages.
+      # Create ./data once as your normal user (the Pi 'pi' user is UID 1000,
+      # matching the image's `node` user); if it's owned by root run:
+      #   sudo chown -R 1000:1000 ./data
+      - ./data:/data
