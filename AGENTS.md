@@ -23,6 +23,8 @@ yarn test:e2e  # E2E tests — must all pass
 yarn start     # Must boot without exceptions
 ```
 
+**Production entrypoint**: `nest build` emits the entrypoint at `dist/src/main.js` (NOT `dist/main.js`) because `docs/` and `spec/` are in the tsc compile set, so `rootDir` resolves to the project root. `start:prod` and the Docker `CMD` both use `node dist/src/main.js`.
+
 ## E2E Test Conventions
 
 When new functionality is added, **propose and write e2e tests** (see the `nestjs-backend` skill for general e2e patterns). Project-specific rules:
@@ -376,7 +378,7 @@ Schema changes for production (`NODE_ENV=prod`, where `synchronize: false`) requ
 
 - **Directory**: `src/modules/sqlite/migrations/`
 - **Naming**: `<timestamp>-<DescriptiveName>.ts` (use `Date.now()` as timestamp)
-- **Barrel registration**: All migrations must be exported from `src/modules/sqlite/migrations/index.ts` as a static array `MIGRATIONS`. This barrel is consumed by BOTH `data-source.ts` (CLI) and `sqlite.module.ts` (runtime). Static import — no filesystem glob — so it works in the ncc single-file Docker bundle.
+- **Barrel registration**: All migrations must be exported from `src/modules/sqlite/migrations/index.ts` as a static array `MIGRATIONS`. This barrel is consumed by BOTH `data-source.ts` (CLI) and `sqlite.module.ts` (runtime). Static import — no filesystem glob — so it is resolvable at boot in the Docker image (which runs the compiled `dist/` with prod-only `node_modules`, no CLI).
 - **Baseline migration convention**: The first migration (`InitSchema<timestamp>`) uses `CREATE TABLE IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS` throughout so it is safe to run against databases created historically via `synchronize: true`. Its `down()` is a no-op (reversing baseline = dropping all tables = data loss; not supported).
 - **Template**:
 
@@ -400,7 +402,7 @@ Schema changes for production (`NODE_ENV=prod`, where `synchronize: false`) requ
 
 - SQLite requires ≥ 3.35.0 for `DROP COLUMN` (bundled `better-sqlite3` satisfies this).
 - Entity changes also require registration in both `data-source.ts` (CLI) and `TypeOrmModule.forFeature` (runtime).
-- **Prod-only `migrationsRun: true`**: In production (`NODE_ENV=prod`), pending migrations are applied automatically on app boot via `migrationsRun: true` in `sqlite.module.ts`. Dev/local/test keep `synchronize: true` and do not run migrations. This is a deliberate convention: the Docker prod image is an ncc single-file bundle with no CLI access, so migrations must run at boot. Host-side CLI commands (`yarn migration:run`, `yarn migration:generate`) target `SQLITE_PATH=./data/app.sqlite` for development workflows.
+- **Prod-only `migrationsRun: true`**: In production (`NODE_ENV=prod`), pending migrations are applied automatically on app boot via `migrationsRun: true` in `sqlite.module.ts`. Dev/local/test keep `synchronize: true` and do not run migrations. This is a deliberate convention: the Docker prod image runs the compiled `dist/` with prod-only `node_modules` and no CLI access, so migrations must run at boot. Host-side CLI commands (`yarn migration:run`, `yarn migration:generate`) target `SQLITE_PATH=./data/app.sqlite` for development workflows.
 - **Data-only migrations** (no schema change, e.g. one-shot `DELETE`/`UPDATE`) are valid. When the operation is irreversible, `down()` should be a no-op with a comment explaining why.
 - **Generating migrations**: Use `yarn migration:generate src/modules/sqlite/migrations/<DescriptiveName>`. For a baseline migration, target an empty temp DB (`SQLITE_PATH=/tmp/opencode/empty.sqlite yarn migration:generate ...`). For incremental migrations, target the dev DB. The CLI does not load `.env` files — pass env vars explicitly.
 
