@@ -413,7 +413,7 @@ Schema changes for production (`NODE_ENV=prod`, where `synchronize: false`) requ
 | `SQLITE_PATH`          | `./data/app.sqlite` | DB path                                                                       |
 | `CLIENT_URL`           | —                   | CORS allowed origin (required in `local`, optional elsewhere)                 |
 | `CLIENT_DIST_DIR`      | —                   | Absolute path to the built `mushpi-client` SPA (`dist/`). Required in `prod`; unset = SPA serving disabled (dev uses Vite :5173). Docker sets e.g. `/usr/src/app/client`. |
-| `APP_SECRET`           | —                   | Bearer token (required in prod)                                               |
+| `APP_SECRET`           | —                   | Optional Bearer token for human auth (optional in all envs; LAN/Tailscale is the security boundary) |
 | `PICO_ANNOUNCE_SECRET` | `mushpi-dev-secret` | Shared secret for `POST /v1/pico-units/announce` (required in prod, min 6 chars) |
 | `DOCS_ENDPOINT`        | —                   | Swagger UI path                                                               |
 | `LOGS_LEVEL`           | `info`              | Pino level                                                                    |
