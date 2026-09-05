@@ -2,7 +2,7 @@ import { INestApplication } from '@nestjs/common';
 
 import request from 'supertest';
 
-import { createTestApp } from './test-setup';
+import { closeTestApp, createTestApp } from './test-setup';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication;
@@ -10,6 +10,10 @@ describe('AppController (e2e)', () => {
   beforeAll(async () => {
     app = await createTestApp();
     await app.init();
+  });
+
+  afterAll(async () => {
+    await closeTestApp(app);
   });
 
   describe('GET /ping', () => {

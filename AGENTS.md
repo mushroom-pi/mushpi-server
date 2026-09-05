@@ -104,7 +104,15 @@ When a computed field needs access to services (like `CustomConfigService` for `
 
 #### Static file serving
 
-When using `ServeStaticModule`, explicitly disable SPA mode with `serveStaticOptions: { index: false, fallthrough: false }` to prevent it from looking for `index.html`.
+`ServeStaticModule` is used for two distinct purposes — keep them separate:
+
+1. **Asset-only entries** (e.g. `/images` for uploads): explicitly disable SPA fallback with `serveStaticOptions: { index: false, fallthrough: false }` to prevent it from looking for `index.html`.
+
+2. **SPA serving** (the built `mushpi-client` frontend, when `CLIENT_DIST_DIR` is set): use the OPPOSITE shape — do **not** set `index: false`/`fallthrough: false`. Instead register a conditional entry with `renderPath: '{*any}'` (path-to-regexp **v8 syntax** — malformed `exclude` patterns throw per-request, so keep them minimal) and `exclude: ['/v1/{*any}']` so unknown API GETs keep JSON 404 semantics rather than falling back to `index.html`. Gate the entry on `CLIENT_DIST_DIR` being set AND `index.html` existing at that path. Cache headers: `no-cache` for `index.html`, `public, max-age=31536000, immutable` for `/assets/*`.
+
+**Registration order is safe**: Express registers controller routes (`/v1/*`, `/ping`, `/health`, `/metrics`) and Swagger docs **before** `ServeStaticModule`'s `onModuleInit` static middleware + catch-all, and before Nest's not-found handler. So the SPA catch-all can only fire for requests matching no controller route — it cannot shadow the API, monitoring, docs, or `/images` (whose `fallthrough: false` responds 404 ahead of it).
+
+**helmet CSP governs the SPA**: once the server serves the client HTML, helmet's `contentSecurityPolicy` applies to it (in dev the UI came from Vite :5173, outside helmet's reach). `img-src` is relaxed to `["'self'", 'data:', 'blob:', 'https:']` in `main.ts` for hotlinked recipe images and blob/object-URL previews. Any future client feature that loads cross-origin resources must be CSP-audited against helmet defaults.
 
 #### Static files and CORS
 
@@ -112,7 +120,7 @@ When using `ServeStaticModule`, explicitly disable SPA mode with `serveStaticOpt
 
 ```ts
 setHeaders: (res) => {
-  const origin = config.security.clientUrl;
+  const origin = config.client.clientUrl;
   if (origin) res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
 };
@@ -403,7 +411,8 @@ Schema changes for production (`NODE_ENV=prod`, where `synchronize: false`) requ
 | `PORT`                 | `3000`              | Listen port                                                                   |
 | `NODE_ENV`             | `local`             | `dev/local/prod/staging/test`                                                 |
 | `SQLITE_PATH`          | `./data/app.sqlite` | DB path                                                                       |
-| `CLIENT_URL`           | —                   | CORS allowed origin                                                           |
+| `CLIENT_URL`           | —                   | CORS allowed origin (required in `local`, optional elsewhere)                 |
+| `CLIENT_DIST_DIR`      | —                   | Absolute path to the built `mushpi-client` SPA (`dist/`). Required in `prod`; unset = SPA serving disabled (dev uses Vite :5173). Docker sets e.g. `/usr/src/app/client`. |
 | `APP_SECRET`           | —                   | Bearer token (required in prod)                                               |
 | `PICO_ANNOUNCE_SECRET` | `mushpi-dev-secret` | Shared secret for `POST /v1/pico-units/announce` (required in prod, min 6 chars) |
 | `DOCS_ENDPOINT`        | —                   | Swagger UI path                                                               |
@@ -413,7 +422,7 @@ Schema changes for production (`NODE_ENV=prod`, where `synchronize: false`) requ
 
 ## Config
 
-`CustomConfigService` exposes typed getters grouped by **domain area** — not by "what kind of value" (string, secret, etc.). The `security` getter is reserved for **cross-cutting/infra** concerns (global auth, rate limiting, event-loop protection, CORS). Domain-specific secrets belong in their own domain getter (e.g., `pico.announceSecret` for Pico-hardware trust, not `security.picoAnnounceSecret`). This keeps domain concerns colocated and prevents the `security` getter from becoming a grab-bag.
+`CustomConfigService` exposes typed getters grouped by **domain area** — not by "what kind of value" (string, secret, etc.). The `security` getter is reserved for **cross-cutting/infra** concerns (global auth, rate limiting, event-loop protection). Domain-specific secrets belong in their own domain getter (e.g., `pico.announceSecret` for Pico-hardware trust, not `security.picoAnnounceSecret`). The `client` getter holds client-domain config — `clientUrl` (the CORS allowed origin, used in local dev) and `distDir` (the served SPA path) — so CORS lives beside the other client concerns rather than in `security`. This keeps domain concerns colocated and prevents the `security` getter from becoming a grab-bag.
 
 ## Raw SQL + SQLite Datetime Format
 
@@ -440,3 +449,5 @@ The `toSqliteDatetime()` helper (`src/common/utils/to-sqlite-datetime.ts`) handl
 - Each test suite uses unique `host:port` for PicoUnit seeds (unique constraint). Call `clearX()` for every touched entity in `beforeEach`.
 - **IP fallback double-mock**: When a unit has an `ip` and the test simulates a network error (`isAxiosError: true` with `.request`, no `.response`), `getWithFallback` retries against the IP URL — the mock must reject **twice** (mDNS then IP). If the error has a `.response` (e.g. HTTP 500 from Pico), no fallback occurs — mock only once.
 - **POST endpoints return 201 by default** unless `@HttpCode()` is specified. Test assertions expecting 200 must either add the decorator or assert 201.
+- **`ServeStaticModule` is inert under `Test.createTestingModule()`** — its `AbstractLoader` provider resolves to `NoopLoader` at compile time (no HTTP adapter exists until `createNestApplication()`), so `onModuleInit()` no-ops and static routes never register. To test static/SPA serving, opt in via `createModuleFixture({ withServeStatic: true })`, which does `overrideProvider(AbstractLoader).useClass(ExpressLoader)` (both from `@nestjs/serve-static`). Set any env the `useFactory` reads (e.g. `CLIENT_DIST_DIR`) **before** building the fixture.
+- **Never call `app.listen()` in `createTestApp()` or any spec.** Binding a real socket keeps the Jest worker alive at exit (some specs, e.g. monitoring, never `closeTestApp`) and hangs the suite — the `forceExit`-free exit relies on no listening sockets. Every spec that creates an app must `closeTestApp(app)` in `afterAll`.

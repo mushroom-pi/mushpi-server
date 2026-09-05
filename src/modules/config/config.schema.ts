@@ -67,9 +67,14 @@ export const validationSchema = Joi.object({
   APP_PORT: Joi.number().port().optional(),
   APP_SECRET: secret,
   CLIENT_URL: Joi.string().uri().when('NODE_ENV', {
-    is: 'test',
-    then: Joi.optional(),
-    otherwise: Joi.required(),
+    is: 'local',
+    then: Joi.required(),
+    otherwise: Joi.optional(),
+  }),
+  CLIENT_DIST_DIR: Joi.string().when('NODE_ENV', {
+    is: 'prod',
+    then: Joi.required(),
+    otherwise: Joi.optional(),
   }),
   DOCS_ENDPOINT: Joi.any().when('NODE_ENV', {
     is: 'local',

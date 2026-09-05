@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import * as path from 'path';
 
 import {
+  ClientConfig,
   DocsConfig,
   EnvironmentVariables,
   LogsConfig,
@@ -81,7 +82,6 @@ export class CustomConfigService {
       maxEventLoopDelay: this.configService.get('MAX_EVENT_LOOP_DELAY'),
       maxRequests: this.configService.get('MAX_REQUESTS'),
       maxRequestsTime: this.configService.get('MAX_REQUESTS_TIME'),
-      clientUrl: this.configService.get('CLIENT_URL'),
     };
   }
 
@@ -120,6 +120,13 @@ export class CustomConfigService {
   get readings(): ReadingsConfig {
     return {
       retentionMonths: this.configService.get('READINGS_RETENTION_MONTHS'),
+    };
+  }
+
+  get client(): ClientConfig {
+    return {
+      clientUrl: this.configService.get('CLIENT_URL'),
+      distDir: this.configService.get('CLIENT_DIST_DIR'),
     };
   }
 

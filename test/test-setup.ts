@@ -1,6 +1,7 @@
 import { ClassSerializerInterceptor, INestApplication } from '@nestjs/common';
 import { HttpAdapterHost, Reflector } from '@nestjs/core';
 import { SchedulerRegistry } from '@nestjs/schedule';
+import { AbstractLoader, ExpressLoader } from '@nestjs/serve-static';
 import { Test, TestingModule, TestingModuleBuilder } from '@nestjs/testing';
 
 import { ExceptionsFilter } from '../src/common/filters/exceptions.filter';
@@ -19,9 +20,17 @@ import { CronService } from '../src/modules/cron/cron.service';
  * scheduled sweeps and event handlers never issue real HTTP to Pico units
  * during e2e tests. Specs that exercise cron behaviour opt in via
  * `withCron: true` (and must keep `jest.mock('axios')` in place).
+ *
+ * Under `Test.createTestingModule()`, `ServeStaticModule`'s `AbstractLoader`
+ * provider resolves to `NoopLoader` at compile time because no HTTP adapter
+ * exists until `createNestApplication()` is called. This means `onModuleInit()`
+ * no-ops and static routes are never registered. Specs that exercise static
+ * file serving opt in via `withServeStatic: true`, which overrides
+ * `AbstractLoader` with the real `ExpressLoader`.
  */
 export interface CreateModuleOptions {
   withCron?: boolean;
+  withServeStatic?: boolean;
 }
 
 /**
@@ -53,6 +62,10 @@ export async function createModuleFixture(
     builder = builder
       .overrideProvider(CronService)
       .useValue(new NoopCronService());
+  }
+
+  if (opts.withServeStatic) {
+    builder = builder.overrideProvider(AbstractLoader).useClass(ExpressLoader);
   }
 
   return await builder.compile();

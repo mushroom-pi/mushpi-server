@@ -32,7 +32,7 @@ async function bootstrap() {
 
   // Security libraries
   /** CORS-settings */
-  const origin = [configService.security.clientUrl];
+  const origin = [configService.client.clientUrl];
   if (configService.docs.makeDocs && configService.docs.ui)
     origin.push(configService.docs.ui);
   app.enableCors({ origin, credentials: true });
@@ -40,7 +40,16 @@ async function bootstrap() {
   /** General safeguards */
   toobusy.maxLag(configService.security.maxEventLoopDelay);
   app.use(hpp());
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+          'img-src': ["'self'", 'data:', 'blob:', 'https:'],
+        },
+      },
+    }),
+  );
 
   /** Global Nest middleware — registered via app.use() to bypass route versioning */
   const protectEventLoop = new ProtectEventLoopMiddleware(configService);

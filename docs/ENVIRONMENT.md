@@ -9,6 +9,7 @@
 | `APP_PORT` | number | Never |  |  |  |
 | `APP_SECRET` | any | Never |  |  |  |
 | `CLIENT_URL` | string | Never |  |  |  |
+| `CLIENT_DIST_DIR` | string | Never |  |  |  |
 | `DOCS_ENDPOINT` | any | Never |  |  |  |
 | `DOCS_UI_URL` | any | Never |  |  |  |
 | `DOCS_USERNAME` | any | Never |  |  |  |
@@ -24,3 +25,4 @@
 | `SQLITE_LOG` | boolean | Never | `false` |  |  |
 | `UPLOAD_DIR` | string | Never | `"data"` |  |  |
 | `PICO_ANNOUNCE_SECRET` | any | Never |  |  |  |
+| `READINGS_RETENTION_MONTHS` | number | Never | `6` | Minimum: `1` |  |

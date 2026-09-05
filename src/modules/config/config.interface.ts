@@ -6,7 +6,7 @@ export interface EnvironmentVariables {
   APP_HOST: string;
   APP_PORT?: number;
   APP_SECRET?: string;
-  CLIENT_URL: string;
+  CLIENT_URL?: string;
   DOCS_ENDPOINT?: string;
   DOCS_UI_URL?: string;
   DOCS_USERNAME?: string;
@@ -23,6 +23,7 @@ export interface EnvironmentVariables {
   UPLOAD_DIR: string;
   PICO_ANNOUNCE_SECRET?: string;
   READINGS_RETENTION_MONTHS: number;
+  CLIENT_DIST_DIR?: string;
 }
 
 export interface ServerConfig {
@@ -44,7 +45,6 @@ export interface SecurityConfig {
   maxEventLoopDelay: EnvironmentVariables['MAX_EVENT_LOOP_DELAY'];
   maxRequests?: EnvironmentVariables['MAX_REQUESTS'];
   maxRequestsTime?: EnvironmentVariables['MAX_REQUESTS_TIME'];
-  clientUrl: EnvironmentVariables['CLIENT_URL'];
 }
 
 export interface DocsConfig {
@@ -88,4 +88,9 @@ export interface PicoConfig {
 
 export interface ReadingsConfig {
   retentionMonths: number;
+}
+
+export interface ClientConfig {
+  clientUrl?: EnvironmentVariables['CLIENT_URL'];
+  distDir?: EnvironmentVariables['CLIENT_DIST_DIR'];
 }

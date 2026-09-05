@@ -1,10 +1,16 @@
-import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
+import {
+  Logger,
+  MiddlewareConsumer,
+  Module,
+  RequestMethod,
+} from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { ThrottlerModule } from '@nestjs/throttler';
 
+import * as fs from 'fs';
 import * as path from 'path';
 import { DataSource } from 'typeorm';
 
@@ -36,25 +42,57 @@ import { SwaggerModule } from './swagger/swagger.module';
     ServeStaticModule.forRootAsync({
       imports: [CustomConfigModule],
       inject: [CustomConfigService],
-      useFactory: (config: CustomConfigService) => [
-        {
-          serveRoot: '/images',
-          rootPath: path.resolve(config.upload.imageDir),
-          serveStaticOptions: {
-            index: false,
-            fallthrough: false,
-            setHeaders: (res) => {
-              const origin = config.security.clientUrl;
-              if (origin) {
-                res.setHeader('Access-Control-Allow-Origin', origin);
-              }
-              // helmet sets Cross-Origin-Resource-Policy to same-origin by default,
-              // which blocks cross-origin resource loading even with CORS headers
-              res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      useFactory: (config: CustomConfigService) => {
+        const staticEntries: any[] = [
+          {
+            serveRoot: '/images',
+            rootPath: path.resolve(config.upload.imageDir),
+            serveStaticOptions: {
+              index: false,
+              fallthrough: false,
+              setHeaders: (res) => {
+                const origin = config.client.clientUrl;
+                if (origin) {
+                  res.setHeader('Access-Control-Allow-Origin', origin);
+                }
+                // helmet sets Cross-Origin-Resource-Policy to same-origin by default,
+                // which blocks cross-origin resource loading even with CORS headers
+                res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+              },
             },
           },
-        },
-      ],
+        ];
+
+        const clientDistDir = config.client.distDir;
+        if (clientDistDir) {
+          const rootPath = path.resolve(clientDistDir);
+          if (fs.existsSync(path.join(rootPath, 'index.html'))) {
+            staticEntries.push({
+              rootPath,
+              renderPath: '{*any}',
+              exclude: ['/v1/{*any}'],
+              serveStaticOptions: {
+                setHeaders: (res, assetPath: string) => {
+                  if (assetPath.endsWith('index.html')) {
+                    res.setHeader('Cache-Control', 'no-cache');
+                  } else if (assetPath.includes('/assets/')) {
+                    res.setHeader(
+                      'Cache-Control',
+                      'public, max-age=31536000, immutable',
+                    );
+                  }
+                },
+              },
+            });
+          } else {
+            new Logger('AppModule').warn(
+              `CLIENT_DIST_DIR is set to "${clientDistDir}" but no index.html was found — SPA serving disabled`,
+            );
+          }
+        }
+
+        return staticEntries;
+      },
     }),
     ThrottlerModule.forRootAsync({
       imports: [CustomConfigModule],
