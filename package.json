@@ -5,6 +5,7 @@
   "author": "amda-phd",
   "private": true,
   "license": "UNLICENSED",
+  "packageManager": "yarn@4.14.1",
   "scripts": {
     "audit:ci": "yarn audit:prod; [[ $? -ge 8 ]] && (echo 'Serious vulnerabilities found!' && exit 1) || exit 0",
     "audit:prod": "yarn npm audit --environment production",

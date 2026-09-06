@@ -5686,7 +5686,32 @@ components:
         - databases
     ErrorDto:
       type: object
-      properties: {}
+      properties:
+        statusCode:
+          type: number
+          example: 404
+        error:
+          type: string
+          example: Not Found
+        message:
+          type: string
+          example: Resource not found
+        emitter:
+          type: string
+          example: ErrorProducerModule
+          description: If the error was produced within the codebase, the name of the module where it was created
+        timestamp:
+          type: string
+          example: '2024-09-15T00:00:00.000Z'
+          description: ISO timestamp of when the error occurred
+        path:
+          type: string
+          example: /path/of/the/failing/route
+          description: Endpoint responsible for the production of the error
+      required:
+        - statusCode
+        - error
+        - message
     CreatePicoUnitDto:
       type: object
       properties:
