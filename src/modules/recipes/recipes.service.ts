@@ -120,11 +120,7 @@ export class RecipesService {
   }
 
   private withImageUrl(recipe: Recipe): Recipe {
-    recipe.image_url = buildImageUrl(
-      recipe.image,
-      this.configService.baseUrl,
-      RECIPE_IMAGE_RELATIVE_URL,
-    );
+    recipe.image_url = buildImageUrl(recipe.image, RECIPE_IMAGE_RELATIVE_URL);
     return recipe;
   }
 

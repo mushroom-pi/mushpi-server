@@ -426,11 +426,7 @@ export class BatchesService {
   private withImageUrl(batch: Batch): Batch {
     if (!batch.images) batch.images = [];
     const prefix = `${BATCH_IMAGE_RELATIVE_URL}/${batch.id}`;
-    batch.images_url = buildImageUrls(
-      batch.images,
-      this.configService.baseUrl,
-      prefix,
-    );
+    batch.images_url = buildImageUrls(batch.images, prefix);
     return batch;
   }
 

@@ -88,9 +88,7 @@ describe('BatchIdImagesV1Controller (e2e)', () => {
       expect(res.body.images_url).toEqual(
         expect.arrayContaining([
           expect.stringMatching(
-            new RegExp(
-              `^http://localhost:\\d+/images/batches/${batch.id}/1\\.jpg$`,
-            ),
+            new RegExp(`^/images/batches/${batch.id}/1\\.jpg$`),
           ),
         ]),
       );
@@ -376,7 +374,7 @@ describe('BatchIdImagesV1Controller (e2e)', () => {
   // ─── images_url serialization ───────────────────────────────────────────
 
   describe('images_url computation', () => {
-    it('returns absolute URLs for uploaded images', async () => {
+    it('returns root-relative URLs for uploaded images', async () => {
       const pico = await seedPicoUnit(app);
       const batch = await seedBatch(app, pico.id);
 
@@ -392,9 +390,7 @@ describe('BatchIdImagesV1Controller (e2e)', () => {
       expect(res.body.images).toEqual(['1.jpg']);
       expect(res.body.images_url).toHaveLength(1);
       expect(res.body.images_url[0]).toMatch(
-        new RegExp(
-          `^http://localhost:\\d+/images/batches/${batch.id}/1\\.jpg$`,
-        ),
+        new RegExp(`^/images/batches/${batch.id}/1\\.jpg$`),
       );
     });
 

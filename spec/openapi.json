@@ -9110,8 +9110,8 @@
           "image_url": {
             "type": "string",
             "nullable": true,
-            "description": "Absolute URL to the image",
-            "example": "http://localhost:3000/images/recipes/1.jpg"
+            "description": "Relative URL to the image (resolve against the API origin); external URLs are returned as-is",
+            "example": "/images/recipes/1.jpg"
           },
           "created_at": {
             "format": "date-time",
@@ -9199,9 +9199,9 @@
             }
           },
           "images_url": {
-            "description": "Absolute URLs to the batch images (computed)",
+            "description": "Relative URLs to the batch images (resolve against the API origin); computed",
             "example": [
-              "http://localhost:3000/images/batches/7/1.jpg"
+              "/images/batches/7/1.jpg"
             ],
             "type": "array",
             "items": {

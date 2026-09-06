@@ -87,7 +87,7 @@ describe('RecipeIdImageV1Controller (e2e)', () => {
       expect(res.body).toHaveProperty('id', recipe.id);
       expect(res.body.image).toBe(`${recipe.id}.jpg`);
       expect(res.body.image_url).toMatch(
-        new RegExp(`^http://localhost:\\d+/images/recipes/${recipe.id}\\.jpg$`),
+        new RegExp(`^/images/recipes/${recipe.id}\\.jpg$`),
       );
 
       const repo = await getRecipeRepo(app);
@@ -111,7 +111,7 @@ describe('RecipeIdImageV1Controller (e2e)', () => {
 
       expect(res.body.image).toBe(`${recipe.id}.png`);
       expect(res.body.image_url).toMatch(
-        new RegExp(`^http://localhost:\\d+/images/recipes/${recipe.id}\\.png$`),
+        new RegExp(`^/images/recipes/${recipe.id}\\.png$`),
       );
 
       const filePath = path.join(recipeImageUploadDir, `${recipe.id}.png`);

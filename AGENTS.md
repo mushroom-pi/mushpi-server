@@ -84,7 +84,7 @@ Use `@IsInt()`, `{ type: 'integer' }` in TypeORM, `{ type: 'integer' }` in Swagg
 ### Image uploads
 
 - `image` field stores filename (e.g. `1.jpg`) for uploaded files or external URL
-- `image_url` is a computed field (not stored) that returns absolute URL for uploaded files or the external URL as-is
+- `image_url` is a computed field (not stored) that returns a root-relative URL (e.g. `/images/recipes/1.jpg`) for uploaded files, or the external URL as-is
 - Uploaded files stored in `data/images/recipes/` and served via `ServeStaticModule` at `/images/`
 - Recipe deletion also removes the associated uploaded image file
 - Shared image utilities in `src/common/utils/image-url.util.ts` and `src/common/utils/image-file.util.ts` — both recipes and batches use these for URL computation and file deletion; pass a `pathPrefix` (e.g. `/images/recipes`) to reconstruct full paths from filenames
@@ -93,7 +93,7 @@ Use `@IsInt()`, `{ type: 'integer' }` in TypeORM, `{ type: 'integer' }` in Swagg
 #### Batch images (multi-image, no hotlinking)
 
 - `images` column (`simple-json`) stores an array of filenames (e.g. `['1.jpg', '2.png']`), `[]` when empty
-- `images_url` is a computed field returning absolute URLs for each image
+- `images_url` is a computed field returning root-relative URLs for each image (e.g. `/images/batches/7/1.jpg`)
 - Up to 5 images per batch (`IMAGE_MAX_FILES_PER_BATCH`); additive PUT appends, rejecting if total would exceed 5
 - Files stored in `data/images/batches/{batchId}/` subdirectories, enumerated `1.jpg`–`5.jpg` using first free slot
 - `DELETE /batches/:batchId/images/:filename` removes one image; filename validated against path traversal
@@ -102,7 +102,7 @@ Use `@IsInt()`, `{ type: 'integer' }` in TypeORM, `{ type: 'integer' }` in Swagg
 
 #### Computed fields with DI dependencies
 
-When a computed field needs access to services (like `CustomConfigService` for `image_url`), compute it in the service layer rather than using `@Transform()` or getters. Apply the computation method to all service methods that return the entity.
+When a computed field needs access to services (like `CustomConfigService` for `upload.imageDir` used in image file deletion), compute it in the service layer rather than using `@Transform()` or getters. Apply the computation method to all service methods that return the entity.
 
 #### Static file serving
 
@@ -132,7 +132,7 @@ Also override `Cross-Origin-Resource-Policy` to `cross-origin` — `helmet` sets
 
 #### Relative path storage
 
-Store relative paths in the database (`/images/recipes/{id}.{ext}`) and compute absolute URLs at runtime using `configService.baseUrl`. This avoids hardcoding server URLs in the database.
+Store filenames in the database (e.g. `1.jpg`) and emit root-relative URLs at runtime (e.g. `/images/recipes/1.jpg`) via `buildImageUrl`/`buildImageUrls` in `src/common/utils/image-url.util.ts`. External `http(s)://` hotlinks pass through as-is. This avoids hardcoding server URLs in the database or in the API response.
 
 #### Path resolution
 

@@ -106,8 +106,9 @@ export class Recipe {
 
   @ApiProperty({
     nullable: true,
-    description: 'Absolute URL to the image',
-    example: 'http://localhost:3000/images/recipes/1.jpg',
+    description:
+      'Relative URL to the image (resolve against the API origin); external URLs are returned as-is',
+    example: '/images/recipes/1.jpg',
   })
   image_url?: string | null;
 

@@ -117,8 +117,9 @@ export class Batch {
 
   @ApiPropertyOptional({
     type: [String],
-    description: 'Absolute URLs to the batch images (computed)',
-    example: ['http://localhost:3000/images/batches/7/1.jpg'],
+    description:
+      'Relative URLs to the batch images (resolve against the API origin); computed',
+    example: ['/images/batches/7/1.jpg'],
   })
   images_url?: string[];
 
