@@ -1,4 +1,6 @@
 // device-response.dto.ts
+import { ApiProperty } from '@nestjs/swagger';
+
 import { Type, plainToInstance } from 'class-transformer';
 import {
   IsArray,
@@ -14,17 +16,54 @@ import {
 
 /* ---------- devices.pins ---------- */
 export class DevicePinsDto {
-  @IsInt() fan!: number;
-  @IsInt() dht!: number;
-  @IsInt() humidifier!: number;
-  @IsInt() heater!: number;
+  @ApiProperty({
+    type: 'integer',
+    description: 'GPIO pin driving the fan relay',
+    example: 7,
+  })
+  @IsInt()
+  fan!: number;
+
+  @ApiProperty({
+    type: 'integer',
+    description: 'GPIO pin driving the DHT11 sensor',
+    example: 4,
+  })
+  @IsInt()
+  dht!: number;
+
+  @ApiProperty({
+    type: 'integer',
+    description: 'GPIO pin driving the humidifier relay',
+    example: 6,
+  })
+  @IsInt()
+  humidifier!: number;
+
+  @ApiProperty({
+    type: 'integer',
+    description: 'GPIO pin driving the heater relay',
+    example: 8,
+  })
+  @IsInt()
+  heater!: number;
 }
 
 /* ---------- devices ---------- */
 export class DevicesDto {
+  @ApiProperty({
+    type: Boolean,
+    description:
+      'Relay polarity: true = NO (normally-open) wiring. Deliberately not shown in the pin-mapping UI.',
+    example: true,
+  })
   @IsBoolean()
   active_high!: boolean;
 
+  @ApiProperty({
+    type: () => DevicePinsDto,
+    description: 'Live GPIO pin mapping reported by the Pico',
+  })
   @ValidateNested()
   @Type(() => DevicePinsDto)
   pins!: DevicePinsDto;

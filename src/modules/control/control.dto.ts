@@ -145,6 +145,11 @@ export class ChangeSetupDto {
   @IsBoolean()
   active_high?: boolean;
 
+  @ApiPropertyOptional({
+    type: () => ChangeDevicePinsDto,
+    description:
+      'GPIO pin assignments for the DHT11, humidifier, fan, and heater',
+  })
   @ValidateNested()
   @Type(() => ChangeDevicePinsDto)
   pins?: ChangeDevicePinsDto;

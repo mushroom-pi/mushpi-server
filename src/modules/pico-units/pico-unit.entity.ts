@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 import { Expose, Transform } from 'class-transformer';
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
@@ -9,21 +9,45 @@ import { OFFLINE_FAILED_CALLS_THRESHOLD } from './pico-units.constant';
 
 @Entity('pico_unit')
 export class PicoUnit {
+  @ApiProperty({ description: 'Unique pico unit id', example: 1 })
   @PrimaryGeneratedColumn()
   id!: number;
 
+  @ApiProperty({
+    description: 'Registration timestamp',
+    example: '2026-07-31T10:30:00.000Z',
+  })
   @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;
 
+  @ApiProperty({
+    description: 'Unique device handle (mDNS hostname stem)',
+    example: 'unit-01',
+  })
   @Column({ type: 'text', nullable: false, unique: true })
   handle!: string;
 
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Human-friendly unit name',
+    example: 'Grow Shelf A',
+  })
   @Column({ type: 'text', nullable: true })
   name?: string;
 
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Free-form unit description',
+    example: 'Top shelf of the grow tent',
+  })
   @Column({ type: 'text', nullable: true })
   description?: string;
 
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Hex color for the unit avatar',
+    example: '#7cb342',
+  })
   @Column({ type: 'text', nullable: true })
   face_color?: string | null;
 
@@ -37,36 +61,94 @@ export class PicoUnit {
     return `${this.handle}.local`;
   }
 
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Last known IP address (fallback when mDNS fails)',
+    example: '192.168.1.50',
+  })
   @Column({ type: 'text', nullable: true })
   ip?: string;
 
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'Wi-Fi MAC address — immutable hardware identity, set once on first successful poll',
+    example: '28:cd:c1:0a:b2:3f',
+  })
   @Column({ type: 'text', nullable: true })
   mac?: string;
 
+  @ApiProperty({
+    type: 'integer',
+    description: 'REST API port on the Pico unit',
+    example: 5000,
+  })
   @Column({ type: 'integer', default: 5000 })
   port!: number;
 
+  @ApiProperty({
+    type: Boolean,
+    description: 'Whether the server cron polls this unit',
+    example: true,
+  })
   @Column({ type: 'boolean', default: true, name: 'enabled' }) // Column 'enabled' kept for backward compat; property renamed for clarity.
   monitored!: boolean;
 
+  @ApiPropertyOptional({
+    description: 'Timestamp of the last successful poll',
+    example: '2026-09-06T09:59:00.000Z',
+  })
   @Column({ type: 'datetime', nullable: true })
   last_seen?: Date;
 
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'MicroPython runtime version',
+    example: 'v1.24.0',
+  })
   @Column({ type: 'text', nullable: true })
   micropython_version?: string;
 
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Firmware version (_SOFTWARE_VERSION in app/state.py)',
+    example: '1.2.0',
+  })
   @Column({ type: 'text', nullable: true })
   software_version?: string;
 
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Board identifier reported by the Pico',
+    example: 'PICO_2W',
+  })
   @Column({ type: 'text', nullable: true })
   board?: string;
 
+  @ApiPropertyOptional({
+    type: 'integer',
+    nullable: true,
+    description: 'Total board memory in bytes',
+    example: 262144,
+  })
   @Column({ type: 'integer', nullable: true, default: 0 })
   board_total_mem_byte?: number;
 
+  @ApiPropertyOptional({
+    type: 'integer',
+    nullable: true,
+    description: 'Total filesystem space in bytes',
+    example: 1048576,
+  })
   @Column({ type: 'integer', nullable: true, default: 0 })
   board_total_fs_byte?: number;
 
+  @ApiPropertyOptional({
+    type: 'integer',
+    nullable: true,
+    description: 'CPU frequency in MHz',
+    example: 150,
+  })
   @Column({ type: 'integer', nullable: true, default: 0 })
   board_cpu_freq_mhz?: number;
 

@@ -5725,14 +5725,161 @@ components:
         - handle
     Readings:
       type: object
-      properties: {}
+      properties:
+        temperature:
+          type: number
+          nullable: true
+          description: Temperature in °C (null when the sensor returned no data)
+          example: 22.5
+        humidity:
+          type: integer
+          nullable: true
+          description: Humidity in % (null when the sensor returned no data)
+          example: 78
+        fan_on:
+          type: boolean
+          description: Fan relay state at poll time
+          example: false
+        humidifier_on:
+          type: boolean
+          description: Humidifier relay state at poll time
+          example: true
+        heater_on:
+          type: boolean
+          description: Heater relay state at poll time
+          example: false
+        control_loop_enabled:
+          type: boolean
+          description: Whether the control loop was enabled at poll time
+          example: true
+        temperature_set:
+          type: integer
+          nullable: true
+          description: Temperature setpoint active when the reading was taken
+          example: 22
+        humidity_set:
+          type: integer
+          nullable: true
+          description: Humidity setpoint active when the reading was taken
+          example: 80
+        board_uptime_s:
+          type: integer
+          description: Seconds since the Pico last booted
+          example: 3600
+        board_temp:
+          type: number
+          description: MCU board temperature in °C
+          example: 31.4
+        board_used_mem:
+          type: integer
+          description: Used memory in bytes
+          example: 112640
+        board_used_fs:
+          type: integer
+          description: Used filesystem space in bytes
+          example: 655360
+        time_to_response_ms:
+          type: integer
+          description: Round-trip poll response time in ms
+          example: 180
+      required:
+        - fan_on
+        - humidifier_on
+        - heater_on
+        - control_loop_enabled
+        - board_uptime_s
+        - board_temp
+        - board_used_mem
+        - board_used_fs
+        - time_to_response_ms
     PicoUnit:
       type: object
       properties:
+        id:
+          type: number
+          description: Unique pico unit id
+          example: 1
+        created_at:
+          format: date-time
+          type: string
+          description: Registration timestamp
+          example: '2026-07-31T10:30:00.000Z'
+        handle:
+          type: string
+          description: Unique device handle (mDNS hostname stem)
+          example: unit-01
+        name:
+          type: string
+          nullable: true
+          description: Human-friendly unit name
+          example: Grow Shelf A
+        description:
+          type: string
+          nullable: true
+          description: Free-form unit description
+          example: Top shelf of the grow tent
+        face_color:
+          type: string
+          nullable: true
+          description: Hex color for the unit avatar
+          example: '#7cb342'
         host:
           type: string
           description: mDNS hostname derived from handle
           example: unit-01.local
+        ip:
+          type: string
+          nullable: true
+          description: Last known IP address (fallback when mDNS fails)
+          example: 192.168.1.50
+        mac:
+          type: string
+          nullable: true
+          description: Wi-Fi MAC address — immutable hardware identity, set once on first successful poll
+          example: 28:cd:c1:0a:b2:3f
+        port:
+          type: integer
+          description: REST API port on the Pico unit
+          example: 5000
+        monitored:
+          type: boolean
+          description: Whether the server cron polls this unit
+          example: true
+        last_seen:
+          format: date-time
+          type: string
+          description: Timestamp of the last successful poll
+          example: '2026-09-06T09:59:00.000Z'
+        micropython_version:
+          type: string
+          nullable: true
+          description: MicroPython runtime version
+          example: v1.24.0
+        software_version:
+          type: string
+          nullable: true
+          description: Firmware version (_SOFTWARE_VERSION in app/state.py)
+          example: 1.2.0
+        board:
+          type: string
+          nullable: true
+          description: Board identifier reported by the Pico
+          example: PICO_2W
+        board_total_mem_byte:
+          type: integer
+          nullable: true
+          description: Total board memory in bytes
+          example: 262144
+        board_total_fs_byte:
+          type: integer
+          nullable: true
+          description: Total filesystem space in bytes
+          example: 1048576
+        board_cpu_freq_mhz:
+          type: integer
+          nullable: true
+          description: CPU frequency in MHz
+          example: 150
         failed_calls:
           type: integer
           description: Consecutive unreachable polls from the server cron
@@ -5772,7 +5919,12 @@ components:
           allOf:
             - $ref: '#/components/schemas/Readings'
       required:
+        - id
+        - created_at
+        - handle
         - host
+        - port
+        - monitored
         - failed_calls
         - failed_readings
         - consecutive_empty_readings
@@ -5892,16 +6044,132 @@ components:
           description: 'Cosmetic hex color assigned to the unit (e.g. #4CAF50).'
           example: '#4CAF50'
           pattern: ^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$
+    DevicePinsDto:
+      type: object
+      properties:
+        fan:
+          type: integer
+          description: GPIO pin driving the fan relay
+          example: 7
+        dht:
+          type: integer
+          description: GPIO pin driving the DHT11 sensor
+          example: 4
+        humidifier:
+          type: integer
+          description: GPIO pin driving the humidifier relay
+          example: 6
+        heater:
+          type: integer
+          description: GPIO pin driving the heater relay
+          example: 8
+      required:
+        - fan
+        - dht
+        - humidifier
+        - heater
     DevicesDto:
       type: object
-      properties: {}
+      properties:
+        active_high:
+          type: boolean
+          description: 'Relay polarity: true = NO (normally-open) wiring. Deliberately not shown in the pin-mapping UI.'
+          example: true
+        pins:
+          description: Live GPIO pin mapping reported by the Pico
+          allOf:
+            - $ref: '#/components/schemas/DevicePinsDto'
+      required:
+        - active_high
+        - pins
     PollPicoUnitResponseDto:
       type: object
       properties:
+        id:
+          type: number
+          description: Unique pico unit id
+          example: 1
+        created_at:
+          format: date-time
+          type: string
+          description: Registration timestamp
+          example: '2026-07-31T10:30:00.000Z'
+        handle:
+          type: string
+          description: Unique device handle (mDNS hostname stem)
+          example: unit-01
+        name:
+          type: string
+          nullable: true
+          description: Human-friendly unit name
+          example: Grow Shelf A
+        description:
+          type: string
+          nullable: true
+          description: Free-form unit description
+          example: Top shelf of the grow tent
+        face_color:
+          type: string
+          nullable: true
+          description: Hex color for the unit avatar
+          example: '#7cb342'
         host:
           type: string
           description: mDNS hostname derived from handle
           example: unit-01.local
+        ip:
+          type: string
+          nullable: true
+          description: Last known IP address (fallback when mDNS fails)
+          example: 192.168.1.50
+        mac:
+          type: string
+          nullable: true
+          description: Wi-Fi MAC address — immutable hardware identity, set once on first successful poll
+          example: 28:cd:c1:0a:b2:3f
+        port:
+          type: integer
+          description: REST API port on the Pico unit
+          example: 5000
+        monitored:
+          type: boolean
+          description: Whether the server cron polls this unit
+          example: true
+        last_seen:
+          format: date-time
+          type: string
+          description: Timestamp of the last successful poll
+          example: '2026-09-06T09:59:00.000Z'
+        micropython_version:
+          type: string
+          nullable: true
+          description: MicroPython runtime version
+          example: v1.24.0
+        software_version:
+          type: string
+          nullable: true
+          description: Firmware version (_SOFTWARE_VERSION in app/state.py)
+          example: 1.2.0
+        board:
+          type: string
+          nullable: true
+          description: Board identifier reported by the Pico
+          example: PICO_2W
+        board_total_mem_byte:
+          type: integer
+          nullable: true
+          description: Total board memory in bytes
+          example: 262144
+        board_total_fs_byte:
+          type: integer
+          nullable: true
+          description: Total filesystem space in bytes
+          example: 1048576
+        board_cpu_freq_mhz:
+          type: integer
+          nullable: true
+          description: CPU frequency in MHz
+          example: 150
         failed_calls:
           type: integer
           description: Consecutive unreachable polls from the server cron
@@ -5946,7 +6214,12 @@ components:
           allOf:
             - $ref: '#/components/schemas/DevicesDto'
       required:
+        - id
+        - created_at
+        - handle
         - host
+        - port
+        - monitored
         - failed_calls
         - failed_readings
         - consecutive_empty_readings
@@ -6114,9 +6387,117 @@ components:
           description: >-
             Optional recipe to use as a template. species, temperature_target and humidity_target will be copied from
             the recipe if not explicitly provided.
+    Recipe:
+      type: object
+      properties:
+        id:
+          type: number
+          description: Unique recipe id
+          example: 1
+        name:
+          type: string
+          description: Recipe name (unique)
+          example: Oyster Mushroom Kit
+        species:
+          type: string
+          description: Species/cultivar this recipe targets
+          example: Pleurotus ostreatus
+        temperature_target:
+          type: integer
+          minimum: 0
+          maximum: 50
+          description: Target temperature in °C
+          example: 22
+        humidity_target:
+          type: integer
+          minimum: 10
+          maximum: 90
+          description: Target humidity in %
+          example: 85
+        duration_days:
+          type: integer
+          minimum: 1
+          description: Expected cultivation duration in days
+          example: 14
+        notes:
+          type: string
+          nullable: true
+          description: Free-form cultivator notes
+          example: Mist twice daily during pinning
+        image:
+          type: string
+          description: Filename of the uploaded image or external URL
+          example: 1.jpg
+        image_url:
+          type: string
+          nullable: true
+          description: Absolute URL to the image
+          example: http://localhost:3000/images/recipes/1.jpg
+        created_at:
+          format: date-time
+          type: string
+          description: Creation timestamp
+          example: '2026-07-31T10:30:00.000Z'
+        updated_at:
+          format: date-time
+          type: string
+          description: Last update timestamp
+          example: '2026-08-02T08:12:00.000Z'
+      required:
+        - id
+        - name
+        - species
+        - temperature_target
+        - humidity_target
+        - duration_days
+        - image_url
+        - created_at
+        - updated_at
     Batch:
       type: object
       properties:
+        id:
+          type: number
+          description: Unique batch id
+          example: 1
+        start_at:
+          format: date-time
+          type: string
+          description: Batch start timestamp
+          example: '2026-08-01T00:00:00.000Z'
+        finish_at:
+          format: date-time
+          type: string
+          nullable: true
+          description: Batch finish timestamp (null = open-ended batch)
+        species:
+          type: string
+          nullable: true
+          description: Species snapshot copied from the recipe at batch creation
+          example: Pleurotus ostreatus
+        temperature_target:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 50
+          description: Temperature target snapshot in °C
+          example: 22
+        humidity_target:
+          type: integer
+          nullable: true
+          minimum: 10
+          maximum: 90
+          description: Humidity target snapshot in %
+          example: 85
+        notes:
+          type: string
+          description: Batch cultivation notes
+          example: Second flush — heavier misting
+        description:
+          type: string
+          nullable: true
+          description: Short batch description
+          example: 'Shelf A run #3'
         images:
           description: Filenames of attached images
           type: array
@@ -6129,6 +6510,19 @@ components:
           type: array
           items:
             type: string
+        pico_unit:
+          description: Expanded pico unit (loaded by list/detail endpoints; omitted on unit-scoped batch lists)
+          allOf:
+            - $ref: '#/components/schemas/PicoUnit'
+        pico_unit_id:
+          type: integer
+          description: Id of the pico unit this batch runs on
+          example: 1
+        recipe:
+          nullable: true
+          description: Expanded recipe (loaded by list/detail endpoints; null when no recipe is linked)
+          allOf:
+            - $ref: '#/components/schemas/Recipe'
         status:
           type: string
           enum:
@@ -6144,6 +6538,10 @@ components:
           minimum: 0
           maximum: 5
       required:
+        - id
+        - start_at
+        - notes
+        - pico_unit_id
         - status
         - images_left
     BatchListResponseDto:
@@ -6211,20 +6609,6 @@ components:
           maxLength: 2000
       required:
         - name
-    Recipe:
-      type: object
-      properties:
-        image:
-          type: string
-          description: Filename of the uploaded image or external URL
-          example: 1.jpg
-        image_url:
-          type: string
-          nullable: true
-          description: Absolute URL to the image
-          example: http://localhost:3000/images/recipes/1.jpg
-      required:
-        - image_url
     CreateRecipeDto:
       type: object
       properties:
@@ -6329,6 +6713,141 @@ components:
     SetpointsDto:
       type: object
       properties: {}
+    ChangeDevicePinsDto:
+      type: object
+      properties:
+        dht:
+          type: number
+          description: >-
+            Change the GPIO pin assigned to the DHT11 sensor. Must be a valid user I/O pin (excludes GP23-25, GP29 which
+            are WiFi-reserved on Pico 2W).
+          example: 4
+          enum:
+            - 0
+            - 1
+            - 2
+            - 3
+            - 4
+            - 5
+            - 6
+            - 7
+            - 8
+            - 9
+            - 10
+            - 11
+            - 12
+            - 13
+            - 14
+            - 15
+            - 16
+            - 17
+            - 18
+            - 19
+            - 20
+            - 21
+            - 22
+            - 26
+            - 27
+            - 28
+        humidifier:
+          type: number
+          description: >-
+            Change the GPIO pin assigned to the humidifier. Must be a valid user I/O pin (excludes GP23-25, GP29 which
+            are WiFi-reserved on Pico 2W).
+          example: 6
+          enum:
+            - 0
+            - 1
+            - 2
+            - 3
+            - 4
+            - 5
+            - 6
+            - 7
+            - 8
+            - 9
+            - 10
+            - 11
+            - 12
+            - 13
+            - 14
+            - 15
+            - 16
+            - 17
+            - 18
+            - 19
+            - 20
+            - 21
+            - 22
+            - 26
+            - 27
+            - 28
+        fan:
+          type: number
+          description: >-
+            Change the GPIO pin assigned to the fan. Must be a valid user I/O pin (excludes GP23-25, GP29 which are
+            WiFi-reserved on Pico 2W).
+          example: 7
+          enum:
+            - 0
+            - 1
+            - 2
+            - 3
+            - 4
+            - 5
+            - 6
+            - 7
+            - 8
+            - 9
+            - 10
+            - 11
+            - 12
+            - 13
+            - 14
+            - 15
+            - 16
+            - 17
+            - 18
+            - 19
+            - 20
+            - 21
+            - 22
+            - 26
+            - 27
+            - 28
+        heater:
+          type: number
+          description: >-
+            Change the GPIO pin assigned to the heater. Must be a valid user I/O pin (excludes GP23-25, GP29 which are
+            WiFi-reserved on Pico 2W).
+          example: 8
+          enum:
+            - 0
+            - 1
+            - 2
+            - 3
+            - 4
+            - 5
+            - 6
+            - 7
+            - 8
+            - 9
+            - 10
+            - 11
+            - 12
+            - 13
+            - 14
+            - 15
+            - 16
+            - 17
+            - 18
+            - 19
+            - 20
+            - 21
+            - 22
+            - 26
+            - 27
+            - 28
     ChangeSetupDto:
       type: object
       properties:
@@ -6337,6 +6856,10 @@ components:
           description: >-
             A flag that should be true if the relay's circuits are connected to the NO (Normally Open) port, and false
             if they are connected through NC (Normally Closed).
+        pins:
+          description: GPIO pin assignments for the DHT11, humidifier, fan, and heater
+          allOf:
+            - $ref: '#/components/schemas/ChangeDevicePinsDto'
     ChangeOutputsDto:
       type: object
       properties:

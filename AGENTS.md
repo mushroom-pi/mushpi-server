@@ -304,6 +304,15 @@ Certain fields appear in API responses but are **not stored** in any database co
 
 **(b) Wrapper DTO via `IntersectionType` for endpoint-specific ephemeral fields**: Used when the field is only meaningful on one endpoint. `devices` (live pin mapping from the Pico) is the prime example — it is only returned by `POST /v1/pico-units/:id/poll`. Create a `DevicesMixin` class and merge it with `PicoUnit` via `IntersectionType(PicoUnit, DevicesMixin)` to produce `PollPicoUnitResponseDto`. This keeps the shared `PicoUnit` entity schema untouched while adding the endpoint-specific field.
 
+### Every stored column returned by a controller must carry `@ApiProperty`/`@ApiPropertyOptional`
+
+The Docker image build regenerates the client from the **committed** `spec/openapi.json` (`COPY mushpi-server/spec/openapi.json ./openapi.json` → `yarn gen:client && gen:schemas` → `tsc -b && vite build`). If an entity field has `@Column` + class-validator decorators but NO Swagger decorator, the committed spec omits it, the regenerated client type is incomplete, and the client `tsc` build FAILS with `Property 'X' does not exist on type '<Entity>'` — even though runtime responses serialize the field fine (`ClassSerializerInterceptor` runs without `excludeExtraneousValues`). Rule:
+
+- **Any `@Column` field that a controller returns (directly or via `latest_reading`/relations) must be decorated** with `@ApiProperty` or `@ApiPropertyOptional`. Do not blanket-add — only expose fields the client actually consumes (cross-reference `mushpi-client`).
+- **Match decorator requiredness/nullability to how the client accesses the field** (client is `strict: true`): client uses `field ?? fallback` (null-safe) → `@ApiPropertyOptional({ nullable: true })`; client renders directly or passes to a non-nullable param (e.g. `formatDate(iso: string)`) → required `@ApiProperty` with **no** `nullable: true`.
+- **Relations that are conditionally loaded**: if some endpoint omits the relation (e.g. `GET /v1/pico-units/:id/batches` omits `pico_unit`), type it `@ApiPropertyOptional(...)` (optional, not `nullable: true` unless it can genuinely be null — a batch always *has* a `pico_unit_id`, it's just not always *expanded*). Use lazy refs `type: () => PicoUnit` to avoid circular `$ref`s.
+- **Regression guard**: `test/openapi-schemas.e2e-spec.ts` boots the app, builds the doc in-process, and asserts every client-consumed field exists per schema. Add new fields to it when you add new entity fields.
+
 ### `devices` block — not persisted
 
 The `devices` block (`active_high`, `pins.dht`, `pins.humidifier`, `pins.fan`, `pins.heater`) is read directly from the Pico's `GET /` response during polling. It is **validated** via `class-transformer`/`class-validator` but **never persisted** to any database table. It passes through from the Pico to the client via `PollPicoUnitResponseDto`. There is no `devices` column on `PicoUnit` and no migration adding one — the canonical source is the Pico itself, queried fresh on every poll.

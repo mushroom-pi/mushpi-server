@@ -12,6 +12,12 @@ import {
 } from 'typeorm';
 
 import {
+  HUMIDITY_MAX,
+  HUMIDITY_MIN,
+  TEMPERATURE_MAX,
+  TEMPERATURE_MIN,
+} from 'src/common/constants/climate.constants';
+import {
   DESCRIPTION_MAX_LENGTH,
   NOTES_MAX_LENGTH,
 } from 'src/common/constants/validation.constants';
@@ -23,40 +29,79 @@ import { BatchStatus } from './batches.type';
 
 @Entity('batch')
 export class Batch {
+  @ApiProperty({ description: 'Unique batch id', example: 1 })
   @PrimaryGeneratedColumn()
   id!: number;
 
+  @ApiProperty({
+    description: 'Batch start timestamp',
+    example: '2026-08-01T00:00:00.000Z',
+  })
   @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   @IsOptional()
   @IsDate()
   start_at!: Date;
 
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Batch finish timestamp (null = open-ended batch)',
+  })
   @Column({ type: 'datetime', nullable: true, default: null })
   @IsOptional()
   @IsDate()
   finish_at?: Date | null;
 
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Species snapshot copied from the recipe at batch creation',
+    example: 'Pleurotus ostreatus',
+  })
   @Column({ type: 'text', nullable: true, default: null })
   @IsString()
   @IsOptional()
   species?: string | null;
 
+  @ApiPropertyOptional({
+    type: 'integer',
+    nullable: true,
+    minimum: TEMPERATURE_MIN,
+    maximum: TEMPERATURE_MAX,
+    description: 'Temperature target snapshot in °C',
+    example: 22,
+  })
   @Column({ type: 'integer', nullable: true })
   @IsInt()
   @IsOptional()
   temperature_target?: number | null;
 
+  @ApiPropertyOptional({
+    type: 'integer',
+    nullable: true,
+    minimum: HUMIDITY_MIN,
+    maximum: HUMIDITY_MAX,
+    description: 'Humidity target snapshot in %',
+    example: 85,
+  })
   @Column({ type: 'integer', nullable: true })
   @IsInt()
   @IsOptional()
   humidity_target?: number | null;
 
+  @ApiProperty({
+    description: 'Batch cultivation notes',
+    example: 'Second flush — heavier misting',
+  })
   @Column({ type: 'text', nullable: false, default: '' })
   @IsString()
   @IsOptional()
   @Length(0, NOTES_MAX_LENGTH)
   notes!: string;
 
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Short batch description',
+    example: 'Shelf A run #3',
+  })
   @Column({ type: 'text', nullable: true, default: null })
   @IsString()
   @IsOptional()
@@ -83,8 +128,18 @@ export class Batch {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'pico_unit_id' })
+  @ApiPropertyOptional({
+    type: () => PicoUnit,
+    description:
+      'Expanded pico unit (loaded by list/detail endpoints; omitted on unit-scoped batch lists)',
+  })
   pico_unit!: PicoUnit;
 
+  @ApiProperty({
+    type: 'integer',
+    description: 'Id of the pico unit this batch runs on',
+    example: 1,
+  })
   @Column({ name: 'pico_unit_id', type: 'integer', nullable: false })
   @IsInt()
   pico_unit_id!: number;
@@ -95,6 +150,12 @@ export class Batch {
     onDelete: 'SET NULL',
   })
   @JoinColumn({ name: 'recipe_id' })
+  @ApiPropertyOptional({
+    type: () => Recipe,
+    nullable: true,
+    description:
+      'Expanded recipe (loaded by list/detail endpoints; null when no recipe is linked)',
+  })
   recipe?: Recipe | null;
 
   @Column({ name: 'recipe_id', type: 'integer', nullable: true, default: null })
