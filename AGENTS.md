@@ -29,14 +29,18 @@ yarn start     # Must boot without exceptions
 
 ```
 pico-units/   — CRUD + ping proxy
-readings/     — readings storage and time-range queries
-batches/      — batch CRUD + lifecycle rules + recipe linking
+readings/     — readings storage + time-range queries (incl. CSV export)
+batches/      — batch CRUD + lifecycle rules + create-recipe-from-batch
+recipes/      — recipe CRUD + image upload/removal + per-recipe batch listing
 control/      — proxy: setpoints, outputs, setup, control loop toggle (each triggers an immediate trailing poll via `callPollAndUpdate`)
 cron/         — scheduled polling of all monitored Pico units
 dashboard/    — aggregated summary endpoint (unit health, batches, recipes, stats, warnings)
 settings/     — GET/PATCH /v1/settings for timezone config; global TimezoneInterceptor converts all response dates
 monitoring/   — /ping, /health, /metrics (VERSION_NEUTRAL — unversioned)
 swagger/      — OpenAPI setup with global error schemas + operationIdFactory; powers spec:export
+config/       — CustomConfigModule (@Global): wraps @nestjs/config (env + Joi validation + cache), provides CustomConfigService
+sqlite/       — TypeORM root module (better-sqlite3, autoLoadEntities, synchronize dev / migrationsRun prod)
+sqlite-health/ — SQLite health probe (read/write + size) for the /health "databases" section
 ```
 
 ## API Versioning
@@ -69,12 +73,15 @@ All controllers **except `MonitoringController`** carry a `V1` suffix in both cl
 | POST             | `/v1/pico-units/:picoUnitId/poll`               | On-demand Pico poll → store reading → return `PollPicoUnitResponseDto` (PicoUnit + optional `devices` block)    |
 | PUT              | `/v1/pico-units/:picoUnitId/reboot`             | Proxy → Pico POST /reboot (soft/hard reset); returns 202                       |
 | GET              | `/v1/pico-units/:picoUnitId/readings`           | Time-range filtered + `points`-based server-side aggregation (NTILE). Returns `AggregatedReading[]` with per-bucket avg/min/max + relay counts + setpoints. No pagination. |
+| GET              | `/v1/pico-units/:picoUnitId/readings/export`    | CSV export of aggregated readings                                             |
 | GET              | `/v1/pico-units/:picoUnitId/batches`            | + `/current`                                                                   |
 | GET/POST         | `/v1/batches`                                   | List (paginated) / Create                                                      |
 | GET/PATCH/DELETE | `/v1/batches/:batchId`                          | CRUD                                                                           |
 | GET              | `/v1/batches/:batchId/readings`                 | Same aggregation model as unit readings; window clamped to batch start/finish.  |
-| POST             | `/v1/batches/:batchId/recipe`                   | Link recipe to batch                                                           |
-| PUT/DELETE       | `/v1/batches/:batchId/images/:filename`         | Batch image upload (append, max 5) / removal                                   |
+| GET              | `/v1/batches/:batchId/readings/export`          | CSV export of batch readings                                                   |
+| POST             | `/v1/batches/:batchId/recipe`                   | Create a recipe from a finished batch                                          |
+| PUT              | `/v1/batches/:batchId/images`                   | Batch image upload (append, max 5)                                             |
+| DELETE           | `/v1/batches/:batchId/images/:filename`         | Remove one batch image                                                         |
 | GET/POST         | `/v1/recipes`                                   | List / Create                                                                  |
 | GET/PATCH/DELETE | `/v1/recipes/:recipeId`                         | CRUD                                                                           |
 | GET              | `/v1/recipes/:recipeId/batches`                 | Batches using this recipe                                                      |
@@ -104,7 +111,7 @@ Use `@IsInt()`, `{ type: 'integer' }` in TypeORM, `{ type: 'integer' }` in Swagg
 
 ### Data integrity
 
-- Snapshot copy over live reference: when linking recipe to batch, copy `species`, `temperature_target`, `humidity_target` at creation. Editing recipe must never alter historical batches.
+- Snapshot copy over live reference: at batch creation, an optional `recipe_id` acts as a template — `species`, `temperature_target`, `humidity_target` are copied from the recipe into the batch (unless explicitly supplied on the DTO). Editing a recipe must never alter historical batches.
 - Immutable FK references (`recipe_id`, `pico_unit_id`) omitted from UpdateDto via `OmitType`.
 - Entity registration: `src/modules/sqlite/data-source.ts` (CLI) + `TypeOrmModule.forFeature` (runtime) — both required.
 
