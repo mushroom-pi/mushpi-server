@@ -64,7 +64,7 @@ async function bootstrap() {
      */
     if (configService.docs.useAuth)
       app.use(
-        '/' + configService.docs.endpoint + '*',
+        '/' + configService.docs.endpoint + '{*splat}',
         basicAuth({
           challenge: true,
           users: {

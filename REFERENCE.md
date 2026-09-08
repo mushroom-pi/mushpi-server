@@ -114,6 +114,12 @@ NestJS 11's `MiddlewareConsumer` with the `version` property in `forRoutes()` is
 
 2. **Route-specific middleware** (`PicoUnitByIdMiddleware`, `BatchByIdMiddleware`, `RecipeByIdMiddleware`): use explicit `v1/` prefix in path strings (e.g. `forRoutes('v1/pico-units/:picoUnitId')`) in their respective module's `configure()` method. This avoids the broken `version` property on `RouteInfo` objects.
 
+### Named wildcards in Express 5 paths (path-to-regexp v8)
+
+Express 5 / path-to-regexp v8 rejects bare `*` wildcards: **every** wildcard route or middleware path must be *named* — `'{*splat}'` / `'{*any}'` in Nest path strings, `'*path'` in `forRoutes()`. A bare `*` throws `TypeError: Missing parameter name at N` **eagerly at registration time** (when `app.use(path, …)` runs), so it crashes boot rather than failing per-request. Existing mounts follow the rule: the docs basicAuth middleware in `main.ts` uses `'/' + configService.docs.endpoint + '{*splat}'`, and the SPA `ServeStaticModule` entry uses `renderPath: '{*any}'`. Any new `app.use(path, …)` with a wildcard must do the same.
+
+**Coverage gap — smoke-test `main.ts` boot wiring manually.** The bootstrap-only wiring in `main.ts` (docs basicAuth mount, Swagger `setupSwagger()` call) is exercised by **no** unit or e2e suite — `test/test-setup.ts` builds its own app and does not replicate it. Note also that the Joi schema forces `DOCS_USERNAME` to `''` outside `NODE_ENV=prod`, so the basicAuth branch is only reachable in a prod-style boot — which is exactly why dev (no docs auth) and e2e never caught the bare-`*` crash. Therefore: any boot-affecting `main.ts` change must be smoke-tested by actually starting the app with the docs vars set (`DOCS_ENDPOINT`, `DOCS_USERNAME`, `DOCS_PASSWORD` — with `NODE_ENV=prod` to reach the auth path), and verified by curling the docs endpoint for 401 → 200-with-creds. Point `SQLITE_PATH` (and `LOGS_PATH`) at throwaway paths under `/tmp` during such a smoke test so no real dev/prod database is touched.
+
 ## Spec Tooling Internals
 
 The server code (NestJS decorators) is the **source of truth** for the REST API. The OpenAPI spec and Bruno collection are derived artifacts generated via scripts (`yarn spec:export`, `yarn spec:bruno`, `yarn spec:all`).
