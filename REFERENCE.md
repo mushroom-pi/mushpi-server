@@ -246,6 +246,7 @@ A global `APP_INTERCEPTOR` that recursively walks all API responses and converts
 - **Unreachable Pico units in cron sweeps**: log at `warn`, not `error`. An unreachable unit is an expected operational condition — not a server fault. Use `formatPollError()` from `http-fallback.ts` to produce a concise single-line message (e.g. `Pico unit 190 unreachable (EHOSTUNREACH: http://192.168.1.74:5000/?force=1)`).
 - **Client-triggered poll failures**: the `fetchAndValidateReading` method catches no-response axios errors and rethrows them as `BadGatewayException` with the same `formatPollError` message. The exceptions filter logs at `error` because this represents a client-facing failure.
 - **Never log raw error objects with `JSON.stringify(error)`**. The full axios error dump (config, retry state, stack) is unreadable in logs. Always use `formatPollError` or a similarly concise helper.
+- `formatPollError` unwraps Nest `HttpException`s — when a call site receives a re-thrown exception (cron sweep `Promise.allSettled` reasons, `handlePicoUnitMonitoringStarted`) it returns the exception's message verbatim. Never re-format an already-wrapped exception at a call site; pass it straight to `formatPollError`.
 
 ### Preventing pino-http duplicate error logs
 

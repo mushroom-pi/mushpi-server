@@ -1,3 +1,5 @@
+import { BadGatewayException, HttpException } from '@nestjs/common';
+
 import axios, { AxiosError } from 'axios';
 
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
@@ -343,5 +345,38 @@ describe('formatPollError', () => {
     const msg = formatPollError(unit, err);
     expect(msg).toContain('NO_RESPONSE');
     expect(msg).toMatch(/^Pico unit 1 unreachable/);
+  });
+
+  it('returns the message verbatim for an already-formatted BadGatewayException', () => {
+    const unit = makeUnit();
+    const err = new BadGatewayException(
+      'Pico unit 1 unreachable (ECONNREFUSED: http://127.0.0.1:5000/?force=1)',
+    );
+    const msg = formatPollError(unit, err);
+    expect(msg).toBe(
+      'Pico unit 1 unreachable (ECONNREFUSED: http://127.0.0.1:5000/?force=1)',
+    );
+    expect(msg).not.toContain('HTTP undefined');
+  });
+
+  it('extracts the message from an object-payload HttpException', () => {
+    const unit = makeUnit();
+    const err = new HttpException({ message: 'sensor payload invalid' }, 412);
+    const msg = formatPollError(unit, err);
+    expect(msg).toBe('sensor payload invalid');
+  });
+
+  it('falls back to description for LockedException-shaped payloads', () => {
+    const unit = makeUnit();
+    const err = new HttpException(
+      {
+        error: 'Locked',
+        statusCode: 423,
+        description: 'This Pico unit (1) is already being polled',
+      },
+      423,
+    );
+    const msg = formatPollError(unit, err);
+    expect(msg).toBe('This Pico unit (1) is already being polled');
   });
 });

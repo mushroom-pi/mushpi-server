@@ -1,3 +1,5 @@
+import { HttpException } from '@nestjs/common';
+
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import axiosRetry from 'axios-retry';
 
@@ -57,6 +59,21 @@ export function configureAxiosRetry(axiosInstance: AxiosInstance): void {
  * response received but indicates an error).
  */
 export function formatPollError(unit: PicoUnit, error: unknown): string {
+  // Nest exceptions carry an already-formatted / true reason in their
+  // payload (e.g. the BadGatewayException rethrown by
+  // ReadingsService.fetchAndValidateReading). Re-formatting them misreads
+  // the Nest payload as an axios response → "HTTP undefined: host:port".
+  if (error instanceof HttpException) {
+    const payload = error.getResponse();
+    if (typeof payload === 'string') return payload;
+    const { message, description } = payload as {
+      message?: unknown;
+      description?: unknown;
+    };
+    if (typeof message === 'string') return message;
+    if (typeof description === 'string') return description; // LockedException shape
+    return error.message;
+  }
   const reason =
     (error as any)?.code ??
     ((error as any)?.response
