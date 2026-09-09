@@ -331,6 +331,19 @@ When using `repository.query()` for raw SQL (e.g., window functions like `NTILE`
 
 The `toSqliteDatetime()` helper (`src/common/utils/to-sqlite-datetime.ts`) handles input conversion. Raw query results come back with SQLite-native format — convert in the service before returning DTOs.
 
+## Local Verification (smoke-boot without disturbing a live instance)
+
+`yarn start` (from AGENTS.md's verification list) binds port 3000. If a live instance is already running there, it fails with `EADDRINUSE`. To smoke-boot without touching that server, launch with a free `APP_PORT` and throwaway paths under `/tmp`:
+
+```bash
+APP_PORT=3130 SQLITE_PATH=/tmp/opencode/smoke.sqlite LOGS_PATH=/tmp/opencode/logs node dist/src/main.js &
+SMOKE_PID=$!
+# ...verify /ping, then ALWAYS stop it:
+kill "$SMOKE_PID"
+```
+
+**Hard rule — stop any instance you start.** Capture the PID at launch and `kill` it explicitly when the checks finish, so you never leave an orphan server listening on a random port that later blocks verification or confuses the next session. Never use a broad `pkill -f "dist/src/main"` — it can match a live server you did not start.
+
 ## E2E Gotchas
 
 - `maxWorkers: 1` in `jest-e2e.json` — parallel workers cause SQLite lock contention. `forceExit` is **not** needed: `@nestjs/schedule` v6 clears cron jobs on `app.close()` and `@nestjs/typeorm` destroys the DataSource. If the suite ever hangs at exit, run `npx jest --config ./test/jest-e2e.json --detectOpenHandles` to diagnose.
