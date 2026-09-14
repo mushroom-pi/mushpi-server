@@ -61,6 +61,24 @@ import { SwaggerModule } from './swagger/swagger.module';
               },
             },
           },
+          {
+            serveRoot: '/public',
+            // Repo-root build-time branding assets (Swagger UI favicon — href wired in
+            // swagger.module.ts customfavIcon). Ships via Docker COPY, not a volume.
+            rootPath: path.resolve('public'),
+            // Bare-directory URLs ('/public', '/public/') produce a bare http-404
+            // (no ENOENT) from serve-static; listing the directory paths in `exclude`
+            // makes ServeStaticModule's error middleware re-raise them as Nest
+            // NotFoundExceptions (404 JSON) instead of unknown errors (500). The
+            // trailing-slash entry is required because the matcher tests
+            // `pathname + '/'` and '/public' does not match '/public//'.
+            exclude: ['/public', '/public/'],
+            serveStaticOptions: {
+              index: false,
+              fallthrough: false, // asset-only archetype: terminal 404, never reaches the SPA catch-all
+              redirect: false, // no 301 '/public' → '/public/'; the bare directory URL 404s terminally too
+            },
+          },
         ];
 
         const clientDistDir = config.client.distDir;

@@ -170,6 +170,29 @@ describe('SwaggerModule', () => {
     expect(document.paths['/noerror'].get.responses['400']).toBeUndefined();
   });
 
+  it('should brand the Swagger UI page with the Mushroom Pi site title and favicon', () => {
+    // Pass-through spy: keeps the real setup() behaviour, records its args.
+    const setupSpy = jest.spyOn(NestSwaggerModule, 'setup');
+
+    swaggerModule.setupSwagger(app, {
+      name: 'Test API',
+      description: 'Test API Description',
+      version: '1.0',
+    });
+
+    expect(setupSpy).toHaveBeenCalledWith(
+      '/docs', // configService.docs.endpoint from MockCustomConfigService
+      app,
+      expect.anything(),
+      expect.objectContaining({
+        customSiteTitle: 'Mushroom Pi API — Swagger UI',
+        customfavIcon: '/public/favicon.svg',
+      }),
+    );
+
+    setupSpy.mockRestore();
+  });
+
   it('should setup Swagger with global error responses', async () => {
     const swaggerConfig = new DocumentBuilder()
       .setTitle('Test API')

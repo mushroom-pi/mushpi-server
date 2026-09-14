@@ -182,7 +182,8 @@ export class SwaggerModule {
       app,
       document,
       {
-        customSiteTitle: `${documentDescriptor?.name || name.replace('be-', '').toUpperCase()} Microservice Swagger UI`,
+        customSiteTitle: 'Mushroom Pi API — Swagger UI',
+        customfavIcon: '/public/favicon.svg',
       },
     );
   }
