@@ -7783,7 +7783,7 @@
   "info": {
     "title": "mushpi-server",
     "description": "A backend for the Mushroom Pi project",
-    "version": "0.1.0",
+    "version": "0.8.0",
     "contact": {}
   },
   "tags": [

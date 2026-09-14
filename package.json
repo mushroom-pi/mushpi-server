@@ -1,6 +1,6 @@
 {
   "name": "mushpi-server",
-  "version": "0.1.0",
+  "version": "0.8.0",
   "description": "A backend for the Mushroom Pi project",
   "author": "amda-phd",
   "private": true,
