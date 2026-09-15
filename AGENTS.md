@@ -126,3 +126,10 @@ yarn spec:all      # Both (runs spec:export then spec:bruno)
 ```
 
 `spec/openapi.json` and `spec/openapi.yaml` are committed (canonical contract — consumed by mushpi-client's `yarn gen:all:remote`). `spec/bruno/` is gitignored. A Husky pre-commit hook runs `yarn spec:all` on `src/` changes. See REFERENCE.md for the runtime-vs-export title nuance and the dual-wiring details.
+
+### Versioning
+
+- Commit messages follow **Conventional Commits** and are enforced by commitlint via the Husky `commit-msg` hook (`commitlint.config.mjs`, `@commitlint/config-conventional`).
+- The `package.json` `version` is bumped **only when releasing, on the `main` branch** — never during day-to-day `dev` work.
+- After any version bump, run `yarn spec:all` so the committed OpenAPI spec carries the same `info.version` as `package.json`.
+- Never edit the root `release.json` or git tags.

@@ -47,6 +47,9 @@ coverage
 .temp
 .tmp
 
+# Accidental `husky --version` artifact (husky treats args as the install dir)
+--version/
+
 # Runtime data
 pids
 *.pid

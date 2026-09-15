@@ -2,7 +2,7 @@
 
 Long-tail gotchas and detailed conventions. **Load only when the task touches these areas** — do not read on every spawn. The always-loaded [`AGENTS.md`](./AGENTS.md) holds the module map, build commands, top conventions, and REST API table.
 
-Topics covered here: Pico proxy internals · E2E test conventions · batch lifecycle & relation loading · image uploads & static serving · API versioning internals · spec tooling internals · cron polling · pass-through & response shape · timezone · logging · guards · migrations · environment variables · config · raw SQL · E2E gotchas.
+Topics covered here: Pico proxy internals · E2E test conventions · batch lifecycle & relation loading · image uploads & static serving · API versioning internals · spec tooling internals · git hooks (Husky) · cron polling · pass-through & response shape · timezone · logging · guards · migrations · environment variables · config · raw SQL · E2E gotchas.
 
 ---
 
@@ -132,9 +132,11 @@ The server code (NestJS decorators) is the **source of truth** for the REST API.
 | `spec/openapi.yaml` | Yes | Human-readable YAML version of the same contract |
 | `spec/bruno/` | No (gitignored) | Bruno collection — directory of `.bru` files + `bruno.json`, fully regenerable |
 
-### Pre-commit hook
+### Git hooks (Husky)
 
-Husky detects `src/` changes and automatically runs `yarn spec:all`, then stages `spec/openapi.json` and `spec/openapi.yaml`. No `src/` changes → skipped. This keeps the committed spec in lockstep with the code.
+- **`pre-commit`**: detects `src/` changes and automatically runs `yarn spec:all`, then stages `spec/openapi.json` and `spec/openapi.yaml`. No `src/` changes → skipped. This keeps the committed spec in lockstep with the code.
+- **`commit-msg`**: runs commitlint (Conventional Commits).
+- **Yarn 4 does not run the root `prepare` script on a plain `yarn install`** once dependencies are cached, so an absent/broken `.husky/_` is *not* repaired by `yarn install` alone. Reinstall the hooks with `yarn prepare` (or `rm -rf .husky/_ && yarn prepare`), then confirm `git config core.hooksPath` is `.husky/_`.
 
 ### `setupSwagger()` at runtime vs spec export
 

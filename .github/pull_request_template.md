@@ -2,11 +2,6 @@
 
 <!-- Add the issue number this PR addresses. -->
 
-<details>
-  <summary><strong>Version Bumping Reminder</strong></summary>
-  <p style="color: yellow;"><strong>⚠️ REMEMBER:</strong> If you want to trigger automatic version bumping, add the string <b>no-versioning</b> to the PR title. ⚠️</p>
-</details>
-
 ## 📖 Description
 
 <!-- Briefly describe the issue you are addressing. -->
