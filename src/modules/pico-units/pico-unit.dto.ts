@@ -42,7 +42,7 @@ import { PaginatedDto } from 'src/common/dto/paginated-response.dto';
 
 import { PicoUnit } from './pico-unit.entity';
 import { RebootType } from './pico-unit.type';
-import { reboot } from './pico-units.constant';
+import { PICO_API_VERSION_MIN, reboot } from './pico-units.constant';
 
 export class AnnouncePicoUnitDto {
   @ApiProperty({
@@ -97,13 +97,28 @@ export class AnnouncePicoUnitDto {
     type: String,
     minLength: NAME_MIN_LENGTH,
     maxLength: STANDARD_TEXT_MAX_LENGTH,
-    description: 'Version tag for the custom software executed by the unit',
+    description:
+      'Version tag for the custom firmware executed by the unit (_SOFTWARE_VERSION in app/state.py)',
     examples: ['0.1.0'],
   })
   @IsString()
   @IsOptional()
   @Length(NAME_MIN_LENGTH, STANDARD_TEXT_MAX_LENGTH)
-  software_version?: string;
+  firmware_version?: string;
+
+  @ApiPropertyOptional({
+    type: Number,
+    minimum: PICO_API_VERSION_MIN,
+    nullable: true,
+    description:
+      'Pico REST API version the firmware implements. Absent/null when the unit predates the field (needs firmware update).',
+    example: 1,
+  })
+  @Type(() => Number)
+  @IsInt()
+  @Min(PICO_API_VERSION_MIN)
+  @IsOptional()
+  api_version?: number;
 
   @ApiPropertyOptional({
     type: String,

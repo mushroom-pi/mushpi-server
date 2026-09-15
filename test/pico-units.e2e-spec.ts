@@ -46,7 +46,8 @@ describe('Pico Units (e2e)', () => {
           handle: 'alpha',
           port: 5001,
           ip: '192.168.1.50',
-          software_version: '0.1.0',
+          firmware_version: '0.1.0',
+          api_version: 1,
           micropython_version: 'v1.26.0 on 2025-08-09 (GNU 14.2.0 MinSizeRel)',
         })
         .expect(201);
@@ -58,7 +59,8 @@ describe('Pico Units (e2e)', () => {
         port: 5001,
         ip: '192.168.1.50',
         monitored: true,
-        software_version: '0.1.0',
+        firmware_version: '0.1.0',
+        api_version: 1,
         micropython_version: 'v1.26.0 on 2025-08-09 (GNU 14.2.0 MinSizeRel)',
       });
       expect(new Date(res.body.last_seen).toString()).not.toBe('Invalid Date');
@@ -125,6 +127,93 @@ describe('Pico Units (e2e)', () => {
         .set(announceHeaders)
         .send({})
         .expect(422);
+    });
+
+    it('announces with api_version → persisted on response and readable via GET by id', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/v1/pico-units/announce')
+        .set(announceHeaders)
+        .send({
+          handle: 'apiver',
+          ip: '192.168.1.61',
+          firmware_version: '0.2.0',
+          api_version: 1,
+        })
+        .expect(201);
+
+      expect(res.body.firmware_version).toBe('0.2.0');
+      expect(res.body.api_version).toBe(1);
+
+      const fetched = await request(app.getHttpServer())
+        .get(`/v1/pico-units/${res.body.id}`)
+        .expect(200);
+      expect(fetched.body.firmware_version).toBe('0.2.0');
+      expect(fetched.body.api_version).toBe(1);
+    });
+
+    it('returns 422 when api_version is below the minimum (0 — no API v0)', async () => {
+      await request(app.getHttpServer())
+        .post('/v1/pico-units/announce')
+        .set(announceHeaders)
+        .send({ handle: 'apiver-min', ip: '192.168.1.62', api_version: 0 })
+        .expect(422);
+    });
+
+    it('announces without api_version → 201 with api_version null (unit predates the field)', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/v1/pico-units/announce')
+        .set(announceHeaders)
+        .send({ handle: 'apiver-absent', ip: '192.168.1.63' })
+        .expect(201);
+
+      expect(res.body.api_version).toBeNull();
+    });
+
+    it('returns 422 when api_version is not an integer', async () => {
+      await request(app.getHttpServer())
+        .post('/v1/pico-units/announce')
+        .set(announceHeaders)
+        .send({ handle: 'apiver-bad', ip: '192.168.1.64', api_version: 'abc' })
+        .expect(422);
+    });
+
+    it('returns 422 when announcing the removed software_version key (hard cutover — no compatibility window)', async () => {
+      await request(app.getHttpServer())
+        .post('/v1/pico-units/announce')
+        .set(announceHeaders)
+        .send({
+          handle: 'cutover',
+          ip: '192.168.1.65',
+          software_version: '0.1.0',
+        })
+        .expect(422);
+    });
+
+    it('re-announce preserves api_version when the field is omitted', async () => {
+      await request(app.getHttpServer())
+        .post('/v1/pico-units/announce')
+        .set(announceHeaders)
+        .send({
+          handle: 'preserve',
+          ip: '192.168.1.66',
+          firmware_version: '0.2.0',
+          api_version: 2,
+        })
+        .expect(201);
+
+      // Re-announce the same handle with a new IP, omitting api_version.
+      const res2 = await request(app.getHttpServer())
+        .post('/v1/pico-units/announce')
+        .set(announceHeaders)
+        .send({ handle: 'preserve', ip: '10.0.0.66' })
+        .expect(201);
+
+      expect(res2.body.ip).toBe('10.0.0.66');
+      expect(res2.body.api_version).toBe(2);
+
+      const repo = await getPicoRepo(app);
+      const stored = await repo.findOneBy({ handle: 'preserve' });
+      expect(stored!.api_version).toBe(2);
     });
   });
 

@@ -12,4 +12,7 @@ export const SENSOR_RANGE = {
 
 export const DANGER_TEMPERATURE_C = 40;
 
+/** Minimum Pico REST API version a firmware can report. There is no API v0. */
+export const PICO_API_VERSION_MIN = 1;
+
 export const failsReadingsToUnhealthy = 5;

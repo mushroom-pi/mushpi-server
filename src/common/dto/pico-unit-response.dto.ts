@@ -211,6 +211,17 @@ export class SystemDto {
 
 /* ---------- root DTO ---------- */
 export class DeviceResponseDto {
+  // Optional: reported only by firmware that implements the fields. Older
+  // firmware omits them entirely — validation passes, and the poll path
+  // preserves the stored values.
+  @IsOptional()
+  @IsString()
+  firmware_version?: string;
+
+  @IsOptional()
+  @IsInt()
+  api_version?: number;
+
   @ValidateNested()
   @Type(() => DevicesDto)
   devices!: DevicesDto;

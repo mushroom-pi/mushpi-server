@@ -34,7 +34,10 @@ import {
   PicoUnitMonitoringStoppedEvent,
   PicoUnitRegisteredEvent,
 } from './pico-unit.events';
-import { OFFLINE_FAILED_CALLS_THRESHOLD } from './pico-units.constant';
+import {
+  OFFLINE_FAILED_CALLS_THRESHOLD,
+  PICO_API_VERSION_MIN,
+} from './pico-units.constant';
 
 @Injectable()
 export class PicoUnitsService {
@@ -53,7 +56,8 @@ export class PicoUnitsService {
       handle,
       ip,
       micropython_version,
-      software_version,
+      firmware_version,
+      api_version,
       board,
       board_cpu_freq_mhz,
       board_total_fs_byte,
@@ -70,7 +74,8 @@ export class PicoUnitsService {
         ip: ip ?? null,
         port,
         micropython_version: micropython_version ?? null,
-        software_version: software_version ?? null,
+        firmware_version: firmware_version ?? null,
+        api_version: api_version ?? null,
         board: board ?? null,
         board_cpu_freq_mhz: board_cpu_freq_mhz ?? 0,
         board_total_fs_byte: board_total_fs_byte ?? 0,
@@ -279,10 +284,26 @@ export class PicoUnitsService {
   async touchAndResetFailedCalls(
     unit: PicoUnit,
     mac?: string,
+    reportedVersions?: {
+      firmware_version?: string | null;
+      api_version?: number | null;
+    },
   ): Promise<PicoUnit> {
     unit.last_seen = new Date();
     unit.failed_calls = 0;
     if (mac && !unit.mac) unit.mac = mac;
+    // Firmware-reported versions self-heal from the poll response, but ONLY
+    // when the unit actually sent them: `undefined`/`null` (older firmware
+    // predates both fields) preserves the stored value — never overwrite.
+    if (reportedVersions?.firmware_version != null)
+      unit.firmware_version = reportedVersions.firmware_version;
+    const apiVersion = Number(reportedVersions?.api_version);
+    if (
+      reportedVersions?.api_version != null &&
+      Number.isInteger(apiVersion) &&
+      apiVersion >= PICO_API_VERSION_MIN
+    )
+      unit.api_version = apiVersion;
     return this.picoUnitRepo.save(unit);
   }
 }

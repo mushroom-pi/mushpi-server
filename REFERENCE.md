@@ -168,6 +168,8 @@ Scripts that import TypeScript source using `src/*` path aliases (e.g. `spec/gen
 
 The Pico's `system.wifi.mac` is also captured during polling and persisted to `PicoUnit.mac` (nullable text). **MAC is set only once** (first successful poll) and never overwritten — it is immutable hardware identity. The client uses it to derive the AP provisioning SSID.
 
+`firmware_version` and `api_version` are also refreshed from every `GET /` response (top-level keys on `DeviceResponseDto`, optional — older firmware omits them), self-healing if an announce is ever missed. **Preserve-when-absent**: the poll only writes each field when the response actually carries a non-null value (`PicoUnitsService.touchAndResetFailedCalls()`); an absent/`null` key never clobbers the stored value — unlike MAC, these *are* overwritten on every poll when present, since firmware can be reflashed.
+
 Cron-side state changes that are time-anchored (e.g. disabling the control loop after a batch finishes) should use a time-windowed query so the action is naturally self-limiting. For batch-finish auto-disable, `findUnitsWithFinishedBatch()` only considers batches that finished in the last 60s — they fall out of the window and are never re-disabled. The `BATCH_EVENTS.FINISHED` event handler handles the primary synchronous path.
 
 **Readings cleanup**: `cleanReadings()` runs daily at midnight and deletes readings older than `READINGS_RETENTION_MONTHS` (default 6, configurable via env var). A row-count safety cap (`READINGS_SAFETY_MAX_ROWS`, default 1,000,000) triggers an immediate cleanup regardless of age if the readings table exceeds this threshold — a safety net for missed cron cycles.
@@ -208,6 +210,10 @@ The `devices` block (`active_high`, `pins.dht`, `pins.humidifier`, `pins.fan`, `
 ### Validation pipe safety (`flattenValidationErrors`)
 
 The global `ValidationPipe`'s `exceptionFactory` must **recursively flatten `ValidationError.children`** for nested DTOs annotated with `@ValidateNested()`. Parent-level errors from nested validation have `constraints: undefined` — accessing them directly causes a 500 internal server error instead of a proper 422. The `flattenValidationErrors()` function in `src/common/pipes/validation.pipe.ts` walks the `children` array and only reads `constraints` when defined. Any new `@ValidateNested()` usage must go through this pipe — do not use the default `ValidationPipe.exceptionFactory`.
+
+### Unknown request-body keys are a hard 422 (`forbidNonWhitelisted`) — no silent-drop window
+
+The global pipe runs with `forbidNonWhitelisted: true`: **any key on a `/v1` request body that is not declared on the DTO fails validation**, and the custom `exceptionFactory` returns an `UnprocessableEntityException` → **422**. This is the exact opposite of the polling path's tolerant `DeviceResponseDto` validation (`whitelist: true` + `forbidNonWhitelisted: false` in `validateDeviceResponse()`), which silently drops unknown keys. Consequence: removing or renaming a field on an announce/create/update DTO **immediately** breaks any client still sending the old key with a 422 — there is no compatibility or silent-drop window on request bodies (only on Pico responses). When renaming/removing a DTO field, the firmware/client must stop sending the old key **before or simultaneously with** the server change (the `software_version` → `firmware_version` + `api_version` cutover is the worked example — guarded by `test/pico-units.e2e-spec.ts`).
 
 ### Pin validation for setup proxy
 

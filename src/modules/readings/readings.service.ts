@@ -138,7 +138,10 @@ export class ReadingsService {
         '/?force=1',
       );
       const mac = response?.system?.wifi?.mac;
-      await this.picoUnitsService.touchAndResetFailedCalls(unit, mac);
+      await this.picoUnitsService.touchAndResetFailedCalls(unit, mac, {
+        firmware_version: response?.firmware_version,
+        api_version: response?.api_version,
+      });
 
       // Skip zero-value sensor readings (sensor glitch / warmup noise)
       const rawTemp = response?.sensors?.dht?.temperature;

@@ -5855,11 +5855,19 @@ components:
           nullable: true
           description: MicroPython runtime version
           example: v1.24.0
-        software_version:
+        firmware_version:
           type: string
           nullable: true
           description: Firmware version (_SOFTWARE_VERSION in app/state.py)
           example: 1.2.0
+        api_version:
+          type: number
+          nullable: true
+          minimum: 1
+          example: 1
+          description: >-
+            Pico REST API contract generation implemented by the firmware. Null/absent means the unit has never reported
+            it — it predates the field and needs a firmware update.
         board:
           type: string
           nullable: true
@@ -5960,13 +5968,21 @@ components:
           examples:
             - v1.26.0 on 2025-08-09 (GNU 14.2.0 MinSizeRel)
             - 1.26.0.
-        software_version:
+        firmware_version:
           type: string
           minLength: 1
           maxLength: 255
-          description: Version tag for the custom software executed by the unit
+          description: Version tag for the custom firmware executed by the unit (_SOFTWARE_VERSION in app/state.py)
           examples:
             - 0.1.0
+        api_version:
+          type: number
+          minimum: 1
+          nullable: true
+          description: >-
+            Pico REST API version the firmware implements. Absent/null when the unit predates the field (needs firmware
+            update).
+          example: 1
         board:
           type: string
           minLength: 1
@@ -6145,11 +6161,19 @@ components:
           nullable: true
           description: MicroPython runtime version
           example: v1.24.0
-        software_version:
+        firmware_version:
           type: string
           nullable: true
           description: Firmware version (_SOFTWARE_VERSION in app/state.py)
           example: 1.2.0
+        api_version:
+          type: number
+          nullable: true
+          minimum: 1
+          example: 1
+          description: >-
+            Pico REST API contract generation implemented by the firmware. Null/absent means the unit has never reported
+            it — it predates the field and needs a firmware update.
         board:
           type: string
           nullable: true

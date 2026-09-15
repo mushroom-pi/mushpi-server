@@ -5,7 +5,10 @@ import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 
 import { Readings } from '../readings/readings.entity';
 import { PICO_UNIT_STATUSES, PicoUnitStatus } from './pico-unit.type';
-import { OFFLINE_FAILED_CALLS_THRESHOLD } from './pico-units.constant';
+import {
+  OFFLINE_FAILED_CALLS_THRESHOLD,
+  PICO_API_VERSION_MIN,
+} from './pico-units.constant';
 
 @Entity('pico_unit')
 export class PicoUnit {
@@ -115,7 +118,18 @@ export class PicoUnit {
     example: '1.2.0',
   })
   @Column({ type: 'text', nullable: true })
-  software_version?: string;
+  firmware_version?: string;
+
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    minimum: PICO_API_VERSION_MIN,
+    example: 1,
+    description:
+      'Pico REST API contract generation implemented by the firmware. Null/absent means the unit has never reported it — it predates the field and needs a firmware update.',
+  })
+  @Column({ type: 'integer', nullable: true })
+  api_version?: number;
 
   @ApiPropertyOptional({
     nullable: true,

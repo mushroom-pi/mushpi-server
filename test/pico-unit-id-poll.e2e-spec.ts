@@ -716,6 +716,58 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
     });
   });
 
+  describe('firmware_version / api_version poll refresh', () => {
+    it('refreshes stored versions when the poll response carries them', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-ver-refresh',
+        port: 5140,
+        firmware_version: '0.0.9',
+        api_version: 1,
+      });
+
+      mockedAxios.get.mockResolvedValueOnce({
+        data: {
+          ...structuredClone(sampleDeviceResponse),
+          firmware_version: '0.3.0',
+          api_version: 2,
+        },
+        status: 200,
+      });
+
+      await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      expect(updated!.firmware_version).toBe('0.3.0');
+      expect(updated!.api_version).toBe(2);
+    });
+
+    it('preserves stored versions when the poll response omits them (older firmware)', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-ver-preserve',
+        port: 5141,
+        firmware_version: '0.2.0',
+        api_version: 2,
+      });
+
+      // sampleDeviceResponse has no firmware_version/api_version keys —
+      // exactly what a pre-Feature-#21 unit sends.
+      mockedAxios.get.mockResolvedValueOnce({
+        data: sampleDeviceResponse,
+        status: 200,
+      });
+
+      await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      expect(updated!.firmware_version).toBe('0.2.0');
+      expect(updated!.api_version).toBe(2);
+    });
+  });
+
   describe('devices block passthrough', () => {
     it('returns the live devices block from the Pico response even when reading is filtered', async () => {
       const unit = await seedPicoUnit(app, {
