@@ -20,6 +20,7 @@ Long-tail gotchas and detailed conventions. **Load only when the task touches th
 - [Migrations](#migrations) — directory, naming, barrel registration, baseline convention, prod `migrationsRun`
 - [Environment Variables](#environment-variables) — key env var table (full generated reference: `docs/ENVIRONMENT.md`)
 - [Config](#config) — `CustomConfigService` getter grouping philosophy
+- [Tooling & Style Deviations](#tooling--style-deviations) — tsconfig strictness disabled; `settings.v1.controller.ts` branching (skill deviations)
 - [Raw SQL](#raw-sql) — SQLite datetime conversion for `repository.query()`; aggregation response shape (`AggregatedReadingsResponseDto`)
 - [Local Verification](#local-verification-smoke-boot-without-disturbing-a-live-instance) — smoke-booting on throwaway paths without touching a live instance
 - [E2E Gotchas](#e2e-gotchas) — jest worker/mocking/fixture quirks
@@ -89,7 +90,7 @@ When new functionality is added, **propose and write e2e tests** (see the `nestj
 
 #### Batch images (multi-image, no hotlinking)
 
-- `images` column (`simple-json`) stores an array of filenames (e.g. `['1.jpg', '2.png']`), `[]` when empty
+- `images` column (`simple-json`, nullable, entity default `NULL`) stores an array of filenames (e.g. `['1.jpg', '2.png']`); an **empty set is stored as `null`, not `[]`** — removing the last image resets the column to `null` (`batches.service.ts`). Service-level response enrichment substitutes `[]` for URL computation only; the stored value stays `null`.
 - `images_url` is a computed field returning root-relative URLs for each image (e.g. `/images/batches/7/1.jpg`)
 - Up to 5 images per batch (`IMAGE_MAX_FILES_PER_BATCH`); additive PUT appends, rejecting if total would exceed 5
 - Files stored in `data/images/batches/{batchId}/` subdirectories, enumerated `1.jpg`–`5.jpg` using first free slot
@@ -229,7 +230,7 @@ The Pico's `system.wifi.mac` is also captured during polling and persisted to `P
 
 Cron-side state changes that are time-anchored (e.g. disabling the control loop after a batch finishes) should use a time-windowed query so the action is naturally self-limiting. For batch-finish auto-disable, `findUnitsWithFinishedBatch()` only considers batches that finished in the last 60s — they fall out of the window and are never re-disabled. The `BATCH_EVENTS.FINISHED` event handler handles the primary synchronous path.
 
-**Readings cleanup**: `cleanReadings()` runs daily at midnight and deletes readings older than `READINGS_RETENTION_MONTHS` (default 6, configurable via env var). A row-count safety cap (`READINGS_SAFETY_MAX_ROWS`, default 1,000,000) triggers an immediate cleanup regardless of age if the readings table exceeds this threshold — a safety net for missed cron cycles.
+**Readings cleanup**: `cleanReadings()` runs daily at midnight and deletes readings older than `READINGS_RETENTION_MONTHS` (default 6, configurable via env var) — that age filter is the **only** thing that deletes rows. The row-count safety cap `READINGS_SAFETY_MAX_ROWS = 1_000_000` is a **hardcoded module constant** in `cron.service.ts` — not an env var: it is absent from the Joi schema and from `CustomConfigService`. Exceeding it only emits a `warn` log line, after which the same age-based `deleteOlderThanMonths()` runs; the cap never force-deletes fresh rows (the log's "triggering cleanup" wording is misleading — the age-based cleanup runs every night regardless).
 
 **Middleware error propagation**: Entity-by-ID middlewares (`PicoUnitByIdMiddleware`, `BatchByIdMiddleware`, `RecipeByIdMiddleware`) catch service errors and only convert `NotFoundException` instances to 404 responses. All other errors (DB failures, timeouts) are re-thrown via `next(error)` so they reach the global exception filter and produce proper 500 responses. Never use bare `catch {}` that silently converts all errors to 404.
 
@@ -278,7 +279,7 @@ The global pipe runs with `forbidNonWhitelisted: true`: **any key on a `/v1` req
 
 ## Timezone
 
-All database timestamps are stored as UTC ISO-8601 strings (`2026-07-31T10:30:00.000Z`) — TypeORM's `.toISOString()` always produces UTC regardless of host timezone. This is relied upon by the `TimezoneInterceptor`.
+All database timestamps are stored **in UTC, in SQLite's native `datetime` format — not as ISO-8601 strings**: `YYYY-MM-DD HH:MM:SS.SSS` when TypeORM binds a `Date`, or whole-second `YYYY-MM-DD HH:MM:SS` when the column's `DEFAULT CURRENT_TIMESTAMP` supplies the value (e.g. `readings.ts` — `createFromDeviceResponse()` omits `ts` and lets the DB default fire). Never any `T` or `Z` in the DB — see [Raw SQL](#raw-sql). What the `TimezoneInterceptor` actually relies on is the **read path**: TypeORM rehydrates every `datetime` column back into a `Date` instance, and response serialization of `Date`s emits UTC ISO (`...Z`) strings that the interceptor's regex matches.
 
 ### Settings Module
 
@@ -293,14 +294,14 @@ All database timestamps are stored as UTC ISO-8601 strings (`2026-07-31T10:30:00
 
 A global `APP_INTERCEPTOR` that recursively walks all API responses and converts:
 
-- `Date` instances → `dayjs.utc(value).tz(tz).format('YYYY-MM-DDTHH:mm:ssZ')`
+- `Date` instances → `dayjs.utc(value).tz(tz).format('YYYY-MM-DDTHH:mm:ss.SSSZ')`
 - Strings matching ISO-8601 UTC (`...Z`) → same conversion
 - Arrays/Objects → recursed
 - Primitive/non-date strings → passthrough
 
 **Fast path**: when `timezone === 'UTC'`, the interceptor is a zero-cost passthrough (`next.handle()` without any body walk). All existing e2e tests pass unchanged.
 
-**Output format**: `2026-07-31T12:30:00+02:00` — explicit offset, unambiguous for clients.
+**Output format**: `2026-07-31T12:30:00.000+02:00` (`.SSS` milliseconds + explicit offset) — unambiguous for clients.
 
 **Note**: Dates are always serialized as UTC ISO-8601 (`...Z`) strings by the app. If a future feature emits naive datetime strings (no `Z`/offset), they will bypass conversion — always use `.toISOString()` for date serialization.
 
@@ -364,7 +365,7 @@ Schema changes for production (`NODE_ENV=prod`, where `synchronize: false`) requ
 - SQLite requires ≥ 3.35.0 for `DROP COLUMN` (bundled `better-sqlite3` satisfies this).
 - Entity changes also require registration in both `data-source.ts` (CLI) and `TypeOrmModule.forFeature` (runtime).
 - **Prod-only `migrationsRun: true`**: In production (`NODE_ENV=prod`), pending migrations are applied automatically on app boot via `migrationsRun: true` in `sqlite.module.ts`. Dev/local/test keep `synchronize: true` and do not run migrations. This is a deliberate convention: the Docker prod image runs the compiled `dist/` with prod-only `node_modules` and no CLI access, so migrations must run at boot. Host-side CLI commands (`yarn migration:run`, `yarn migration:generate`, `yarn migration:show`, `yarn migration:revert`) target `SQLITE_PATH=./data/app.sqlite` for development workflows.
-- **Data-only migrations** (no schema change, e.g. one-shot `DELETE`/`UPDATE`) are valid. When the operation is irreversible, `down()` should be a no-op with a comment explaining why.
+- **Schema-only migrations are the default expectation.** Data-only migrations (no schema change) that `DELETE` or rewrite live rows fall under the root `AGENTS.md` **Data Deletion Prohibition**: they require the user's explicit consent before being authored or run — never write one as a side effect of schema work. If one is consented to and the operation is irreversible, `down()` should be a no-op with a comment explaining why.
 - **Generating migrations**: Use `yarn migration:generate src/modules/sqlite/migrations/<DescriptiveName>`. For a baseline migration, target an empty temp DB (`SQLITE_PATH=/tmp/opencode/empty.sqlite yarn migration:generate ...`). For incremental migrations, target the dev DB. The CLI does not load `.env` files — pass env vars explicitly.
 
 ## Environment Variables
@@ -381,11 +382,19 @@ Schema changes for production (`NODE_ENV=prod`, where `synchronize: false`) requ
 | `DOCS_ENDPOINT`        | —                   | Swagger UI path                                                               |
 | `LOGS_LEVEL`           | `info`              | Pino level                                                                    |
 | `READINGS_RETENTION_MONTHS` | `6`              | Months of readings to retain before cleanup                                    |
-| `READINGS_SAFETY_MAX_ROWS`  | `1000000`         | Row-count safety cap — triggers cleanup regardless of age                     |
+
+> `READINGS_SAFETY_MAX_ROWS` is **not** an env var — it is a hardcoded module constant in `cron.service.ts` (no Joi key, no `CustomConfigService` getter); see [Cron Polling](#cron-polling) → Readings cleanup.
 
 ## Config
 
 `CustomConfigService` exposes typed getters grouped by **domain area** — not by "what kind of value" (string, secret, etc.). The `security` getter is reserved for **cross-cutting/infra** concerns (global auth, rate limiting, event-loop protection). Domain-specific secrets belong in their own domain getter (e.g., `pico.announceSecret` for Pico-hardware trust, not `security.picoAnnounceSecret`). The `client` getter holds client-domain config — `clientUrl` (the CORS allowed origin, used in local dev) and `distDir` (the served SPA path) — so CORS lives beside the other client concerns rather than in `security`. This keeps domain concerns colocated and prevents the `security` getter from becoming a grab-bag.
+
+## Tooling & Style Deviations
+
+Known, deliberate deviations from the loaded skills — do not "fix" them silently, and do not replicate them elsewhere:
+
+- **TypeScript strictness** (vs `nodejs-typescript-base`, which expects full `strict`): `tsconfig.json` sets `strictNullChecks: false` and `noImplicitAny: false` (also `strictBindCallApply: false` and `noFallthroughCasesInSwitch: false`; no `strict` base is enabled). `tsconfig.build.json` only extends it — no override, so build and tests share the loose settings. Consequence: the compiler does **not** flag implicit `undefined` returns or untyped params — e.g. `MonitoringService.checkServiceStatus()`/`checkDatabaseStatus()` fall through their `switch` `default` and resolve to `undefined` despite a declared `Promise<Status>` return type, and `tsc` stays green. Guard nullability explicitly in new code; do not rely on the checker.
+- **Thin controllers** (vs `nestjs-backend`, "controllers stay thin"): `settings.v1.controller.ts` `updateSettings()` contains branching dispatch — `if (dto.timezone !== undefined) → svc.setTimezone(...)`, else `→ svc.getSettings()`. Accepted as a known deviation: it is partial-PATCH field routing only, with no persistence logic in the controller. New controllers must still delegate every decision to the service.
 
 ## Raw SQL
 
@@ -394,7 +403,7 @@ When using `repository.query()` for raw SQL (e.g., window functions like `NTILE`
 - **Input**: `Date.toISOString()` → `YYYY-MM-DD HH:MM:SS.SSS` before passing to WHERE clauses.
 - **Output**: query result timestamps → ISO string (`replace(' ', 'T') + 'Z'`) before returning to callers.
 
-The `toSqliteDatetime()` helper (`src/common/utils/to-sqlite-datetime.ts`) handles input conversion. Raw query results come back with SQLite-native format — convert in the service before returning DTOs.
+The private `toSqliteDatetime()` method in `ReadingsService` (`src/modules/readings/readings.service.ts`) handles input conversion. Raw query results come back with SQLite-native format — convert in the service before returning DTOs.
 
 **Aggregation response shape** (`GET …/readings`, unit and batch): `AggregatedReadingsResponseDto` { `data`: `AggregatedReadingDto[]` — per-bucket avg/min/max of temperature/humidity, relay on-counts, and the setpoints active in the bucket — `points`: requested bucket count, `actualReadings`: raw row count in the window }. There is **no** `AggregatedReading` class — the bucket DTO is `AggregatedReadingDto` (`readings.dto.ts`).
 

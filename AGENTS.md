@@ -156,7 +156,7 @@ Env reference is **generated**, never hand-maintained: `yarn docs:env` → [`doc
 | `sqlite` | DB path |
 | `upload` | UPLOAD_DIR → imageDir |
 | `pico` | PICO_ANNOUNCE_SECRET |
-| `readings` | retention + row cap |
+| `readings` | retention only |
 | `client` | clientUrl (CORS) + distDir (SPA) |
 
 ## Top Conventions
