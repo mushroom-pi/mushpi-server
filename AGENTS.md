@@ -2,135 +2,181 @@
 
 NestJS 11 backend for mushroom growing control system. Runs on Raspberry Pi, polls Pico units via cron, stores readings in SQLite. Exposes REST API + OpenAPI spec consumed by `mushpi-client`.
 
-> **Skill**: For general NestJS patterns (bootstrap order, controller splitting, DTO hierarchy, Joi config, exception filter dispatch, e2e test structure), load the `nestjs-backend` skill. This file documents **only** what is specific to this project or deviates from standard NestJS conventions.
->
-> **Reference**: Long-tail gotchas (Pico proxy internals, image uploads, timezone, cron, migrations, env vars, logging, raw SQL, e2e quirks) live in [`REFERENCE.md`](./REFERENCE.md). Load it **only when the task touches those areas** — do not read it on every spawn.
+> Load `nestjs-backend` for general NestJS; [`REFERENCE.md`](./REFERENCE.md) (Index inside) holds long-tail gotchas — load only for touched areas.
 
 ## External Relationships
 
-- **mushpi-grow** (Pico units): server proxies `/sensors`, `/setpoints`, `/outputs`, `/setup`, `/control` to each unit via `src/common/utils/http-fallback.ts` (`getWithFallback`/`postWithFallback`, mDNS → IP fallback). Units self-register on boot via `POST /v1/pico-units/announce`.
-- **mushpi-client** (frontend): consumes Swagger JSON at `/<DOCS_ENDPOINT>-json` to regenerate its API client. CORS origin from `CLIENT_URL`.
+Cross-repo contracts (Pico announce/poll/proxy, client codegen) are owned by root [`AGENTS.md`](../AGENTS.md); detail: REFERENCE.md §Pico Proxy Internals. Client consumes `/<DOCS_ENDPOINT>-json`; CORS origin `CLIENT_URL`.
 
 ## Verification Commands
 
-Run these after every feature delivery without asking:
+Run after every feature delivery, no need to ask — all exit 0; `yarn start` boots clean:
 
 ```bash
-yarn build     # Must exit 0
-yarn lint      # Must have no new errors
-yarn test      # Unit tests — must all pass
-yarn test:e2e  # E2E tests — must all pass
-yarn start     # Must boot without exceptions
+yarn build && yarn lint && yarn test && yarn test:e2e && yarn start
 ```
 
-**Production entrypoint**: `nest build` emits the entrypoint at `dist/src/main.js` (NOT `dist/main.js`) because `docs/` and `spec/` are in the tsc compile set, so `rootDir` resolves to the project root. `start:prod` and the Docker `CMD` both use `node dist/src/main.js`.
+**Entrypoint**: `nest build` emits `dist/src/main.js` (not `dist/main.js`) — `docs/`+`spec/` in the tsc compile set push `rootDir` to the project root; `start:prod` & the Docker `CMD` use that path.
 
 ## Module Layout
 
+**`sqlite/` is the database module — there is no `database/` module.** Feature modules live in `src/modules/`:
+
 ```
-pico-units/   — CRUD + ping proxy + computed api_compatibility verdict (pico-unit-compatibility.util.ts)
-readings/     — readings storage + time-range queries (incl. CSV export)
-batches/      — batch CRUD + lifecycle rules + create-recipe-from-batch
-recipes/      — recipe CRUD + image upload/removal + per-recipe batch listing
-control/      — proxy: setpoints, outputs, setup, control loop toggle (each triggers an immediate trailing poll via `callPollAndUpdate`)
-cron/         — scheduled polling of all monitored Pico units
-dashboard/    — aggregated summary endpoint (unit health, batches, recipes, stats, warnings)
-settings/     — GET/PATCH /v1/settings for timezone config; global TimezoneInterceptor converts all response dates
-monitoring/   — /ping, /health, /metrics (VERSION_NEUTRAL — unversioned)
-swagger/      — OpenAPI setup with global error schemas + operationIdFactory; powers spec:export
-config/       — CustomConfigModule (@Global): wraps @nestjs/config (env + Joi validation + cache), provides CustomConfigService
-sqlite/       — TypeORM root module (better-sqlite3, autoLoadEntities, synchronize dev / migrationsRun prod)
-sqlite-health/ — SQLite health probe (read/write + size) for the /health "databases" section
+src/main.ts — bootstrap: versioning, security, docs auth, Swagger, globals
+src/common/ — constants, decorators, dto, exceptions, filters, guards, interceptors, middleware, pipes, utils, validators
+app.module.ts — root module (APP_GUARD, global middleware)
+pino-logger.module.ts — nestjs-pino HTTP logging
+config/ — @Global env+Joi config module
+sqlite/ — TypeORM root: data-source.ts + entities, autoLoadEntities, better-sqlite3; sync dev / migrationsRun prod
+sqlite/migrations/ — migrations + MIGRATIONS barrel
+sqlite-health/ — /health "databases" probe (read/write+size)
+swagger/ — OpenAPI builder (error schemas, operationIdFactory)
+monitoring/ — infra endpoints
+pico-units/ — CRUD + ping/poll/reboot proxies + api_compatibility verdict
+readings/ — readings + NTILE aggregation + CSV export
+batches/ — CRUD + lifecycle + recipe-from-batch + images
+recipes/ — CRUD + images + per-recipe batch listing
+control/ — setpoints/outputs/setup/loop proxies (+poll)
+cron/ — 60s polling sweeps + retention cleanup
+dashboard/ — aggregated summary
+settings/ — timezone + TimezoneInterceptor
+spec/generators/ — openapi + bruno generators
+docs/env-vars.generator.ts — → docs/ENVIRONMENT.md
+public/ — assets served at /public (Swagger favicon)
+test/jest-e2e.json — e2e jest config (maxWorkers: 1)
 ```
 
 ## API Versioning
 
-All functional endpoints live under `/v1/` via NestJS's idiomatic built-in versioning:
+URI versioning (`VersioningType.URI`, `defaultVersion: API_VERSION` = `'1'`, `src/common/utils/api-version.ts`): all functional endpoints under `/v1/`. Sole exception: `MonitoringController` (`@Controller({ version: VERSION_NEUTRAL })`). All other controllers carry a `V1` class/filename suffix (`batches.v1.controller.ts` → `BatchesV1Controller`), stripped from operationIds by a custom factory — sites/factory/workarounds: REFERENCE.md §API Versioning Internals.
 
-```ts
-// src/common/utils/api-version.ts
-app.enableVersioning({ type: VersioningType.URI, defaultVersion: API_VERSION });
-```
+## REST API — 41 operations
 
-Applied in `main.ts`, `test/test-setup.ts`, and `spec/generators/openapi.generator.ts` **before** any route registration or Swagger document building. Monitoring endpoints (`/ping`, `/health`, `/metrics`) are exempted via `@Controller({ version: VERSION_NEUTRAL })`.
+| Method | Path | Notes |
+|---|---|---|
+| GET | /v1/pico-units | List (pag.) |
+| POST | /v1/pico-units | Create (mDNS check first) |
+| POST | /v1/pico-units/announce | Upsert by handle + `X-Pico-Secret` |
+| GET | /v1/pico-units/:id |
+| PATCH | /v1/pico-units/:id | Partial |
+| DELETE | /v1/pico-units/:id |
+| GET | /v1/pico-units/:id/ping | → Pico `/ping` |
+| PUT | /v1/pico-units/:id/control/setpoints | → Pico `/setpoints` |
+| PUT | /v1/pico-units/:id/control/outputs | → Pico `/outputs` |
+| PUT | /v1/pico-units/:id/control/setup | → Pico `/setup`; GPIO 0–22/26–28 + no-dup |
+| PUT | /v1/pico-units/:id/control/loop | → Pico `/control` toggle |
+| POST | /v1/pico-units/:id/poll | On-demand poll → store reading → `PollPicoUnitResponseDto` (unit + optional `devices`); zero-value/empty-sensor/out-of-range readings return without persisting |
+| PUT | /v1/pico-units/:id/reboot | → Pico POST `/reboot`; 202 |
+| GET | /v1/pico-units/:id/readings | `points`-bucket NTILE over range → `AggregatedReadingsResponseDto` {`data`,`points`,`actualReadings`}; no pagination |
+| GET | /v1/pico-units/:id/readings/export | CSV: raw reading rows |
+| GET | /v1/pico-units/:id/batches | Batches for unit |
+| GET | /v1/pico-units/:id/batches/current | Active batch |
+| GET | /v1/batches | List (pag.) |
+| POST | /v1/batches | Create (`recipe_id` snapshot-copied) |
+| GET | /v1/batches/:batchId |
+| PATCH | /v1/batches/:batchId | Partial |
+| DELETE | /v1/batches/:batchId | Wipes image dir |
+| GET | /v1/batches/:batchId/readings | Same; clamped to batch window |
+| GET | /v1/batches/:batchId/readings/export | CSV: raw reading rows |
+| POST | /v1/batches/:batchId/recipe | Recipe from finished batch |
+| PUT | /v1/batches/:batchId/images | Upload (append, max 5) |
+| DELETE | /v1/batches/:batchId/images/:filename | Remove one |
+| GET | /v1/recipes | List |
+| POST | /v1/recipes | Create |
+| GET | /v1/recipes/:recipeId |
+| PATCH | /v1/recipes/:recipeId | Partial |
+| DELETE | /v1/recipes/:recipeId | Removes image file |
+| GET | /v1/recipes/:recipeId/batches | Batches using this recipe |
+| PUT | /v1/recipes/:recipeId/image | Upload |
+| DELETE | /v1/recipes/:recipeId/image | Remove |
+| GET | /v1/dashboard/summary | units/batches/recipes/stats/warnings |
+| GET | /v1/settings | Timezone (default: OS) |
+| PATCH | /v1/settings | IANA-validated |
+| GET | /ping | Liveness |
+| GET | /health | server/system/databases/services (query-gated) |
+| GET | /metrics | Prometheus |
 
-### Controller Naming Convention
+## Entities & Columns
 
-All controllers **except `MonitoringController`** carry a `V1` suffix in both class name and filename (`batches.v1.controller.ts` → `BatchesV1Controller`). The `V1` suffix is **not** reflected in OpenAPI `operationId`s — a custom `operationIdFactory` strips it so the client contract stays stable (`BatchesController_create_v1`, not `BatchesV1Controller_...`). See REFERENCE.md for the exact factory and the middleware/versioning workarounds.
+| Entity | Stored columns (snake_case) |
+|---|---|
+| `PicoUnit` | id, created_at, handle, name, description, face_color, ip, mac, port, `monitored` (DB column `enabled`), last_seen, micropython_version, firmware_version, api_version, board, board_total_mem_byte, board_total_fs_byte, board_cpu_freq_mhz, failed_calls, failed_readings, consecutive_empty_readings |
+| `Readings` | id, ts, temperature, humidity, last_sensor_err, fan_on, humidifier_on, heater_on, control_loop_enabled, temperature_set, humidity_set, board_uptime_s, board_temp, board_used_mem, board_used_fs, time_to_response_ms, pico_unit_id |
+| `Batch` | id, start_at, finish_at, species, temperature_target, humidity_target, notes, description, images (simple-json), pico_unit_id, recipe_id |
+| `Recipe` | id, name, species, temperature_target, humidity_target, duration_days, notes, image, created_at, updated_at |
+| `Settings` | id (always 1), timezone |
+| `Health` | id, created_at (write probe) |
 
-## REST API
+Computed `@Expose()` getters: `PicoUnit` host, address, ipAddress, status, api_compatibility, latest_reading · `Batch` status, images_left, images_url · `Recipe` image_url. Contract exceptions to camelCase-getters: `api_compatibility`, `images_left`, `host`/`status`/`latest_reading`.
 
-| Method           | Path                                            | Notes                                                                          |
-| ---------------- | ----------------------------------------------- | ------------------------------------------------------------------------------ |
-| GET/POST         | `/v1/pico-units`                                | List (paginated) / Manual create (verify reachability via mDNS, then create)   |
-| POST             | `/v1/pico-units/announce`                       | Pico hardware announcement (upsert by handle, requires `X-Pico-Secret` header) |
-| GET/PATCH/DELETE | `/v1/pico-units/:picoUnitId`                    | CRUD                                                                           |
-| GET              | `/v1/pico-units/:picoUnitId/ping`               | Proxy → Pico `/`                                                               |
-| PUT              | `/v1/pico-units/:picoUnitId/control/setpoints`  | Proxy → Pico `/setpoints`                                                      |
-| PUT              | `/v1/pico-units/:picoUnitId/control/setup`      | Proxy → Pico `/setup`; validates GPIO pins (0–22, 26–28) + no-duplicate constraint    |
-| PUT              | `/v1/pico-units/:picoUnitId/control/outputs`    | Proxy → Pico `/outputs`                                                        |
-| PUT              | `/v1/pico-units/:picoUnitId/control/loop`       | Proxy → Pico `/control` toggle                                                 |
-| POST             | `/v1/pico-units/:picoUnitId/poll`               | On-demand Pico poll → store reading → return `PollPicoUnitResponseDto` (PicoUnit + optional `devices` block)    |
-| PUT              | `/v1/pico-units/:picoUnitId/reboot`             | Proxy → Pico POST /reboot (soft/hard reset); returns 202                       |
-| GET              | `/v1/pico-units/:picoUnitId/readings`           | Time-range filtered + `points`-based server-side aggregation (NTILE). Returns `AggregatedReading[]` with per-bucket avg/min/max + relay counts + setpoints. No pagination. |
-| GET              | `/v1/pico-units/:picoUnitId/readings/export`    | CSV export of aggregated readings                                             |
-| GET              | `/v1/pico-units/:picoUnitId/batches`            | + `/current`                                                                   |
-| GET/POST         | `/v1/batches`                                   | List (paginated) / Create                                                      |
-| GET/PATCH/DELETE | `/v1/batches/:batchId`                          | CRUD                                                                           |
-| GET              | `/v1/batches/:batchId/readings`                 | Same aggregation model as unit readings; window clamped to batch start/finish.  |
-| GET              | `/v1/batches/:batchId/readings/export`          | CSV export of batch readings                                                   |
-| POST             | `/v1/batches/:batchId/recipe`                   | Create a recipe from a finished batch                                          |
-| PUT              | `/v1/batches/:batchId/images`                   | Batch image upload (append, max 5)                                             |
-| DELETE           | `/v1/batches/:batchId/images/:filename`         | Remove one batch image                                                         |
-| GET/POST         | `/v1/recipes`                                   | List / Create                                                                  |
-| GET/PATCH/DELETE | `/v1/recipes/:recipeId`                         | CRUD                                                                           |
-| GET              | `/v1/recipes/:recipeId/batches`                 | Batches using this recipe                                                      |
-| PUT/DELETE       | `/v1/recipes/:recipeId/image`                   | Recipe image upload/removal                                                    |
-| GET              | `/v1/dashboard/summary`                         | Aggregated dashboard snapshot (units, batches, recipes, stats, warnings)       |
-| GET/PATCH        | `/v1/settings`                                  | Get/update display timezone (defaults to OS timezone); IANA tz name validated  |
-| GET              | `/ping` + `/health` + `/metrics`                | Liveness / full health (server, system, databases, services — query-param gated) / Prometheus (unversioned, VERSION_NEUTRAL)             |
+## Scripts
+
+| Group | Script | Notes |
+|---|---|---|
+| build | `build` |
+| lint | `lint` | eslint --fix (.ts only) |
+| lint | `format` | prettier (.ts only; agent .md excluded) |
+| test | `test` | jest unit |
+| test | `test:watch` | |
+| test | `test:cov` | --coverage |
+| test | `test:debug` | inspector, in-band |
+| test | `test:e2e` | jest --config test/jest-e2e.json |
+| test | `test:e2e:cov` | |
+| spec | `spec:export` | → committed spec/openapi.{json,yaml} (client contract) |
+| spec | `spec:bruno` | → spec/bruno/ (gitignored) |
+| spec | `spec:all` | both |
+| db | `typeorm` | CLI on dist data-source |
+| db | `migration:generate` | build + CLI |
+| db | `migration:run` | ↑ |
+| db | `migration:revert` | ↑ |
+| db | `migration:show` | ↑ |
+| audit | `audit:prod` | yarn npm audit (prod) |
+| audit | `audit:ci` | fail on high+ |
+| docs | `docs:env` | → docs/ENVIRONMENT.md |
+| start | `start` |
+| start | `start:dev` | --watch |
+| start | `start:debug` | --debug --watch |
+| start | `start:prod` | node dist/src/main.js |
+| hooks | `prepare` | husky install |
+| prune | `knip:ci` | unused prod deps |
+
+**Husky pre-commit**: `yarn format` + `yarn lint`; regenerates + stages `docs/ENVIRONMENT.md` on `config.schema.ts` change; runs `yarn spec:all` + stages the spec files on `src/` change. `commit-msg` = commitlint; `pre-merge-commit` = test + e2e; `pre-push` = audit:prod, build, knip:ci, test, e2e.
+
+## Env & Config
+
+Env reference is **generated**, never hand-maintained: `yarn docs:env` → [`docs/ENVIRONMENT.md`](./docs/ENVIRONMENT.md). `CustomConfigService` getters:
+
+| Getter | Domain |
+|---|---|
+| `server` | host/port, NODE_ENV, errorsDetail |
+| `logs` | pino level |
+| `security` | APP_SECRET, throttler, event-loop |
+| `docs` | Swagger endpoint + auth |
+| `sqlite` | DB path |
+| `upload` | UPLOAD_DIR → imageDir |
+| `pico` | PICO_ANNOUNCE_SECRET |
+| `readings` | retention + row cap |
+| `client` | clientUrl (CORS) + distDir (SPA) |
 
 ## Top Conventions
 
-### Column/property naming convention
+### Column/property naming
 
-Stored columns use **snake_case property names** (e.g. `last_seen`, `micropython_version`) matching the database column name directly — no `@Column({ name })` overrides. Computed `@Expose()` getters use camelCase. **Sanctioned exception**: `PicoUnit.monitored` uses `@Column({ name: 'enabled' })` for backward compatibility — the only override in the project; do not replicate.
+Stored columns use **snake_case property names** matching the DB column (e.g. `last_seen`) — no `@Column({ name })` overrides. Computed `@Expose()` getters: camelCase. Sole sanctioned override: `PicoUnit.monitored` ↔ `enabled` (backward compat; do not replicate).
 
 ### DTO partial-update contract
 
-`PicoUnitsService.update()` uses `Object.assign(unit, dto)` for partial PATCH. **DTO fields must have no initializers** (no `?: string = ''`). Omitted fields are not own-enumerable properties, so `Object.assign` skips them. Adding a default value or initializer to any `UpdateXxxDto` field will incorrectly overwrite stored values on PATCH.
-
-### `temperature_target` and `humidity_target` are always integers
-
-Use `@IsInt()`, `{ type: 'integer' }` in TypeORM, `{ type: 'integer' }` in Swagger. Never floats.
+`PicoUnitsService.update()` uses `Object.assign(unit, dto)` for partial PATCH. **DTO fields must have no initializers** (no `?: string = ''`). Omitted fields are not own-enumerable, so `Object.assign` skips them. A default value or initializer in any `UpdateXxxDto` field would incorrectly overwrite stored values on PATCH.
 
 ### Status is computed, not stored
 
-- **Batch `status`**: `'planned'` (`start_at > now`) / `'in-progress'` / `'finished'` (`finish_at < now`). Requires `@Expose()` + `@ApiProperty()`.
-- **PicoUnit `status`**: `'unmonitored'` / `'offline'` / `'degraded'` / `'healthy'` derived from `monitored`, `failed_calls` (threshold 3), `failed_readings`, `consecutive_empty_readings`. Requires `@Expose()` + `@ApiProperty({ enum: PICO_UNIT_STATUSES })`. Canonical values array/type live in `pico-unit.type.ts`.
-- **PicoUnit `api_compatibility`**: `'compatible'` / `'incompatible'` / `'unknown'` — a **computed, required, non-nullable** `@Expose()` getter (NO `@Column`, no migration, no cron) judging the `api_version` contract generation ONLY. It is **separate from `status`/health** (a unit can be `healthy` AND `incompatible` at once) and is mirrored onto `DashboardUnitItemDto.api_compatibility` (not folded into health counts/warnings). Predicate lives in `pico-unit-compatibility.util.ts`; `PICO_API_VERSION_MAX` is **verdict-only, never a validation bound** — out-of-range values are accepted-and-flagged, not rejected. Version ingestion is **strict on announce** (`firmware_version` validated as strict SemVer via `PICO_FIRMWARE_VERSION_REGEX`; announce 422s malformed versions) but **lenient on poll** (malformed `GET /` version metadata is ignored, never throws, never blocks the reading — see REFERENCE.md for the resolution table + poll-leniency rule). Canonical values array/type + `PicoApiCompatibility` live in `pico-unit.type.ts`.
+`Batch.status`, `PicoUnit.status` and `PicoUnit.api_compatibility` are computed `@Expose()` getters, never stored; health and the verdict are independent. Rules: REFERENCE.md §Computed Status Fields.
 
 ### Data integrity
 
-- Snapshot copy over live reference: at batch creation, an optional `recipe_id` acts as a template — `species`, `temperature_target`, `humidity_target` are copied from the recipe into the batch (unless explicitly supplied on the DTO). Editing a recipe must never alter historical batches.
-- Immutable FK references (`recipe_id`, `pico_unit_id`) omitted from UpdateDto via `OmitType`.
-- Entity registration: `src/modules/sqlite/data-source.ts` (CLI) + `TypeOrmModule.forFeature` (runtime) — both required.
-
-### API spec tooling
-
-The server code (NestJS decorators) is the **source of truth**; the OpenAPI spec and Bruno collection are derived artifacts:
-
-```bash
-yarn spec:export   # Generates spec/openapi.json + spec/openapi.yaml (in-process, no HTTP server)
-yarn spec:bruno    # Converts spec/openapi.json → spec/bruno/ Bruno collection
-yarn spec:all      # Both (runs spec:export then spec:bruno)
-```
-
-`spec/openapi.json` and `spec/openapi.yaml` are committed (canonical contract — consumed by mushpi-client's `yarn gen:all:remote`). `spec/bruno/` is gitignored. A Husky pre-commit hook runs `yarn spec:all` on `src/` changes. See REFERENCE.md for the runtime-vs-export title nuance and the dual-wiring details.
+Register every entity in BOTH `src/modules/sqlite/data-source.ts` (CLI) and `TypeOrmModule.forFeature()` (runtime). Snapshot/immutable-FK rules: REFERENCE.md §Batch Lifecycle.
 
 ### Versioning
 
-- Commit messages follow **Conventional Commits** and are enforced by commitlint via the Husky `commit-msg` hook (`commitlint.config.mjs`, `@commitlint/config-conventional`).
-- The `package.json` `version` is bumped **only when releasing, on the `main` branch** — never during day-to-day `dev` work.
-- After any version bump, run `yarn spec:all` so the committed OpenAPI spec carries the same `info.version` as `package.json`.
-- Never edit the root `release.json` or git tags.
+Release policy (Conventional Commits; version bumps only on `main` at release): REFERENCE.md §Release Versioning.

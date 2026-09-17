@@ -1,8 +1,28 @@
 # mushpi-server — Reference (On-Demand)
 
-Long-tail gotchas and detailed conventions. **Load only when the task touches these areas** — do not read on every spawn. The always-loaded [`AGENTS.md`](./AGENTS.md) holds the module map, build commands, top conventions, and REST API table.
+Long-tail gotchas and detailed conventions. **Load only when the task touches these areas** — do not read on every spawn. The always-loaded [`AGENTS.md`](./AGENTS.md) holds the module map, entity/column table, scripts & hooks table, env/config table, top conventions, and the REST API table.
 
-Topics covered here: Pico proxy internals · E2E test conventions · batch lifecycle & relation loading · image uploads & static serving · API versioning internals · spec tooling internals · git hooks (Husky) · cron polling · pass-through & response shape · timezone · logging · guards · migrations · environment variables · config · raw SQL · E2E gotchas.
+## Index
+
+- [Pico Proxy Internals](#pico-proxy-internals) — axios retry centralization, Pico response validation, `api_compatibility` resolution table, accept-and-flag, strict-announce vs lenient-poll ingestion
+- [Computed Status Fields](#computed-status-fields) — derivation rules for `Batch.status`, `PicoUnit.status`, `PicoUnit.api_compatibility` (moved from core)
+- [E2E Test Conventions](#e2e-test-conventions) — project-specific e2e rules: time windows, state reset
+- [Batch Lifecycle & Relation Loading](#batch-lifecycle--relation-loading) — create/update constraints, recipe template snapshot, immutable FKs, selective relation loading
+- [Image Uploads & Static Serving](#image-uploads--static-serving) — recipe/batch image uploads, ServeStaticModule, SPA serving, static CORS, helmet CSP
+- [API Versioning Internals](#api-versioning-internals) — version application sites, `operationIdFactory`, middleware×versioning workarounds, named wildcards, `main.ts` coverage gap
+- [Spec Tooling Internals](#spec-tooling-internals) — generated artifacts table, Husky git hooks, runtime-vs-export title, SwaggerModule dual wiring, ts-node script conventions
+- [Release Versioning](#release-versioning) — package-version bump policy, post-bump spec regeneration, `release.json`/tags prohibition (moved from core)
+- [Cron Polling](#cron-polling) — sweep overlap/parallelism, readings ingestion funnel & quality gates, MAC/version refresh, time-windowed state changes, proxy-vs-batch poll visibility split
+- [Pass-Through & Response Shape](#pass-through--response-shape) — non-persisted response fields, `@ApiProperty` coverage rule, validation-pipe safety, `forbidNonWhitelisted`, GPIO pin validation
+- [Timezone](#timezone) — UTC storage, Settings module, TimezoneInterceptor
+- [Logging](#logging) — error-vs-warn policy, `formatPollError`, pino-http duplicate suppression
+- [Guards](#guards) — guard inventory and the composite-decorator bundling requirement
+- [Migrations](#migrations) — directory, naming, barrel registration, baseline convention, prod `migrationsRun`
+- [Environment Variables](#environment-variables) — key env var table (full generated reference: `docs/ENVIRONMENT.md`)
+- [Config](#config) — `CustomConfigService` getter grouping philosophy
+- [Raw SQL](#raw-sql) — SQLite datetime conversion for `repository.query()`; aggregation response shape (`AggregatedReadingsResponseDto`)
+- [Local Verification](#local-verification-smoke-boot-without-disturbing-a-live-instance) — smoke-booting on throwaway paths without touching a live instance
+- [E2E Gotchas](#e2e-gotchas) — jest worker/mocking/fixture quirks
 
 ---
 
@@ -22,6 +42,14 @@ Topics covered here: Pico proxy internals · E2E test conventions · batch lifec
 - **`PICO_API_VERSION_MAX` is verdict-only, never a validation bound (accept-and-flag)**: it exists solely so `isSupportedPicoApiVersion()` can classify a value `compatible`/`incompatible`. Do **NOT** add `@Max(PICO_API_VERSION_MAX)` to `AnnouncePicoUnitDto` (it keeps only `@Min(1)`), and do **NOT** tighten the poll storage filter to `<= MAX` (it stays `>= PICO_API_VERSION_MIN`, **including values above MAX**). A newer-contract unit must be *stored and flagged*, never rejected — rejecting it would 422 the announce, lose the unit entirely, and break the IP-refresh fallback.
 - **Poll leniency vs strict announce (asymmetric ingestion)**: the announce path is **strict** — `AnnouncePicoUnitDto.firmware_version` carries `@Matches(PICO_FIRMWARE_VERSION_REGEX)` (strict SemVer `MAJOR.MINOR.PATCH`; `-rc`/`+build` suffixes rejected per `mushpi-docs/versioning.md` §3.4), so a malformed announce version 422s. The poll path is **lenient** — `DeviceResponseDto.firmware_version`/`api_version` intentionally carry **no** `@IsString`/`@IsInt` validators, so malformed version metadata in a `GET /` response can never fail `validateDeviceResponse`, can never throw, can never increment `failed_calls`, and can never block reading persistence. Acceptance is decided by the predicates in `PicoUnitsService.touchAndResetFailedCalls()` (`isValidPicoFirmwareVersion` for the string, the existing `Number.isInteger && >= PICO_API_VERSION_MIN` check for the generation); rejected/garbage values are silently ignored and the **last accepted stored values are preserved** (`undefined`/`null` never clobber). Both version fields stay `@IsOptional` on the announce DTO so legacy firmware that omits them still announces. There is no `semver` dependency — `PICO_FIRMWARE_VERSION_REGEX` is the canonical check.
 
+## Computed Status Fields
+
+All three status fields are computed `@Expose()` getters — never `@Column`s, never migrated, never cron-maintained. Core (`AGENTS.md`) keeps a one-line pointer here.
+
+- **Batch `status`**: `'planned'` (`start_at > now`) / `'in-progress'` / `'finished'` (`finish_at < now`). Requires `@Expose()` + `@ApiProperty()`.
+- **PicoUnit `status`** (health): `'unmonitored'` / `'offline'` / `'degraded'` / `'healthy'` derived from `monitored`, `failed_calls` (threshold 3), `failed_readings`, `consecutive_empty_readings`. Requires `@Expose()` + `@ApiProperty({ enum: PICO_UNIT_STATUSES })`. Canonical values array/type live in `pico-unit.type.ts`.
+- **PicoUnit `api_compatibility`**: `'compatible'` / `'incompatible'` / `'unknown'` — a **computed, required, non-nullable** `@Expose()` getter (NO `@Column`, no migration, no cron) judging the `api_version` contract generation ONLY. It is **separate from `status`/health** (a unit can be `healthy` AND `incompatible` at once) and is mirrored onto `DashboardUnitItemDto.api_compatibility` (not folded into health counts/warnings). Predicate lives in `pico-unit-compatibility.util.ts`; canonical values array/type + `PicoApiCompatibility` live in `pico-unit.type.ts`. The `PICO_API_VERSION_MAX` verdict-only rule, the full resolution table, and the strict-announce / lenient-poll ingestion asymmetry are in [Pico Proxy Internals](#pico-proxy-internals) — do not restate them elsewhere.
+
 ## E2E Test Conventions
 
 When new functionality is added, **propose and write e2e tests** (see the `nestjs-backend` skill for general e2e patterns). Project-specific rules:
@@ -35,6 +63,11 @@ When new functionality is added, **propose and write e2e tests** (see the `nestj
 
 - **Create**: if unit has an active batch, reject unless active batch has `finish_at` AND new `start_at > finish_at`.
 - **Update**: if `start_at` has passed, prevent changing `start_at` (409). If `finish_at` has passed, allow `description`/`notes` only (409 for other fields).
+
+### Template snapshot & immutable FKs
+
+- **Snapshot copy over live reference**: at batch creation, an optional `recipe_id` acts as a template — `species`, `temperature_target`, `humidity_target` are copied from the recipe into the batch (unless explicitly supplied on the DTO). Editing a recipe must never alter historical batches.
+- **Immutable FK references** (`recipe_id`, `pico_unit_id`) are omitted from UpdateDto via `OmitType`. (Dual entity-registration rule: kept in core; see also [Migrations](#migrations).)
 
 ### Selective relation loading
 
@@ -104,6 +137,10 @@ Upload paths are driven by the `UPLOAD_DIR` env var (default `data`). Access via
 
 ## API Versioning Internals
 
+### Version application sites
+
+`app.enableVersioning({ type: VersioningType.URI, defaultVersion: API_VERSION })` (constant `API_VERSION = '1'` in `src/common/utils/api-version.ts`) must be applied in **three** places — `main.ts`, `test/test-setup.ts`, and `spec/generators/openapi.generator.ts` — each time **before** any route registration or Swagger document building. Without the spec-generator application the committed `openapi.json` silently omits the `/v1/` prefix and the generated client uses wrong paths.
+
 ### Swagger operationIdFactory
 
 The `V1` controller suffix is stripped from OpenAPI `operationId` values via a custom factory in `SwaggerModule.buildOpenApiDocument()`:
@@ -160,6 +197,15 @@ The server code (NestJS decorators) is the **source of truth** for the REST API.
 ### Script conventions (ts-node)
 
 Scripts that import TypeScript source using `src/*` path aliases (e.g. `spec/generators/`, `docs/`) require `tsconfig-paths/register`. The `typeorm` CLI script follows the same pattern.
+
+## Release Versioning
+
+Policy detail (core keeps a one-line pointer here):
+
+- Commit messages follow **Conventional Commits**, enforced by commitlint (`commitlint.config.mjs`, `@commitlint/config-conventional`) via the Husky `commit-msg` hook (see [Spec Tooling Internals → Git hooks](#git-hooks-husky)).
+- The `package.json` `version` is bumped **only when releasing, on the `main` branch** — never during day-to-day `dev` work.
+- After any version bump, run `yarn spec:all` so the committed OpenAPI spec carries the same `info.version` as `package.json`.
+- Never edit the root `release.json` or git tags.
 
 ## Cron Polling
 
@@ -349,6 +395,8 @@ When using `repository.query()` for raw SQL (e.g., window functions like `NTILE`
 - **Output**: query result timestamps → ISO string (`replace(' ', 'T') + 'Z'`) before returning to callers.
 
 The `toSqliteDatetime()` helper (`src/common/utils/to-sqlite-datetime.ts`) handles input conversion. Raw query results come back with SQLite-native format — convert in the service before returning DTOs.
+
+**Aggregation response shape** (`GET …/readings`, unit and batch): `AggregatedReadingsResponseDto` { `data`: `AggregatedReadingDto[]` — per-bucket avg/min/max of temperature/humidity, relay on-counts, and the setpoints active in the bucket — `points`: requested bucket count, `actualReadings`: raw row count in the window }. There is **no** `AggregatedReading` class — the bucket DTO is `AggregatedReadingDto` (`readings.dto.ts`).
 
 ## Local Verification (smoke-boot without disturbing a live instance)
 

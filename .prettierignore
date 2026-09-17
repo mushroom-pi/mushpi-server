@@ -1,0 +1,11 @@
+node_modules
+dist
+coverage
+
+# Agent-instruction markdown — byte-budgeted (AGENTS.md core has a ≤10 KB ceiling)
+# and read by LLMs rather than rendered; prettier's table padding / list rewrapping
+# adds bytes and makes the budget unenforceable (see mushpi-client trap: 11,958 → 12,385 B).
+# The `format` script is currently src/test .ts-only, but this guards against glob
+# expansion, editor format-on-save, and direct `prettier --write` runs.
+AGENTS.md
+REFERENCE.md
