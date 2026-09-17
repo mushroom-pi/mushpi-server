@@ -8462,6 +8462,15 @@
             ],
             "description": "Computed health status: unmonitored (not being polled), healthy (reachable, no faults), degraded (sensor issues), offline (unreachable for >= 3 polls)"
           },
+          "api_compatibility": {
+            "type": "string",
+            "enum": [
+              "compatible",
+              "incompatible",
+              "unknown"
+            ],
+            "description": "Computed (not stored) verdict on the Pico↔Server `api_version` contract generation ONLY: compatible (reported version within the supported range), incompatible (reported version outside the range, or the unit has contact evidence but never reported a version — firmware predates the handshake and needs an update), unknown (never reported and never contacted — the server has no basis to judge). Separate from `status`: a unit can be healthy and incompatible simultaneously."
+          },
           "latest_reading": {
             "nullable": true,
             "description": "Latest reading row for this unit (computed, not stored)",
@@ -8485,6 +8494,7 @@
           "address",
           "ipAddress",
           "status",
+          "api_compatibility",
           "latest_reading"
         ]
       },
@@ -8525,7 +8535,8 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 255,
-            "description": "Version tag for the custom firmware executed by the unit (_SOFTWARE_VERSION in app/state.py)",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$",
+            "description": "Version tag for the custom firmware executed by the unit (_SOFTWARE_VERSION in app/state.py). Strict SemVer `MAJOR.MINOR.PATCH` — pre-release/build suffixes are rejected (mushpi-docs/versioning.md §3.4). Optional: legacy firmware that omits it still announces successfully.",
             "examples": [
               "0.1.0"
             ]
@@ -8534,7 +8545,7 @@
             "type": "number",
             "minimum": 1,
             "nullable": true,
-            "description": "Pico REST API version the firmware implements. Absent/null when the unit predates the field (needs firmware update).",
+            "description": "Pico REST API version the firmware implements. Absent/null when the unit predates the field (needs firmware update). Values ABOVE the server-supported generation are accepted and stored — the `api_compatibility` verdict flags them (accept-and-flag; no @Max bound).",
             "example": 1
           },
           "board": {
@@ -8842,6 +8853,15 @@
             ],
             "description": "Computed health status: unmonitored (not being polled), healthy (reachable, no faults), degraded (sensor issues), offline (unreachable for >= 3 polls)"
           },
+          "api_compatibility": {
+            "type": "string",
+            "enum": [
+              "compatible",
+              "incompatible",
+              "unknown"
+            ],
+            "description": "Computed (not stored) verdict on the Pico↔Server `api_version` contract generation ONLY: compatible (reported version within the supported range), incompatible (reported version outside the range, or the unit has contact evidence but never reported a version — firmware predates the handshake and needs an update), unknown (never reported and never contacted — the server has no basis to judge). Separate from `status`: a unit can be healthy and incompatible simultaneously."
+          },
           "latest_reading": {
             "nullable": true,
             "description": "Latest reading row for this unit (computed, not stored)",
@@ -8874,6 +8894,7 @@
           "address",
           "ipAddress",
           "status",
+          "api_compatibility",
           "latest_reading"
         ]
       },
@@ -9756,6 +9777,15 @@
               "offline"
             ]
           },
+          "api_compatibility": {
+            "type": "string",
+            "enum": [
+              "compatible",
+              "incompatible",
+              "unknown"
+            ],
+            "description": "Computed api_version contract-generation verdict (same as PicoUnit.api_compatibility) — independent from `status`; deliberately NOT folded into health counts or warnings."
+          },
           "lastSeenSecondsAgo": {
             "type": "integer",
             "nullable": true
@@ -9796,6 +9826,7 @@
           "id",
           "handle",
           "status",
+          "api_compatibility",
           "uptimeHours",
           "failedCalls",
           "failedReadings",

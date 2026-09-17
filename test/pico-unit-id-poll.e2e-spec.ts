@@ -6,6 +6,7 @@ import request from 'supertest';
 import { Repository } from 'typeorm';
 
 import { PicoUnit } from '../src/modules/pico-units/pico-unit.entity';
+import { PICO_API_VERSION_MAX } from '../src/modules/pico-units/pico-units.constant';
 import { Readings } from '../src/modules/readings/readings.entity';
 import { clearPicoUnits, seedPicoUnit } from './fixtures/pico-units.fixtures';
 import {
@@ -740,7 +741,78 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
 
       const updated = await picoRepo.findOneBy({ id: unit.id });
       expect(updated!.firmware_version).toBe('0.3.0');
+      // Accept-and-flag on the POLL path too: a newer-contract generation is
+      // stored raw, never rejected.
       expect(updated!.api_version).toBe(2);
+    });
+
+    it('flips api_compatibility compatible → incompatible when a later poll reports a newer contract generation', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-ver-flip',
+        port: 5144,
+        firmware_version: '0.2.0',
+        api_version: 1,
+      });
+
+      const before = await request(app.getHttpServer())
+        .get(`/v1/pico-units/${unit.id}`)
+        .expect(200);
+      expect(before.body.api_compatibility).toBe('compatible');
+
+      mockedAxios.get.mockResolvedValueOnce({
+        data: {
+          ...structuredClone(sampleDeviceResponse),
+          firmware_version: '0.4.0',
+          api_version: 2,
+        },
+        status: 200,
+      });
+
+      const polled = await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+      // The poll response carries the freshly computed verdict.
+      expect(polled.body.api_version).toBe(2);
+      expect(polled.body.api_compatibility).toBe('incompatible');
+      // Health is untouched by the verdict.
+      expect(polled.body.status).toBe('healthy');
+    });
+
+    it('flips api_compatibility incompatible → compatible when a contacted NULL-version unit first reports api_version 1', async () => {
+      // Legacy firmware predating the handshake: contacted but never reported.
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-ver-flip-up',
+        port: 5145,
+        firmware_version: '0.2.0',
+        api_version: null as unknown as number,
+        last_seen: new Date(),
+      });
+
+      const before = await request(app.getHttpServer())
+        .get(`/v1/pico-units/${unit.id}`)
+        .expect(200);
+      expect(before.body.api_compatibility).toBe('incompatible');
+
+      // Unit is reflashed: now reports a supported contract generation.
+      mockedAxios.get.mockResolvedValueOnce({
+        data: {
+          ...structuredClone(sampleDeviceResponse),
+          firmware_version: '0.3.0',
+          api_version: 1,
+        },
+        status: 200,
+      });
+
+      const polled = await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+      expect(polled.body.api_version).toBe(1);
+      expect(polled.body.api_compatibility).toBe('compatible');
+
+      const after = await request(app.getHttpServer())
+        .get(`/v1/pico-units/${unit.id}`)
+        .expect(200);
+      expect(after.body.api_compatibility).toBe('compatible');
     });
 
     it('preserves stored versions when the poll response omits them (older firmware)', async () => {
@@ -752,19 +824,119 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
       });
 
       // sampleDeviceResponse has no firmware_version/api_version keys —
-      // exactly what a pre-Feature-#21 unit sends.
+      // exactly what a legacy unit predating the version handshake sends.
       mockedAxios.get.mockResolvedValueOnce({
         data: sampleDeviceResponse,
         status: 200,
       });
 
-      await request(app.getHttpServer())
+      const polled = await request(app.getHttpServer())
         .post(`/v1/pico-units/${unit.id}/poll`)
         .expect(201);
 
       const updated = await picoRepo.findOneBy({ id: unit.id });
       expect(updated!.firmware_version).toBe('0.2.0');
       expect(updated!.api_version).toBe(2);
+      // Omission preserved the stored out-of-range value ⇒ still flagged.
+      expect(polled.body.api_compatibility).toBe('incompatible');
+    });
+
+    it('ignores malformed version metadata (wrong types) without failing the poll — reading persists, stored values preserved, failed_calls untouched', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-ver-malformed',
+        port: 5142,
+        firmware_version: '0.2.0',
+        api_version: 1,
+      });
+
+      // A Pico sending garbage where the version fields belong: a NUMBER for
+      // firmware_version and a non-numeric STRING for api_version. The poll
+      // path is lenient by design — DeviceResponseDto has no type validators
+      // for these fields, so validation cannot 412, the reading is still
+      // persisted, and touchAndResetFailedCalls ignores both garbage values
+      // (predicate-gated), preserving the last accepted stored values.
+      mockedAxios.get.mockResolvedValueOnce({
+        data: {
+          ...structuredClone(sampleDeviceResponse),
+          firmware_version: 12345,
+          api_version: 'abc',
+        },
+        status: 200,
+      });
+
+      const polled = await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      // Reading persisted normally.
+      expect(polled.body.latest_reading).toBeDefined();
+      expect(await readingsRepo.count()).toBe(1);
+
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      // Malformed metadata ignored — last accepted values survive.
+      expect(updated!.firmware_version).toBe('0.2.0');
+      expect(updated!.api_version).toBe(1);
+      // No failed_calls increment (poll fully succeeded).
+      expect(updated!.failed_calls).toBe(0);
+      expect(updated!.last_seen).not.toBeNull();
+    });
+
+    it('ignores a garbage-string firmware_version and non-integer float api_version while accepting valid siblings of the same poll', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-ver-mixed',
+        port: 5146,
+        firmware_version: '0.2.0',
+        api_version: 1,
+      });
+
+      // firmware_version invalid (suffixes forbidden), api_version valid but
+      // ABOVE the supported range ⇒ stored raw (accept-and-flag).
+      mockedAxios.get.mockResolvedValueOnce({
+        data: {
+          ...structuredClone(sampleDeviceResponse),
+          firmware_version: '0.4.0-rc.1',
+          api_version: 7,
+        },
+        status: 200,
+      });
+
+      const polled = await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      // Invalid SemVer ignored; last accepted version preserved…
+      expect(updated!.firmware_version).toBe('0.2.0');
+      // …while the out-of-range (but well-formed) api_version is STORED.
+      expect(updated!.api_version).toBe(7);
+      expect(polled.body.api_compatibility).toBe('incompatible');
+      expect(await readingsRepo.count()).toBe(1);
+    });
+
+    it('accepts a strict-SemVer firmware_version and an api_version at the MAX bound (flips verdict compatible)', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-ver-good',
+        port: 5147,
+        firmware_version: '0.0.9',
+        api_version: null as unknown as number,
+        last_seen: new Date(),
+      });
+
+      mockedAxios.get.mockResolvedValueOnce({
+        data: {
+          ...structuredClone(sampleDeviceResponse),
+          firmware_version: '1.0.0',
+          api_version: PICO_API_VERSION_MAX,
+        },
+        status: 200,
+      });
+
+      const polled = await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      expect(polled.body.firmware_version).toBe('1.0.0');
+      expect(polled.body.api_compatibility).toBe('compatible');
     });
   });
 

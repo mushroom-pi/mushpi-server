@@ -105,6 +105,8 @@ describe('GET /v1/dashboard/summary (e2e)', () => {
 
     const item = body.units.items[0];
     expect(item.status).toBe('healthy');
+    // Seeded with the default api_version 1 → compatible verdict alongside health.
+    expect(item.api_compatibility).toBe('compatible');
     expect(item.handle).toBe('dash-healthy');
     expect(item.uptimeHours).toBe(2);
     expect(item.lastReading).toBeDefined();
@@ -179,6 +181,63 @@ describe('GET /v1/dashboard/summary (e2e)', () => {
     expect(offlineWarning).toBeDefined();
     expect(offlineWarning.severity).toBe('error');
     expect(offlineWarning.failedCalls).toBe(5);
+  });
+
+  it('incompatible-but-healthy unit: verdict flagged without touching health counts or warnings', async () => {
+    const now = new Date();
+    // api_version ABOVE the supported range → incompatible, but health is
+    // clean (failed_calls/readings/empty all zero) → still counted healthy.
+    await seedPicoUnit(app, {
+      handle: 'dash-incompat-healthy',
+      port: 8013,
+      api_version: 2,
+      last_seen: new Date(now.getTime() - 30_000),
+      failed_calls: 0,
+      failed_readings: 0,
+      consecutive_empty_readings: 0,
+    });
+
+    const body = await fetchSummary();
+
+    expect(body.units.healthy).toBe(1);
+    expect(body.units.degraded).toBe(0);
+    expect(body.units.offline).toBe(0);
+    expect(body.units.total).toBe(1);
+
+    const item = body.units.items[0];
+    expect(item.status).toBe('healthy');
+    expect(item.api_compatibility).toBe('incompatible');
+    // Deliberately NOT folded into warnings — compatibility is not a health warning.
+    expect(body.warnings).toEqual([]);
+  });
+
+  it('never-reported + never-contacted unit → unknown; contacted legacy unit → incompatible; both outside health buckets unchanged', async () => {
+    const now = new Date();
+    // No api_version AND no last_seen ⇒ unknown (server has no basis to judge).
+    await seedPicoUnit(app, {
+      handle: 'dash-unknown',
+      port: 8014,
+      api_version: null as unknown as number,
+      last_seen: undefined,
+    });
+    // No api_version but contacted (last_seen set) ⇒ incompatible (needs update).
+    await seedPicoUnit(app, {
+      handle: 'dash-legacy',
+      port: 8015,
+      api_version: null as unknown as number,
+      last_seen: new Date(now.getTime() - 30_000),
+    });
+
+    const body = await fetchSummary();
+
+    const byHandle = Object.fromEntries(
+      (body.units.items as any[]).map((i) => [i.handle, i]),
+    );
+    expect(byHandle['dash-unknown'].api_compatibility).toBe('unknown');
+    expect(byHandle['dash-legacy'].api_compatibility).toBe('incompatible');
+    // Verdict never leaks into the health counts.
+    expect(body.units.total).toBe(2);
+    expect(body.warnings).toEqual([]);
   });
 
   it('temp deviation warning when control_loop_enabled and temp far from setpoint', async () => {

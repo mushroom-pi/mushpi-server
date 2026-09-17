@@ -100,6 +100,7 @@ describe('OpenAPI schemas (e2e)', () => {
         'micropython_version',
         'firmware_version',
         'api_version',
+        'api_compatibility',
         'board',
         'board_total_mem_byte',
         'board_total_fs_byte',
@@ -107,6 +108,33 @@ describe('OpenAPI schemas (e2e)', () => {
       ]) {
         expect(props).toHaveProperty(key);
       }
+    });
+
+    it('exposes api_compatibility as a REQUIRED enum with all three verdict values', () => {
+      const props = schemas().PicoUnit.properties;
+      expect(props.api_compatibility.enum).toEqual([
+        'compatible',
+        'incompatible',
+        'unknown',
+      ]);
+      // Required + non-nullable: every serialized PicoUnit carries the verdict.
+      expect(schemas().PicoUnit.required).toContain('api_compatibility');
+      expect(props.api_compatibility.nullable).toBeUndefined();
+    });
+  });
+
+  describe('DashboardUnitItemDto', () => {
+    it('exposes api_compatibility as a REQUIRED enum with all three verdict values', () => {
+      const props = schemas().DashboardUnitItemDto.properties;
+      expect(props).toHaveProperty('api_compatibility');
+      expect(props.api_compatibility.enum).toEqual([
+        'compatible',
+        'incompatible',
+        'unknown',
+      ]);
+      expect(schemas().DashboardUnitItemDto.required).toContain(
+        'api_compatibility',
+      );
     });
   });
 

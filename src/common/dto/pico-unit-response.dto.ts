@@ -211,15 +211,19 @@ export class SystemDto {
 
 /* ---------- root DTO ---------- */
 export class DeviceResponseDto {
-  // Optional: reported only by firmware that implements the fields. Older
-  // firmware omits them entirely — validation passes, and the poll path
-  // preserves the stored values.
+  // LENIENT BY DESIGN (poll path; the announce DTO is the strict one): these
+  // two optional fields carry NO type validator so a malformed value (e.g.
+  // firmware_version: 123, api_version: 'abc') can never fail response
+  // validation, increment failed_calls, or block reading persistence. The
+  // declared TS types document the expected shape only. Acceptance is decided
+  // by the service predicates in PicoUnitsService.touchAndResetFailedCalls()
+  // (isValidPicoFirmwareVersion / integer >= PICO_API_VERSION_MIN); rejected
+  // values are ignored and the last accepted stored values are preserved.
+  // Unknown keys are dropped by whitelist:true + forbidNonWhitelisted:false.
   @IsOptional()
-  @IsString()
   firmware_version?: string;
 
   @IsOptional()
-  @IsInt()
   api_version?: number;
 
   @ValidateNested()

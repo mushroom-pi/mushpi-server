@@ -1,7 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 import {
+  PICO_API_COMPATIBILITIES,
   PICO_UNIT_STATUSES,
+  PicoApiCompatibility,
   PicoUnitStatus,
 } from '../../pico-units/pico-unit.type';
 
@@ -61,6 +63,13 @@ export class DashboardUnitItemDto {
 
   @ApiProperty({ enum: PICO_UNIT_STATUSES })
   status!: PicoUnitStatus;
+
+  @ApiProperty({
+    enum: PICO_API_COMPATIBILITIES,
+    description:
+      'Computed api_version contract-generation verdict (same as PicoUnit.api_compatibility) — independent from `status`; deliberately NOT folded into health counts or warnings.',
+  })
+  api_compatibility!: PicoApiCompatibility;
 
   @ApiPropertyOptional({ type: 'integer', nullable: true })
   lastSeenSecondsAgo!: number | null;

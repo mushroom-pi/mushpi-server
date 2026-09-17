@@ -42,7 +42,11 @@ import { PaginatedDto } from 'src/common/dto/paginated-response.dto';
 
 import { PicoUnit } from './pico-unit.entity';
 import { RebootType } from './pico-unit.type';
-import { PICO_API_VERSION_MIN, reboot } from './pico-units.constant';
+import {
+  PICO_API_VERSION_MIN,
+  PICO_FIRMWARE_VERSION_REGEX,
+  reboot,
+} from './pico-units.constant';
 
 export class AnnouncePicoUnitDto {
   @ApiProperty({
@@ -97,13 +101,18 @@ export class AnnouncePicoUnitDto {
     type: String,
     minLength: NAME_MIN_LENGTH,
     maxLength: STANDARD_TEXT_MAX_LENGTH,
+    pattern: PICO_FIRMWARE_VERSION_REGEX.source,
     description:
-      'Version tag for the custom firmware executed by the unit (_SOFTWARE_VERSION in app/state.py)',
+      'Version tag for the custom firmware executed by the unit (_SOFTWARE_VERSION in app/state.py). Strict SemVer `MAJOR.MINOR.PATCH` — pre-release/build suffixes are rejected (mushpi-docs/versioning.md §3.4). Optional: legacy firmware that omits it still announces successfully.',
     examples: ['0.1.0'],
   })
   @IsString()
   @IsOptional()
   @Length(NAME_MIN_LENGTH, STANDARD_TEXT_MAX_LENGTH)
+  @Matches(PICO_FIRMWARE_VERSION_REGEX, {
+    message:
+      'firmware_version must be strict SemVer MAJOR.MINOR.PATCH (no v-prefix, no pre-release/build suffixes)',
+  })
   firmware_version?: string;
 
   @ApiPropertyOptional({
@@ -111,7 +120,7 @@ export class AnnouncePicoUnitDto {
     minimum: PICO_API_VERSION_MIN,
     nullable: true,
     description:
-      'Pico REST API version the firmware implements. Absent/null when the unit predates the field (needs firmware update).',
+      'Pico REST API version the firmware implements. Absent/null when the unit predates the field (needs firmware update). Values ABOVE the server-supported generation are accepted and stored — the `api_compatibility` verdict flags them (accept-and-flag; no @Max bound).',
     example: 1,
   })
   @Type(() => Number)

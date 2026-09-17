@@ -18,6 +18,7 @@ import {
   postWithFallback,
 } from 'src/common/utils/http-fallback';
 
+import { isValidPicoFirmwareVersion } from './pico-unit-compatibility.util';
 import {
   AnnouncePicoUnitDto,
   CreatePicoUnitDto,
@@ -122,6 +123,13 @@ export class PicoUnitsService {
         description: `Pico unit ${dto.handle} is not reachable at http://${dto.handle}.local:${PORT_DEFAULT}/ping`,
       });
     }
+
+    // The successful /ping IS contact evidence — record it so the computed
+    // api_compatibility verdict can distinguish "never reported, contacted"
+    // (incompatible — firmware predates the handshake) from "never reported,
+    // never contacted" (unknown). Without this a manually created unit would
+    // misclassify as `unknown` until the first cron poll.
+    unit.last_seen = new Date();
 
     const saved = await this.picoUnitRepo.save(unit);
     this.eventEmitter.emit(
@@ -293,9 +301,18 @@ export class PicoUnitsService {
     unit.failed_calls = 0;
     if (mac && !unit.mac) unit.mac = mac;
     // Firmware-reported versions self-heal from the poll response, but ONLY
-    // when the unit actually sent them: `undefined`/`null` (older firmware
-    // predates both fields) preserves the stored value — never overwrite.
-    if (reportedVersions?.firmware_version != null)
+    // when the unit actually sent a USABLE value: `undefined`/`null` (older
+    // firmware predates both fields) or a malformed value preserves the last
+    // accepted stored value — never clobber. The poll path is deliberately
+    // LENIENT (announce is the strict one): garbage here is ignored, never an
+    // error, and must not affect failed_calls or reading persistence.
+    // api_version keeps its existing storage condition (>= MIN, integers only,
+    // values ABOVE PICO_API_VERSION_MAX are still stored — accept-and-flag;
+    // PICO_API_VERSION_MAX is verdict-only via the api_compatibility getter).
+    if (
+      reportedVersions?.firmware_version != null &&
+      isValidPicoFirmwareVersion(reportedVersions.firmware_version)
+    )
       unit.firmware_version = reportedVersions.firmware_version;
     const apiVersion = Number(reportedVersions?.api_version);
     if (

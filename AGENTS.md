@@ -28,7 +28,7 @@ yarn start     # Must boot without exceptions
 ## Module Layout
 
 ```
-pico-units/   — CRUD + ping proxy
+pico-units/   — CRUD + ping proxy + computed api_compatibility verdict (pico-unit-compatibility.util.ts)
 readings/     — readings storage + time-range queries (incl. CSV export)
 batches/      — batch CRUD + lifecycle rules + create-recipe-from-batch
 recipes/      — recipe CRUD + image upload/removal + per-recipe batch listing
@@ -108,6 +108,7 @@ Use `@IsInt()`, `{ type: 'integer' }` in TypeORM, `{ type: 'integer' }` in Swagg
 
 - **Batch `status`**: `'planned'` (`start_at > now`) / `'in-progress'` / `'finished'` (`finish_at < now`). Requires `@Expose()` + `@ApiProperty()`.
 - **PicoUnit `status`**: `'unmonitored'` / `'offline'` / `'degraded'` / `'healthy'` derived from `monitored`, `failed_calls` (threshold 3), `failed_readings`, `consecutive_empty_readings`. Requires `@Expose()` + `@ApiProperty({ enum: PICO_UNIT_STATUSES })`. Canonical values array/type live in `pico-unit.type.ts`.
+- **PicoUnit `api_compatibility`**: `'compatible'` / `'incompatible'` / `'unknown'` — a **computed, required, non-nullable** `@Expose()` getter (NO `@Column`, no migration, no cron) judging the `api_version` contract generation ONLY. It is **separate from `status`/health** (a unit can be `healthy` AND `incompatible` at once) and is mirrored onto `DashboardUnitItemDto.api_compatibility` (not folded into health counts/warnings). Predicate lives in `pico-unit-compatibility.util.ts`; `PICO_API_VERSION_MAX` is **verdict-only, never a validation bound** — out-of-range values are accepted-and-flagged, not rejected. Version ingestion is **strict on announce** (`firmware_version` validated as strict SemVer via `PICO_FIRMWARE_VERSION_REGEX`; announce 422s malformed versions) but **lenient on poll** (malformed `GET /` version metadata is ignored, never throws, never blocks the reading — see REFERENCE.md for the resolution table + poll-leniency rule). Canonical values array/type + `PicoApiCompatibility` live in `pico-unit.type.ts`.
 
 ### Data integrity
 

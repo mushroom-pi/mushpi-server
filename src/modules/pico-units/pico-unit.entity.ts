@@ -4,7 +4,13 @@ import { Expose, Transform } from 'class-transformer';
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 
 import { Readings } from '../readings/readings.entity';
-import { PICO_UNIT_STATUSES, PicoUnitStatus } from './pico-unit.type';
+import { getPicoApiCompatibility } from './pico-unit-compatibility.util';
+import {
+  PICO_API_COMPATIBILITIES,
+  PICO_UNIT_STATUSES,
+  PicoApiCompatibility,
+  PicoUnitStatus,
+} from './pico-unit.type';
 import {
   OFFLINE_FAILED_CALLS_THRESHOLD,
   PICO_API_VERSION_MIN,
@@ -229,6 +235,21 @@ export class PicoUnit {
     )
       return 'degraded';
     return 'healthy';
+  }
+
+  // Intentionally snake_case despite the camelCase-getters convention — the
+  // field name `api_compatibility` is a locked API-contract decision matching
+  // the stored-column naming clients already read (`api_version`,
+  // `firmware_version`). Computed, NOT stored; no @Column.
+  // Independent from `status`: a unit can be `healthy` AND `incompatible`.
+  @Expose()
+  @ApiProperty({
+    enum: PICO_API_COMPATIBILITIES,
+    description:
+      'Computed (not stored) verdict on the Pico↔Server `api_version` contract generation ONLY: compatible (reported version within the supported range), incompatible (reported version outside the range, or the unit has contact evidence but never reported a version — firmware predates the handshake and needs an update), unknown (never reported and never contacted — the server has no basis to judge). Separate from `status`: a unit can be healthy and incompatible simultaneously.',
+  })
+  get api_compatibility(): PicoApiCompatibility {
+    return getPicoApiCompatibility(this.api_version, this.last_seen != null);
   }
 
   @OneToMany(() => Readings, (r) => r.pico_unit)
