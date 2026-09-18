@@ -22,7 +22,7 @@ Long-tail gotchas and detailed conventions. **Load only when the task touches th
 - [Config](#config) — `CustomConfigService` getter grouping philosophy
 - [Dependency Remediation Notes](#dependency-remediation-notes) — node-gyp/native builds, the multer `resolutions` pin + removal condition, the knip nested-repo gitignore hazard (`--no-gitignore` mitigation)
 - [Tooling & Style Deviations](#tooling--style-deviations) — tsconfig strictness disabled; `settings.v1.controller.ts` branching (skill deviations)
-- [Raw SQL](#raw-sql) — SQLite datetime conversion for `repository.query()`; aggregation response shape (`AggregatedReadingsResponseDto`)
+- [Raw SQL](#raw-sql) — SQLite datetime conversion for raw SQL + QueryBuilder string predicates; aggregation response shape (`AggregatedReadingsResponseDto`)
 - [Local Verification](#local-verification-smoke-boot-without-disturbing-a-live-instance) — smoke-booting on throwaway paths without touching a live instance
 - [E2E Gotchas](#e2e-gotchas) — jest worker/mocking/fixture quirks
 
@@ -426,12 +426,13 @@ Known, deliberate deviations from the loaded skills — do not "fix" them silent
 
 ## Raw SQL
 
-When using `repository.query()` for raw SQL (e.g., window functions like `NTILE`), the `ts` column (TypeORM `datetime` type) is stored as `YYYY-MM-DD HH:MM:SS.SSS` — no `T` and no `Z`. ISO strings from `Date.toISOString()` compare incorrectly via lexicographic ordering against this format. Always convert:
+For **any raw SQL** — `repository.query()` (e.g., window functions like `NTILE`) **and QueryBuilder string predicates** (e.g. `.where('ts < :cutoff', …)`) — the `ts` column (TypeORM `datetime` type) is stored as `YYYY-MM-DD HH:MM:SS.SSS` — no `T` and no `Z`. ISO strings from `Date.toISOString()` compare incorrectly via lexicographic ordering against this format (ASCII `' '` sorts below `'T'`, so a stored datetime on the cutoff calendar day compares less than an ISO cutoff). Any place an ISO/JS string is bound against a `ts`-style SQLite datetime column must be converted first. Always convert:
 
 - **Input**: `Date.toISOString()` → `YYYY-MM-DD HH:MM:SS.SSS` before passing to WHERE clauses.
 - **Output**: query result timestamps → ISO string (`replace(' ', 'T') + 'Z'`) before returning to callers.
+- **Exempt**: TypeORM `Date` find-operators (`Between`, `LessThan`, `LessThanOrEqual`, `MoreThan`, `MoreThanOrEqual`) bind `Date` objects, which the driver converts safely — prefer them; the trap only exists where a raw *string* is bound or inlined against a datetime column.
 
-The private `toSqliteDatetime()` method in `ReadingsService` (`src/modules/readings/readings.service.ts`) handles input conversion. Raw query results come back with SQLite-native format — convert in the service before returning DTOs.
+The private `toSqliteDatetime()` method in `ReadingsService` (`src/modules/readings/readings.service.ts`) handles input conversion. Raw query results come back with SQLite-native format — convert in the service before returning DTOs. **Concrete regression (readings retention cleanup)**: the nightly retention cleanup `deleteOlderThanMonths()` bound `cutoff.toISOString()` in a QB string predicate and silently deleted the entire cutoff calendar day (up to ~24 h of readings); it now binds `toSqliteDatetime(cutoff)` — pinned by the boundary test in `test/pico-unit-id-readings.e2e-spec.ts`.
 
 **Aggregation response shape** (`GET …/readings`, unit and batch): `AggregatedReadingsResponseDto` { `data`: `AggregatedReadingDto[]` — per-bucket avg/min/max of temperature/humidity, relay on-counts, and the setpoints active in the bucket — `points`: requested bucket count, `actualReadings`: raw row count in the window }. There is **no** `AggregatedReading` class — the bucket DTO is `AggregatedReadingDto` (`readings.dto.ts`).
 
@@ -466,3 +467,12 @@ kill "$SMOKE_PID"
 - **POST endpoints return 201 by default** unless `@HttpCode()` is specified. Test assertions expecting 200 must either add the decorator or assert 201.
 - **`ServeStaticModule` is inert under `Test.createTestingModule()`** — its `AbstractLoader` provider resolves to `NoopLoader` at compile time (no HTTP adapter exists until `createNestApplication()`), so `onModuleInit()` no-ops and static routes never register. To test static/SPA serving, opt in via `createModuleFixture({ withServeStatic: true })`, which does `overrideProvider(AbstractLoader).useClass(ExpressLoader)` (both from `@nestjs/serve-static`). Set any env the `useFactory` reads (e.g. `CLIENT_DIST_DIR`) **before** building the fixture.
 - **Never call `app.listen()` in `createTestApp()` or any spec.** Binding a real socket keeps the Jest worker alive at exit (some specs, e.g. monitoring, never `closeTestApp`) and hangs the suite — the `forceExit`-free exit relies on no listening sockets. Every spec that creates an app must `closeTestApp(app)` in `afterAll`.
+- **`expect(value, 'message')` does not exist in Jest 30 — carry failure text in an object key instead.** The Playwright/Chai-style second argument is not Jest's API and the custom message is *never* applied: `@types/jest`'s `Expect` call signature is single-arg, so a 2-arg call fails to compile under ts-jest (`TS2554: Expected 1 arguments, but got 2`), and the installed `expect@30.2.0` throws `Expect takes at most one argument.` at the call itself (verified empirically against the installed package). The idiom the `deleteOlderThanMonths()` boundary test in `test/pico-unit-id-readings.e2e-spec.ts` uses is a boolean-equality assertion whose **keys carry the message**, so the descriptive text surfaces verbatim in the failure diff:
+  ```ts
+  expect({
+    'row at cutoff must survive deleteOlderThanMonths (strict <)':
+      (await repo.findOneBy({ id: atCutoff.id })) !== null,
+  }).toEqual({ 'row at cutoff must survive deleteOlderThanMonths (strict <)': true });
+  ```
+- **Plain-`Date` fixtures are byte-faithful for boundary tests.** The better-sqlite3 driver stores a JS `Date` bound to a `datetime` column as exactly `YYYY-MM-DD HH:MM:SS.SSS` — the stored format already documented in [Timezone](#timezone) — which is byte-identical to what `toSqliteDatetime()` emits. That identity is *why* seeding a fixture with a plain `Date` is faithful for boundary tests against `ts`-style columns (e.g. `deleteOlderThanMonths()`'s strict `<` cutoff): the stored row text and the string the query binds land in the same format, with no ISO-`T`-vs-space skew.
+- **Fake timers are safe in the e2e path**: better-sqlite3 is fully synchronous and native microtasks (promises) are unaffected by sinon-style fake timers, so `jest.useFakeTimers({ now: ... })` freezes cutoff arithmetic without stalling awaited DB writes or supertest flows — restore with `jest.useRealTimers()` in a `finally`.
