@@ -31,6 +31,12 @@ describe('OpenAPI schemas (e2e)', () => {
 
   const schemas = () => doc.components.schemas;
 
+  describe('Path-level contract', () => {
+    it('does not expose /metrics (Prometheus endpoint removed)', () => {
+      expect(doc.paths).not.toHaveProperty('/metrics');
+    });
+  });
+
   describe('Recipe', () => {
     it('contains all expected properties', () => {
       const props = schemas().Recipe.properties;

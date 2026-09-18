@@ -4,7 +4,6 @@ import * as fs from 'fs';
 import * as os from 'os';
 import { version } from 'package.json';
 import * as path from 'path';
-import client from 'prom-client';
 
 import {
   databases as configDb,
@@ -26,14 +25,10 @@ import {
 @Injectable()
 export class MonitoringService {
   private readonly logger = new Logger(MonitoringService.name);
-  private readonly promRegister = new client.Registry();
-  private readonly promMetrics = client.collectDefaultMetrics;
   constructor(
     private readonly configService: CustomConfigService,
     private readonly sqliteHealthService: SQLiteHealthService,
-  ) {
-    this.promMetrics({ register: this.promRegister });
-  }
+  ) {}
 
   private toMB(n: number): number {
     return parseFloat((n / 1024 / 1024).toFixed(2));
@@ -184,9 +179,5 @@ export class MonitoringService {
     }
 
     return healthCheck;
-  }
-
-  async metrics() {
-    return await this.promRegister.metrics();
   }
 }

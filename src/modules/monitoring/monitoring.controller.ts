@@ -39,28 +39,4 @@ export class MonitoringController {
   health(@Query() query: HealthCheckQueryDto) {
     return this.monitoringService.health(query);
   }
-
-  @ApiTags('no-validation')
-  @Get('metrics')
-  @ApiOperation({
-    summary:
-      'Use a Prometheus client to gather default metrics for Grafana monitoring',
-  })
-  @ApiOkResponse({
-    description:
-      'Grafana-ready metrics without any extra formatting from the server side',
-    schema: {
-      example: `# HELP process_cpu_user_seconds_total Total user CPU time spent in seconds.
-        # TYPE process_cpu_user_seconds_total counter
-        process_cpu_user_seconds_total 0.122049
-
-        # HELP process_cpu_system_seconds_total Total system CPU time spent in seconds.
-        # TYPE process_cpu_system_seconds_total counter
-        process_cpu_system_seconds_total 0.014626...`,
-    },
-    type: String,
-  })
-  metrics() {
-    return this.monitoringService.metrics();
-  }
 }

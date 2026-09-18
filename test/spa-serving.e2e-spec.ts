@@ -110,8 +110,13 @@ describe('SPA serving (enabled)', () => {
       expect(res.headers['content-type']).toMatch(/json/);
     });
 
-    it('GET /metrics → 200', () => {
-      return request(app.getHttpServer()).get('/metrics').expect(200);
+    it('GET /metrics → SPA shell 200 text/html (metrics route removed → caught by SPA fallback)', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/metrics')
+        .expect(200);
+
+      expect(res.headers['content-type']).toMatch(/text\/html/);
+      expect(res.text).toContain('mushpi-spa-fixture-root');
     });
   });
 

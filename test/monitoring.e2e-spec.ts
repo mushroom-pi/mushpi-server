@@ -163,8 +163,12 @@ describe('AppController (e2e)', () => {
   });
 
   describe('GET /metrics', () => {
-    it('should return Prometheus metrics with status 200', () => {
-      return request(app.getHttpServer()).get('/metrics').expect(200);
+    it('should return 404 (Prometheus metrics endpoint has been removed)', async () => {
+      const res = await request(app.getHttpServer()).get('/metrics');
+
+      // Route no longer exists on MonitoringController, and this fixture runs
+      // without ServeStaticModule, so Nest's default not-found handler answers.
+      expect(res.status).toBe(404);
     });
   });
 

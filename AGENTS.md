@@ -51,7 +51,7 @@ test/jest-e2e.json — e2e jest config (maxWorkers: 1)
 
 URI versioning (`VersioningType.URI`, `defaultVersion: API_VERSION` = `'1'`, `src/common/utils/api-version.ts`): all functional endpoints under `/v1/`. Sole exception: `MonitoringController` (`@Controller({ version: VERSION_NEUTRAL })`). All other controllers carry a `V1` class/filename suffix (`batches.v1.controller.ts` → `BatchesV1Controller`), stripped from operationIds by a custom factory — sites/factory/workarounds: REFERENCE.md §API Versioning Internals.
 
-## REST API — 41 operations
+## REST API — 40 operations
 
 | Method | Path | Notes |
 |---|---|---|
@@ -95,7 +95,6 @@ URI versioning (`VersioningType.URI`, `defaultVersion: API_VERSION` = `'1'`, `sr
 | PATCH | /v1/settings | IANA-validated |
 | GET | /ping | Liveness |
 | GET | /health | server/system/databases/services (query-gated) |
-| GET | /metrics | Prometheus |
 
 ## Entities & Columns
 

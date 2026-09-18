@@ -70,7 +70,6 @@ export class PinoLoggerModule {
                 transport,
               },
               exclude: [
-                { method: RequestMethod.ALL, path: 'metrics' },
                 { method: RequestMethod.ALL, path: 'health' },
                 { method: RequestMethod.ALL, path: 'ping' },
               ],
