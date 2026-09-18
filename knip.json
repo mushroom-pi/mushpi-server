@@ -1,5 +1,4 @@
 {
-  "entry": ["src/main.ts"],
-  "project": ["src/**/*.ts", "test/**/*.ts"],
-  "ignoreBinaries": ["audit"]
+  "entry": ["src/main.ts", "src/modules/sqlite/data-source.ts", "test/**/*.e2e-spec.ts"],
+  "project": ["src/**/*.ts", "test/**/*.ts"]
 }

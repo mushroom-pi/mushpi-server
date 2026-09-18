@@ -20,7 +20,7 @@ Long-tail gotchas and detailed conventions. **Load only when the task touches th
 - [Migrations](#migrations) — directory, naming, barrel registration, baseline convention, prod `migrationsRun`
 - [Environment Variables](#environment-variables) — key env var table (full generated reference: `docs/ENVIRONMENT.md`)
 - [Config](#config) — `CustomConfigService` getter grouping philosophy
-- [Dependency Remediation Notes](#dependency-remediation-notes) — node-gyp/native builds, the multer `resolutions` pin + removal condition, `knip:ci` nested-repo false positive
+- [Dependency Remediation Notes](#dependency-remediation-notes) — node-gyp/native builds, the multer `resolutions` pin + removal condition, the knip nested-repo gitignore hazard (`--no-gitignore` mitigation)
 - [Tooling & Style Deviations](#tooling--style-deviations) — tsconfig strictness disabled; `settings.v1.controller.ts` branching (skill deviations)
 - [Raw SQL](#raw-sql) — SQLite datetime conversion for `repository.query()`; aggregation response shape (`AggregatedReadingsResponseDto`)
 - [Local Verification](#local-verification-smoke-boot-without-disturbing-a-live-instance) — smoke-booting on throwaway paths without touching a live instance
@@ -410,9 +410,11 @@ Gotchas from the production-advisory backlog clearance (recursive lockfile refre
 - `resolutions.multer = "2.3.0"` exists because `@nestjs/platform-express@11.2.5` hard-pins `multer: 2.2.0`, which carries **4 advisories (3 high)** — fixed in 2.3.0. **Removal condition:** drop the pin once Nest permits `>= 2.3.0`.
 - A `resolutions` entry overrides parents' declared ranges and does not expire — each one needs its rationale and removal condition recorded here (or in its commit message) the day it is added.
 
-### `knip:ci` false positive in the nested-repo sandbox
+### `knip:ci` in the nested-repo sandbox (gitignore hazard — mitigated)
 
-- When run from the parent `mushroom-pi` workspace, `knip` walks ancestor `.gitignore` files, and the parent root `.gitignore` begins with `*` — so it treats every project file as ignored, analyses **zero** source files, and reports a large set of bogus "unused dependencies". Environmental, not a code problem: it does not occur in a standalone checkout or in CI. If `knip:ci` suddenly flags half of `package.json`, confirm you are running inside `mushpi-server/` before investigating.
+- Knip has no concept of repo boundaries: it walks ancestor directories from the cwd collecting every `.gitignore` it finds and filters its project-file set against the union. Inside the parent `mushroom-pi` orchestrator checkout — whose root `.gitignore` begins with `*` — that makes **every** `mushpi-server` file look ignored: zero sources analysed, and every production dependency reported as a bogus "unused dependency" (exit 1). Git itself never applies a parent repo's ignore to the nested `mushpi-server` repo; only knip's ignore emulation crosses the boundary.
+- **Mitigation (in place):** the `knip:ci` script passes `--no-gitignore` — knip 5.x has no config-file equivalent (CLI-only flag). CI's Prune step and the `pre-push` hook both go through `yarn knip:ci`, so they share the fix. Safe here because `knip.json`'s `project` globs are explicit (`src/**/*.ts`, `test/**/*.ts`) and a clean checkout has no gitignored `.ts` under either. An ad-hoc full scan in this sandbox still needs the flag: `yarn knip --no-gitignore`.
+- `knip.json` also declares `test/**/*.e2e-spec.ts` as `entry`: knip's jest plugin only reads `testMatch` (never `testRegex`) and cannot discover `test/jest-e2e.json` by filename, so without it all e2e specs report as unused files and `supertest`/`@types/supertest` as unused devDependencies.
 
 ## Tooling & Style Deviations
 

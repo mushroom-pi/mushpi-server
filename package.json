@@ -12,7 +12,7 @@
     "build": "nest build",
     "docs:env": "ts-node docs/env-vars.generator.ts",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "knip:ci": "knip --dependencies --exclude devDependencies",
+    "knip:ci": "knip --dependencies --exclude devDependencies --no-gitignore",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",

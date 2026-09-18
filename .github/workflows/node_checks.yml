@@ -30,7 +30,7 @@ jobs:
         run: yarn install
 
       - name: Prune
-        run: yarn knip --dependencies --exclude devDependencies
+        run: yarn knip:ci
 
       - name: Audit dependencies
         run: yarn audit:ci
