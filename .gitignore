@@ -68,3 +68,11 @@ data
 
 # Bruno collection (regenerated from OpenAPI spec)
 /spec/bruno
+
+# Yarn 4 — track configuration/patches, ignore regenerable caches
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
