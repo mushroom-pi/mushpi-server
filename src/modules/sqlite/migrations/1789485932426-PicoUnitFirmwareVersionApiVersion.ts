@@ -1,11 +1,11 @@
 /**
  * PicoUnit.software_version → firmware_version rename + new nullable api_version.
  *
- * Features #21/#22 (storage half): firmware_version is the existing column
- * renamed (all stored values preserved — pure rename, no data loss);
+ * Pico version metadata (storage half): firmware_version is the existing
+ * column renamed (all stored values preserved — pure rename, no data loss);
  * api_version carries the Pico↔Server REST contract generation. NULL means
  * "the unit has never reported it" — the seed of the "needs firmware update"
- * state in Feature #22.
+ * state in the computed `api_compatibility` verdict.
  *
  * Statements are guarded with hasColumn() so the migration is a no-op on
  * databases that already match the new shape — the same "safe against
