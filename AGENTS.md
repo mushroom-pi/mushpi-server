@@ -114,7 +114,8 @@ Computed `@Expose()` getters: `PicoUnit` host, address, ipAddress, status, api_c
 | Group | Script | Notes |
 |---|---|---|
 | build | `build` |
-| lint | `lint` | eslint --fix (.ts only) |
+| lint | `lint` | eslint --fix (.ts only; local autofixing variant) |
+| lint | `lint:ci` | same paths, no --fix, `--max-warnings=0` (CI variant; fails instead of rewriting) |
 | lint | `format` | prettier (.ts only; agent .md excluded) |
 | test | `test` | jest unit |
 | test | `test:watch` | |

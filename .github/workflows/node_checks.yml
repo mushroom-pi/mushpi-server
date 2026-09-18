@@ -39,7 +39,7 @@ jobs:
         run: yarn build
 
       - name: Lint
-        run: yarn lint
+        run: yarn lint:ci
 
       - name: Unit tests
         run: yarn test
