@@ -142,7 +142,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -348,7 +348,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -493,7 +493,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -625,7 +625,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -746,7 +746,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -874,7 +874,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -990,7 +990,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -1117,7 +1117,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -1263,7 +1263,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -1425,7 +1425,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -1591,7 +1591,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -1734,7 +1734,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -1887,7 +1887,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -2032,7 +2032,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -2171,7 +2171,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -2315,7 +2315,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -2436,7 +2436,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -2576,7 +2576,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -2692,7 +2692,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -2848,7 +2848,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -2989,7 +2989,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -3120,7 +3120,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -3266,7 +3266,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -3396,7 +3396,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -3517,7 +3517,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -3645,7 +3645,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -3766,7 +3766,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -3892,7 +3892,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -4008,7 +4008,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -4154,7 +4154,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -4316,7 +4316,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -4445,7 +4445,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -4588,7 +4588,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -4743,7 +4743,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -4904,7 +4904,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -5060,7 +5060,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -5326,7 +5326,7 @@ paths:
                     example:
                       - propertyA has wrong value "...", [constrains]
                       - propertyB has wrong value "...", [constrains]
-                      - '...'
+                      - ...
                     description: The sort of error message you can expect
                   emitter:
                     type: string
@@ -5936,6 +5936,7 @@ components:
         latest_reading:
           nullable: true
           description: Latest reading row for this unit (computed, not stored)
+          type: object
           allOf:
             - $ref: '#/components/schemas/Readings'
       required:
@@ -6260,11 +6261,13 @@ components:
         latest_reading:
           nullable: true
           description: Latest reading row for this unit (computed, not stored)
+          type: object
           allOf:
             - $ref: '#/components/schemas/Readings'
         devices:
           nullable: true
           description: Live devices block from the latest Pico poll response — not persisted
+          type: object
           allOf:
             - $ref: '#/components/schemas/DevicesDto'
       required:
@@ -6576,6 +6579,7 @@ components:
         recipe:
           nullable: true
           description: Expanded recipe (loaded by list/detail endpoints; null when no recipe is linked)
+          type: object
           allOf:
             - $ref: '#/components/schemas/Recipe'
         status:
@@ -7013,10 +7017,12 @@ components:
           type: boolean
         lastReading:
           nullable: true
+          type: object
           allOf:
             - $ref: '#/components/schemas/DashboardLastReadingDto'
         activeBatch:
           nullable: true
+          type: object
           allOf:
             - $ref: '#/components/schemas/DashboardActiveBatchDto'
       required:
