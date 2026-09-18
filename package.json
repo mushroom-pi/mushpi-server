@@ -101,6 +101,9 @@
     "typescript": "5.5.4",
     "typescript-eslint": "^8.45.0"
   },
+  "resolutions": {
+    "multer": "2.3.0"
+  },
   "jest": {
     "moduleFileExtensions": [
       "js",
