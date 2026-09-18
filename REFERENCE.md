@@ -184,7 +184,7 @@ The server code (NestJS decorators) is the **source of truth** for the REST API.
 
 ### Git hooks (Husky)
 
-- **`pre-commit`**: detects `src/` changes and automatically runs `yarn spec:all`, then stages `spec/openapi.json` and `spec/openapi.yaml`. No `src/` changes → skipped. This keeps the committed spec in lockstep with the code.
+- **`pre-commit`**: runs `yarn format` + `yarn lint`, then detects `src/` changes and automatically runs `yarn spec:all`, staging `spec/openapi.json` and `spec/openapi.yaml` (no `src/` changes → skipped). `yarn build` runs **last**, after the generator blocks, so it validates exactly the content being committed. This keeps the committed spec in lockstep with the code.
 - **`commit-msg`**: runs commitlint (Conventional Commits). `body-max-line-length: 100` is enforced — precomposed multi-line commit bodies routinely violate it. A rejection aborts **before** the commit object is written, leaving staging intact: re-wrap the message and retry with a fresh commit rather than amending.
 - **Yarn 4 does not run the root `prepare` script on a plain `yarn install`** once dependencies are cached, so an absent/broken `.husky/_` is *not* repaired by `yarn install` alone. Reinstall the hooks with `yarn prepare` (or `rm -rf .husky/_ && yarn prepare`), then confirm `git config core.hooksPath` is `.husky/_`.
 

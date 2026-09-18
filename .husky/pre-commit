@@ -1,3 +1,4 @@
+# Make the code as readable as possible
 yarn format
 yarn lint
 
@@ -24,3 +25,6 @@ if git diff --cached --name-only | grep -qE '^src/'; then
 else
   echo "⏩ No src/ changes - skipping spec regeneration"
 fi
+
+# Finally, check build integrity
+yarn build

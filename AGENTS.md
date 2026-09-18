@@ -141,7 +141,7 @@ Computed `@Expose()` getters: `PicoUnit` host, address, ipAddress, status, api_c
 | hooks | `prepare` | husky |
 | prune | `knip:ci` | unused prod deps (`--no-gitignore` — nested-repo gotcha, REFERENCE.md) |
 
-**Husky pre-commit**: `yarn format` + `yarn lint`; regenerates + stages `docs/ENVIRONMENT.md` on `config.schema.ts` change; runs `yarn spec:all` + stages the spec files on `src/` change. `commit-msg` = commitlint; `pre-merge-commit` = test + e2e; `pre-push` = audit:ci → build → knip:ci → test → e2e (both audit scripts exclude deprecations).
+**Husky pre-commit**: `yarn format` + `yarn lint`; regenerates + stages `docs/ENVIRONMENT.md` on `config.schema.ts` change; runs `yarn spec:all` + stages the spec files on `src/` change; `yarn build` runs last, after the generators, so it validates exactly the content being committed. `commit-msg` = commitlint; `pre-merge-commit` = test + e2e; `pre-push` = audit:ci → build → knip:ci → test → e2e (both audit scripts exclude deprecations).
 
 ## Env & Config
 
