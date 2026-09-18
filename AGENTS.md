@@ -138,7 +138,7 @@ Computed `@Expose()` getters: `PicoUnit` host, address, ipAddress, status, api_c
 | start | `start:dev` | --watch |
 | start | `start:debug` | --debug --watch |
 | start | `start:prod` | node dist/src/main.js |
-| hooks | `prepare` | husky install |
+| hooks | `prepare` | husky |
 | prune | `knip:ci` | unused prod deps |
 
 **Husky pre-commit**: `yarn format` + `yarn lint`; regenerates + stages `docs/ENVIRONMENT.md` on `config.schema.ts` change; runs `yarn spec:all` + stages the spec files on `src/` change. `commit-msg` = commitlint; `pre-merge-commit` = test + e2e; `pre-push` = audit:prod, build, knip:ci, test, e2e.

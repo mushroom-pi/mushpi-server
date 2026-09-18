@@ -10,7 +10,7 @@ Long-tail gotchas and detailed conventions. **Load only when the task touches th
 - [Batch Lifecycle & Relation Loading](#batch-lifecycle--relation-loading) — create/update constraints, recipe template snapshot, immutable FKs, selective relation loading
 - [Image Uploads & Static Serving](#image-uploads--static-serving) — recipe/batch image uploads, ServeStaticModule, SPA serving, static CORS, helmet CSP
 - [API Versioning Internals](#api-versioning-internals) — version application sites, `operationIdFactory`, middleware×versioning workarounds, named wildcards, `main.ts` coverage gap
-- [Spec Tooling Internals](#spec-tooling-internals) — generated artifacts table, Husky git hooks, runtime-vs-export title, SwaggerModule dual wiring, ts-node script conventions
+- [Spec Tooling Internals](#spec-tooling-internals) — generated artifacts table, Husky git hooks, runtime-vs-export title, SwaggerModule dual wiring, ts-node script conventions, generator-version churn of committed `spec/`
 - [Release Versioning](#release-versioning) — package-version bump policy, post-bump spec regeneration, `release.json`/tags prohibition (moved from core)
 - [Cron Polling](#cron-polling) — sweep overlap/parallelism, readings ingestion funnel & quality gates, MAC/version refresh, time-windowed state changes, proxy-vs-batch poll visibility split
 - [Pass-Through & Response Shape](#pass-through--response-shape) — non-persisted response fields, `@ApiProperty` coverage rule, validation-pipe safety, `forbidNonWhitelisted`, GPIO pin validation
@@ -20,6 +20,7 @@ Long-tail gotchas and detailed conventions. **Load only when the task touches th
 - [Migrations](#migrations) — directory, naming, barrel registration, baseline convention, prod `migrationsRun`
 - [Environment Variables](#environment-variables) — key env var table (full generated reference: `docs/ENVIRONMENT.md`)
 - [Config](#config) — `CustomConfigService` getter grouping philosophy
+- [Dependency Remediation Notes](#dependency-remediation-notes) — node-gyp/native builds, the multer `resolutions` pin + removal condition, `knip:ci` nested-repo false positive
 - [Tooling & Style Deviations](#tooling--style-deviations) — tsconfig strictness disabled; `settings.v1.controller.ts` branching (skill deviations)
 - [Raw SQL](#raw-sql) — SQLite datetime conversion for `repository.query()`; aggregation response shape (`AggregatedReadingsResponseDto`)
 - [Local Verification](#local-verification-smoke-boot-without-disturbing-a-live-instance) — smoke-booting on throwaway paths without touching a live instance
@@ -184,7 +185,7 @@ The server code (NestJS decorators) is the **source of truth** for the REST API.
 ### Git hooks (Husky)
 
 - **`pre-commit`**: detects `src/` changes and automatically runs `yarn spec:all`, then stages `spec/openapi.json` and `spec/openapi.yaml`. No `src/` changes → skipped. This keeps the committed spec in lockstep with the code.
-- **`commit-msg`**: runs commitlint (Conventional Commits).
+- **`commit-msg`**: runs commitlint (Conventional Commits). `body-max-line-length: 100` is enforced — precomposed multi-line commit bodies routinely violate it. A rejection aborts **before** the commit object is written, leaving staging intact: re-wrap the message and retry with a fresh commit rather than amending.
 - **Yarn 4 does not run the root `prepare` script on a plain `yarn install`** once dependencies are cached, so an absent/broken `.husky/_` is *not* repaired by `yarn install` alone. Reinstall the hooks with `yarn prepare` (or `rm -rf .husky/_ && yarn prepare`), then confirm `git config core.hooksPath` is `.husky/_`.
 
 ### `setupSwagger()` at runtime vs spec export
@@ -198,6 +199,10 @@ The server code (NestJS decorators) is the **source of truth** for the REST API.
 ### Script conventions (ts-node)
 
 Scripts that import TypeScript source using `src/*` path aliases (e.g. `spec/generators/`, `docs/`) require `tsconfig-paths/register`. The `typeorm` CLI script follows the same pattern.
+
+### Committed `spec/` is sensitive to generator versions
+
+`spec/openapi.json` and `spec/openapi.yaml` are outputs of `@nestjs/swagger` + `js-yaml`, so a lockfile refresh can dirty them with pure **emitter churn** even when nothing in `src/` changed (observed: swagger 11.4 adds a redundant sibling `type: object` next to `allOf`-composed properties; js-yaml 5 changed quoting of `'...'` in example arrays). Practical consequence: run `yarn spec:all` and commit the result **alongside any dependency-refresh commit**, even one that doesn't touch `src/` — the pre-commit hook only regenerates on `src/` changes, so otherwise the churn surfaces later in an unrelated commit.
 
 ## Release Versioning
 
@@ -388,6 +393,26 @@ Schema changes for production (`NODE_ENV=prod`, where `synchronize: false`) requ
 ## Config
 
 `CustomConfigService` exposes typed getters grouped by **domain area** — not by "what kind of value" (string, secret, etc.). The `security` getter is reserved for **cross-cutting/infra** concerns (global auth, rate limiting, event-loop protection). Domain-specific secrets belong in their own domain getter (e.g., `pico.announceSecret` for Pico-hardware trust, not `security.picoAnnounceSecret`). The `client` getter holds client-domain config — `clientUrl` (the CORS allowed origin, used in local dev) and `distDir` (the served SPA path) — so CORS lives beside the other client concerns rather than in `security`. This keeps domain concerns colocated and prevents the `security` getter from becoming a grab-bag.
+
+## Dependency Remediation Notes
+
+Gotchas from the production-advisory backlog clearance (recursive lockfile refreshes + one `resolutions` pin). Load when touching dependencies, native builds, or the audit/knip gates.
+
+### Native module builds / `node-gyp`
+
+- `better-sqlite3` normally installs **prebuilt binaries** via `prebuild-install`; `node-gyp` is only the source-build **fallback**, invoked when no prebuilt matches the running Node ABI/platform/arch.
+- `better-sqlite3` declares `node-gyp` as `npm:latest`, so that dependency **floats**: it currently resolves to **13.0.2** (was 11.2.0). node-gyp 13 no longer depends on `make-fetch-happen` — that drop is what removed the vulnerable `socks -> ip-address` chain from the tree.
+- **What to watch:** arm64 / Raspberry Pi and Docker image builds, where the prebuilt path may differ from x64 dev machines. If there is no prebuilt for the target, install falls back to compiling from source through node-gyp 13, which is **untested here**. Symptoms are install-time, not runtime: a much longer `yarn install`, a missing-prebuilt fallback message, or a native-toolchain/Python error — not a runtime failure.
+- **What to check:** the install log on the target platform for `prebuild-install` success vs a `node-gyp rebuild` fallback. **Likely remedies:** pin `node-gyp` via `resolutions` to a known-good version (record it below), ensure a native toolchain (python3, make, g++) exists on the build host, or supply a prebuilt for the target.
+
+### `resolutions` pins are permanent maintenance debt
+
+- `resolutions.multer = "2.3.0"` exists because `@nestjs/platform-express@11.2.5` hard-pins `multer: 2.2.0`, which carries **4 advisories (3 high)** — fixed in 2.3.0. **Removal condition:** drop the pin once Nest permits `>= 2.3.0`.
+- A `resolutions` entry overrides parents' declared ranges and does not expire — each one needs its rationale and removal condition recorded here (or in its commit message) the day it is added.
+
+### `knip:ci` false positive in the nested-repo sandbox
+
+- When run from the parent `mushroom-pi` workspace, `knip` walks ancestor `.gitignore` files, and the parent root `.gitignore` begins with `*` — so it treats every project file as ignored, analyses **zero** source files, and reports a large set of bogus "unused dependencies". Environmental, not a code problem: it does not occur in a standalone checkout or in CI. If `knip:ci` suddenly flags half of `package.json`, confirm you are running inside `mushpi-server/` before investigating.
 
 ## Tooling & Style Deviations
 
