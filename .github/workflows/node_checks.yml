@@ -33,14 +33,7 @@ jobs:
         run: yarn knip --dependencies --exclude devDependencies
 
       - name: Audit dependencies
-        run: |
-          yarn audit --level high --groups dependencies
-          exit_code=$?
-          if [[ $exit_code -ge 8 ]]; then
-            echo 'Serious vulnerabilities found!'
-            exit 1
-          fi
-        shell: bash {0} # disables `-e` by default
+        run: yarn audit:ci
 
       - name: Build
         run: yarn build

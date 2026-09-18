@@ -1,4 +1,4 @@
-yarn audit:prod
+yarn audit:ci
 yarn build
 yarn knip:ci
 yarn test

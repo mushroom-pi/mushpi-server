@@ -131,8 +131,8 @@ Computed `@Expose()` getters: `PicoUnit` host, address, ipAddress, status, api_c
 | db | `migration:run` | ↑ |
 | db | `migration:revert` | ↑ |
 | db | `migration:show` | ↑ |
-| audit | `audit:prod` | yarn npm audit (prod) |
-| audit | `audit:ci` | fail on high+ |
+| audit | `audit:prod` | yarn npm audit, recursive production graph, deprecations excluded (informational) |
+| audit | `audit:ci` | audit:prod + `--severity high` (gating variant; relies on Yarn exit code) |
 | docs | `docs:env` | → docs/ENVIRONMENT.md |
 | start | `start` |
 | start | `start:dev` | --watch |
@@ -141,7 +141,7 @@ Computed `@Expose()` getters: `PicoUnit` host, address, ipAddress, status, api_c
 | hooks | `prepare` | husky |
 | prune | `knip:ci` | unused prod deps |
 
-**Husky pre-commit**: `yarn format` + `yarn lint`; regenerates + stages `docs/ENVIRONMENT.md` on `config.schema.ts` change; runs `yarn spec:all` + stages the spec files on `src/` change. `commit-msg` = commitlint; `pre-merge-commit` = test + e2e; `pre-push` = audit:prod, build, knip:ci, test, e2e.
+**Husky pre-commit**: `yarn format` + `yarn lint`; regenerates + stages `docs/ENVIRONMENT.md` on `config.schema.ts` change; runs `yarn spec:all` + stages the spec files on `src/` change. `commit-msg` = commitlint; `pre-merge-commit` = test + e2e; `pre-push` = audit:ci → build → knip:ci → test → e2e (both audit scripts exclude deprecations).
 
 ## Env & Config
 
