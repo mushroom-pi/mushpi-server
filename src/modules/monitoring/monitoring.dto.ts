@@ -73,7 +73,7 @@ class MemoryUsageDto {
   readonly arrayBuffers: number;
 }
 
-export class UpTime {
+class UpTime {
   @ApiProperty({
     type: Number,
     description: 'Total time the server has been running in seconds',

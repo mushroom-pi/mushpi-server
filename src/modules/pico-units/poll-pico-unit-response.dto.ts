@@ -7,7 +7,7 @@ import { DevicesDto } from 'src/common/dto/pico-unit-response.dto';
 
 import { PicoUnit } from './pico-unit.entity';
 
-export class DevicesMixin {
+class DevicesMixin {
   @ApiPropertyOptional({
     type: () => DevicesDto,
     nullable: true,

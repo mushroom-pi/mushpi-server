@@ -54,7 +54,7 @@ export class ChangeSetPointsDto {
 }
 
 @ValidatorConstraint({ name: 'noDuplicatePins', async: false })
-export class NoDuplicatePinsConstraint implements ValidatorConstraintInterface {
+class NoDuplicatePinsConstraint implements ValidatorConstraintInterface {
   validate(_value: unknown, args: ValidationArguments) {
     const pins = args.object as ChangeDevicePinsDto;
     const assigned = [pins.dht, pins.humidifier, pins.fan, pins.heater].filter(

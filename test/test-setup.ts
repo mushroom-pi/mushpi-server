@@ -28,7 +28,7 @@ import { CronService } from '../src/modules/cron/cron.service';
  * file serving opt in via `withServeStatic: true`, which overrides
  * `AbstractLoader` with the real `ExpressLoader`.
  */
-export interface CreateModuleOptions {
+interface CreateModuleOptions {
   withCron?: boolean;
   withServeStatic?: boolean;
 }
@@ -39,7 +39,7 @@ export interface CreateModuleOptions {
  * bootstrap, and batch/pico-unit event handlers from firing real HTTP during
  * e2e tests that do not explicitly opt in.
  */
-export class NoopCronService {
+class NoopCronService {
   async onApplicationBootstrap(): Promise<void> {}
   async handleReadings(): Promise<void> {}
   async handleBatchSync(): Promise<void> {}

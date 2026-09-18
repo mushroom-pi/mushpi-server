@@ -12,7 +12,7 @@ export const MIME_TO_EXT: Record<string, string> = {
   'image/png': 'png',
 };
 
-export interface ImageMulterOptionsConfig {
+interface ImageMulterOptionsConfig {
   destination:
     | string
     | ((

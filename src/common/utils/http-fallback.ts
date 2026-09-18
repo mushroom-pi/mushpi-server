@@ -6,7 +6,7 @@ import axiosRetry from 'axios-retry';
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
 
 /** Error codes that indicate the Pico is unreachable at the network level. */
-export const CONNECTION_LEVEL_ERROR_CODES = [
+const CONNECTION_LEVEL_ERROR_CODES = [
   'EHOSTUNREACH',
   'ECONNREFUSED',
   'ENETUNREACH',

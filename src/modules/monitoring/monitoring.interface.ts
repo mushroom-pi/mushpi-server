@@ -15,7 +15,7 @@ export interface UpTime {
   days: number;
 }
 
-export interface OsInfo {
+interface OsInfo {
   platform: string;
   type: string;
   release: string;
@@ -23,17 +23,17 @@ export interface OsInfo {
   arch: string;
 }
 
-export interface CpuInfo {
+interface CpuInfo {
   model: string;
   cores: number;
 }
 
-export interface SystemMemory {
+interface SystemMemory {
   totalMb: number;
   freeMb: number;
 }
 
-export interface DiskInfo {
+interface DiskInfo {
   path: string;
   totalMb: number | null;
   freeMb: number | null;

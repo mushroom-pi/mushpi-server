@@ -56,15 +56,6 @@ export interface DocsConfig {
   useAuth: boolean;
 }
 
-export interface DbConfig {
-  uri: string;
-  port?: number;
-  host?: string;
-  name?: string;
-  username?: string;
-  password?: string;
-}
-
 export interface ServiceConfig {
   url?: string;
   host?: string;
