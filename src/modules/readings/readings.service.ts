@@ -442,7 +442,7 @@ export class ReadingsService {
       .createQueryBuilder()
       .delete()
       .from(Readings)
-      .where('ts < :cutoff', { cutoff: cutoff.toISOString() })
+      .where('ts < :cutoff', { cutoff: this.toSqliteDatetime(cutoff) })
       .execute();
 
     return res.affected ?? 0;
