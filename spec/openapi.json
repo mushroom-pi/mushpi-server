@@ -7760,7 +7760,6 @@
             "type": "boolean"
           },
           "environment": {
-            "type": "string",
             "enum": [
               "dev",
               "local",
@@ -7768,6 +7767,7 @@
               "staging",
               "test"
             ],
+            "type": "string",
             "description": "The environment in which this instance of the service is being executed"
           },
           "loadAverage": {
@@ -8008,10 +8008,7 @@
           "sqlite": {
             "$ref": "#/components/schemas/DatabaseMockDto"
           }
-        },
-        "required": [
-          "sqlite"
-        ]
+        }
       },
       "ServiceMockDto": {
         "type": "object",
@@ -8062,15 +8059,69 @@
           "services": {
             "$ref": "#/components/schemas/ServicesDto"
           }
-        },
-        "required": [
-          "databases"
-        ]
+        }
       },
       "ErrorDto": {
         "type": "object",
         "properties": {
           "statusCode": {
+            "enum": [
+              100,
+              101,
+              102,
+              103,
+              200,
+              201,
+              202,
+              203,
+              204,
+              205,
+              206,
+              207,
+              208,
+              210,
+              300,
+              301,
+              302,
+              303,
+              304,
+              307,
+              308,
+              400,
+              401,
+              402,
+              403,
+              404,
+              405,
+              406,
+              407,
+              408,
+              409,
+              410,
+              411,
+              412,
+              413,
+              414,
+              415,
+              416,
+              417,
+              418,
+              421,
+              422,
+              423,
+              424,
+              428,
+              429,
+              456,
+              500,
+              501,
+              502,
+              503,
+              504,
+              505,
+              507,
+              508
+            ],
             "type": "number",
             "example": 404
           },
@@ -8109,99 +8160,14 @@
         "properties": {
           "handle": {
             "type": "string",
-            "example": "unit-01",
-            "description": "Handle (mDNS name) of the Pico unit to add manually",
             "minLength": 1,
-            "maxLength": 64
+            "maxLength": 64,
+            "example": "unit-01",
+            "description": "Handle (mDNS name) of the Pico unit to add manually"
           }
         },
         "required": [
           "handle"
-        ]
-      },
-      "Readings": {
-        "type": "object",
-        "properties": {
-          "temperature": {
-            "type": "number",
-            "nullable": true,
-            "description": "Temperature in °C (null when the sensor returned no data)",
-            "example": 22.5
-          },
-          "humidity": {
-            "type": "integer",
-            "nullable": true,
-            "description": "Humidity in % (null when the sensor returned no data)",
-            "example": 78
-          },
-          "fan_on": {
-            "type": "boolean",
-            "description": "Fan relay state at poll time",
-            "example": false
-          },
-          "humidifier_on": {
-            "type": "boolean",
-            "description": "Humidifier relay state at poll time",
-            "example": true
-          },
-          "heater_on": {
-            "type": "boolean",
-            "description": "Heater relay state at poll time",
-            "example": false
-          },
-          "control_loop_enabled": {
-            "type": "boolean",
-            "description": "Whether the control loop was enabled at poll time",
-            "example": true
-          },
-          "temperature_set": {
-            "type": "integer",
-            "nullable": true,
-            "description": "Temperature setpoint active when the reading was taken",
-            "example": 22
-          },
-          "humidity_set": {
-            "type": "integer",
-            "nullable": true,
-            "description": "Humidity setpoint active when the reading was taken",
-            "example": 80
-          },
-          "board_uptime_s": {
-            "type": "integer",
-            "description": "Seconds since the Pico last booted",
-            "example": 3600
-          },
-          "board_temp": {
-            "type": "number",
-            "description": "MCU board temperature in °C",
-            "example": 31.4
-          },
-          "board_used_mem": {
-            "type": "integer",
-            "description": "Used memory in bytes",
-            "example": 112640
-          },
-          "board_used_fs": {
-            "type": "integer",
-            "description": "Used filesystem space in bytes",
-            "example": 655360
-          },
-          "time_to_response_ms": {
-            "type": "integer",
-            "description": "Round-trip poll response time in ms",
-            "example": 180
-          }
-        },
-        "required": [
-          "fan_on",
-          "humidifier_on",
-          "heater_on",
-          "control_loop_enabled",
-          "board_uptime_s",
-          "board_temp",
-          "board_used_mem",
-          "board_used_fs",
-          "time_to_response_ms"
         ]
       },
       "PicoUnit": {
@@ -8371,6 +8337,12 @@
                 "$ref": "#/components/schemas/Readings"
               }
             ]
+          },
+          "readings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Readings"
+            }
           }
         },
         "required": [
@@ -8386,8 +8358,112 @@
           "address",
           "ipAddress",
           "status",
-          "api_compatibility",
-          "latest_reading"
+          "api_compatibility"
+        ]
+      },
+      "Readings": {
+        "type": "object",
+        "properties": {
+          "temperature": {
+            "type": "number",
+            "nullable": true,
+            "description": "Temperature in °C (null when the sensor returned no data)",
+            "example": 22.5
+          },
+          "humidity": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Humidity in % (null when the sensor returned no data)",
+            "example": 78
+          },
+          "fan_on": {
+            "type": "boolean",
+            "description": "Fan relay state at poll time",
+            "example": false
+          },
+          "humidifier_on": {
+            "type": "boolean",
+            "description": "Humidifier relay state at poll time",
+            "example": true
+          },
+          "heater_on": {
+            "type": "boolean",
+            "description": "Heater relay state at poll time",
+            "example": false
+          },
+          "control_loop_enabled": {
+            "type": "boolean",
+            "description": "Whether the control loop was enabled at poll time",
+            "example": true
+          },
+          "temperature_set": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Temperature setpoint active when the reading was taken",
+            "example": 22
+          },
+          "humidity_set": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Humidity setpoint active when the reading was taken",
+            "example": 80
+          },
+          "board_uptime_s": {
+            "type": "integer",
+            "description": "Seconds since the Pico last booted",
+            "example": 3600
+          },
+          "board_temp": {
+            "type": "number",
+            "description": "MCU board temperature in °C",
+            "example": 31.4
+          },
+          "board_used_mem": {
+            "type": "integer",
+            "description": "Used memory in bytes",
+            "example": 112640
+          },
+          "board_used_fs": {
+            "type": "integer",
+            "description": "Used filesystem space in bytes",
+            "example": 655360
+          },
+          "time_to_response_ms": {
+            "type": "integer",
+            "description": "Round-trip poll response time in ms",
+            "example": 180
+          },
+          "id": {
+            "type": "number"
+          },
+          "ts": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "last_sensor_err": {
+            "type": "string"
+          },
+          "pico_unit": {
+            "$ref": "#/components/schemas/PicoUnit"
+          },
+          "pico_unit_id": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "fan_on",
+          "humidifier_on",
+          "heater_on",
+          "control_loop_enabled",
+          "board_uptime_s",
+          "board_temp",
+          "board_used_mem",
+          "board_used_fs",
+          "time_to_response_ms",
+          "id",
+          "ts",
+          "pico_unit",
+          "pico_unit_id"
         ]
       },
       "AnnouncePicoUnitDto": {
@@ -8395,10 +8471,10 @@
         "properties": {
           "handle": {
             "type": "string",
-            "example": "unit-01",
-            "description": "Name for the unit as it is stated in its own software. Should not be changed.",
             "minLength": 1,
-            "maxLength": 64
+            "maxLength": 64,
+            "example": "unit-01",
+            "description": "Name for the unit as it is stated in its own software. Should not be changed."
           },
           "ip": {
             "type": "string",
@@ -8407,10 +8483,10 @@
           },
           "port": {
             "type": "number",
-            "example": 5000,
+            "default": 5000,
             "minimum": 1,
             "maximum": 65535,
-            "default": 5000,
+            "example": 5000,
             "description": "Pico API port"
           },
           "micropython_version": {
@@ -8470,8 +8546,7 @@
           }
         },
         "required": [
-          "handle",
-          "port"
+          "handle"
         ]
       },
       "PicoUnitListResponseDto": {
@@ -8527,8 +8602,9 @@
           },
           "description": {
             "type": "string",
-            "description": "Optional notes about this particular unit.",
-            "maxLength": 512
+            "minLength": 0,
+            "maxLength": 512,
+            "description": "Optional notes about this particular unit."
           },
           "monitored": {
             "type": "boolean",
@@ -8537,9 +8613,10 @@
           },
           "face_color": {
             "type": "string",
+            "nullable": true,
+            "pattern": "^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$",
             "description": "Cosmetic hex color assigned to the unit (e.g. #4CAF50).",
-            "example": "#4CAF50",
-            "pattern": "^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$"
+            "example": "#4CAF50"
           }
         }
       },
@@ -8773,6 +8850,12 @@
                 "$ref": "#/components/schemas/DevicesDto"
               }
             ]
+          },
+          "readings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Readings"
+            }
           }
         },
         "required": [
@@ -8788,19 +8871,18 @@
           "address",
           "ipAddress",
           "status",
-          "api_compatibility",
-          "latest_reading"
+          "api_compatibility"
         ]
       },
       "RebootDto": {
         "type": "object",
         "properties": {
           "type": {
-            "type": "string",
             "enum": [
               "hard",
               "soft"
             ],
+            "type": "string",
             "example": "soft",
             "description": "soft = machine.soft_reset() (preserves cumulative uptime); hard = machine.reset() (full power-cycle, uptime resets)"
           }
@@ -8817,11 +8899,11 @@
             "example": "Reboot initiated"
           },
           "type": {
-            "type": "string",
             "enum": [
               "hard",
               "soft"
             ],
+            "type": "string",
             "example": "soft"
           }
         },
@@ -8840,38 +8922,38 @@
           },
           "temperature": {
             "type": "number",
-            "description": "Average temperature in the bucket (rounded to 1 decimal)",
             "nullable": true,
+            "description": "Average temperature in the bucket (rounded to 1 decimal)",
             "example": 22.5
           },
           "humidity": {
             "type": "number",
-            "description": "Average humidity in the bucket (rounded to 1 decimal)",
             "nullable": true,
+            "description": "Average humidity in the bucket (rounded to 1 decimal)",
             "example": 55.3
           },
           "tempMin": {
             "type": "number",
-            "description": "Minimum temperature in the bucket (raw value)",
             "nullable": true,
+            "description": "Minimum temperature in the bucket (raw value)",
             "example": 20.1
           },
           "tempMax": {
             "type": "number",
-            "description": "Maximum temperature in the bucket (raw value)",
             "nullable": true,
+            "description": "Maximum temperature in the bucket (raw value)",
             "example": 24.8
           },
           "humidityMin": {
             "type": "number",
-            "description": "Minimum humidity in the bucket (raw value)",
             "nullable": true,
+            "description": "Minimum humidity in the bucket (raw value)",
             "example": 50
           },
           "humidityMax": {
             "type": "number",
-            "description": "Maximum humidity in the bucket (raw value)",
             "nullable": true,
+            "description": "Maximum humidity in the bucket (raw value)",
             "example": 60
           },
           "readingCount": {
@@ -8901,14 +8983,14 @@
           },
           "temperatureSet": {
             "type": "number",
-            "description": "Temperature setpoint during this bucket (MAX — constant within bucket)",
             "nullable": true,
+            "description": "Temperature setpoint during this bucket (MAX — constant within bucket)",
             "example": 25
           },
           "humiditySet": {
             "type": "number",
-            "description": "Humidity setpoint during this bucket (MAX — constant within bucket)",
             "nullable": true,
+            "description": "Humidity setpoint during this bucket (MAX — constant within bucket)",
             "example": 60
           }
         },
@@ -8965,7 +9047,8 @@
             "type": "string"
           },
           "finish_at": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "species": {
             "type": "string"
@@ -8982,10 +9065,13 @@
           },
           "notes": {
             "type": "string",
+            "minLength": 0,
             "maxLength": 2000
           },
           "description": {
             "type": "string",
+            "nullable": true,
+            "minLength": 0,
             "maxLength": 120
           },
           "recipe_id": {
@@ -8993,86 +9079,6 @@
             "description": "Optional recipe to use as a template. species, temperature_target and humidity_target will be copied from the recipe if not explicitly provided."
           }
         }
-      },
-      "Recipe": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "number",
-            "description": "Unique recipe id",
-            "example": 1
-          },
-          "name": {
-            "type": "string",
-            "description": "Recipe name (unique)",
-            "example": "Oyster Mushroom Kit"
-          },
-          "species": {
-            "type": "string",
-            "description": "Species/cultivar this recipe targets",
-            "example": "Pleurotus ostreatus"
-          },
-          "temperature_target": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 50,
-            "description": "Target temperature in °C",
-            "example": 22
-          },
-          "humidity_target": {
-            "type": "integer",
-            "minimum": 10,
-            "maximum": 90,
-            "description": "Target humidity in %",
-            "example": 85
-          },
-          "duration_days": {
-            "type": "integer",
-            "minimum": 1,
-            "description": "Expected cultivation duration in days",
-            "example": 14
-          },
-          "notes": {
-            "type": "string",
-            "nullable": true,
-            "description": "Free-form cultivator notes",
-            "example": "Mist twice daily during pinning"
-          },
-          "image": {
-            "type": "string",
-            "description": "Filename of the uploaded image or external URL",
-            "example": "1.jpg"
-          },
-          "image_url": {
-            "type": "string",
-            "nullable": true,
-            "description": "Relative URL to the image (resolve against the API origin); external URLs are returned as-is",
-            "example": "/images/recipes/1.jpg"
-          },
-          "created_at": {
-            "format": "date-time",
-            "type": "string",
-            "description": "Creation timestamp",
-            "example": "2026-07-31T10:30:00.000Z"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "type": "string",
-            "description": "Last update timestamp",
-            "example": "2026-08-02T08:12:00.000Z"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "species",
-          "temperature_target",
-          "humidity_target",
-          "duration_days",
-          "image_url",
-          "created_at",
-          "updated_at"
-        ]
       },
       "Batch": {
         "type": "object",
@@ -9118,16 +9124,21 @@
           },
           "notes": {
             "type": "string",
+            "minLength": 0,
+            "maxLength": 2000,
             "description": "Batch cultivation notes",
             "example": "Second flush — heavier misting"
           },
           "description": {
             "type": "string",
             "nullable": true,
+            "minLength": 0,
+            "maxLength": 120,
             "description": "Short batch description",
             "example": "Shelf A run #3"
           },
           "images": {
+            "nullable": true,
             "description": "Filenames of attached images",
             "type": "array",
             "items": {
@@ -9183,6 +9194,10 @@
             "example": 3,
             "minimum": 0,
             "maximum": 5
+          },
+          "recipe_id": {
+            "type": "number",
+            "nullable": true
           }
         },
         "required": [
@@ -9192,6 +9207,98 @@
           "pico_unit_id",
           "status",
           "images_left"
+        ]
+      },
+      "Recipe": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Unique recipe id",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "description": "Recipe name (unique)",
+            "example": "Oyster Mushroom Kit"
+          },
+          "species": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "Species/cultivar this recipe targets",
+            "example": "Pleurotus ostreatus"
+          },
+          "temperature_target": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 50,
+            "description": "Target temperature in °C",
+            "example": 22
+          },
+          "humidity_target": {
+            "type": "integer",
+            "minimum": 10,
+            "maximum": 90,
+            "description": "Target humidity in %",
+            "example": 85
+          },
+          "duration_days": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Expected cultivation duration in days",
+            "example": 14
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true,
+            "minLength": 0,
+            "maxLength": 2000,
+            "description": "Free-form cultivator notes",
+            "example": "Mist twice daily during pinning"
+          },
+          "image": {
+            "type": "string",
+            "nullable": true,
+            "description": "Filename of the uploaded image or external URL",
+            "example": "1.jpg"
+          },
+          "image_url": {
+            "type": "string",
+            "nullable": true,
+            "description": "Relative URL to the image (resolve against the API origin); external URLs are returned as-is",
+            "example": "/images/recipes/1.jpg"
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Creation timestamp",
+            "example": "2026-07-31T10:30:00.000Z"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Last update timestamp",
+            "example": "2026-08-02T08:12:00.000Z"
+          },
+          "batches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Batch"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "species",
+          "temperature_target",
+          "humidity_target",
+          "duration_days",
+          "created_at",
+          "updated_at"
         ]
       },
       "BatchListResponseDto": {
@@ -9240,7 +9347,8 @@
             "type": "string"
           },
           "finish_at": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "species": {
             "type": "string"
@@ -9257,10 +9365,13 @@
           },
           "notes": {
             "type": "string",
+            "minLength": 0,
             "maxLength": 2000
           },
           "description": {
             "type": "string",
+            "nullable": true,
+            "minLength": 0,
             "maxLength": 120
           }
         }
@@ -9275,6 +9386,7 @@
           },
           "notes": {
             "type": "string",
+            "minLength": 0,
             "maxLength": 2000
           }
         },
@@ -9311,6 +9423,7 @@
           },
           "notes": {
             "type": "string",
+            "minLength": 0,
             "maxLength": 2000
           }
         },
@@ -9390,6 +9503,7 @@
           },
           "notes": {
             "type": "string",
+            "minLength": 0,
             "maxLength": 2000
           }
         }
@@ -9399,31 +9513,40 @@
         "properties": {
           "temperature": {
             "type": "number",
-            "description": "The temperature in Celsius degrees that we want the Pico Unit to maintain",
-            "example": 27,
             "minimum": 0,
-            "maximum": 50
+            "maximum": 50,
+            "description": "The temperature in Celsius degrees that we want the Pico Unit to maintain",
+            "example": 27
           },
           "humidity": {
             "type": "number",
-            "description": "The percentage of humidity that we want the Pico Unit to maintain",
-            "example": 60,
             "minimum": 10,
-            "maximum": 90
+            "maximum": 90,
+            "description": "The percentage of humidity that we want the Pico Unit to maintain",
+            "example": 60
           }
         }
       },
       "SetpointsDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "humidity": {
+            "type": "number"
+          },
+          "temperature": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "humidity",
+          "temperature"
+        ]
       },
       "ChangeDevicePinsDto": {
         "type": "object",
         "properties": {
           "dht": {
             "type": "number",
-            "description": "Change the GPIO pin assigned to the DHT11 sensor. Must be a valid user I/O pin (excludes GP23-25, GP29 which are WiFi-reserved on Pico 2W).",
-            "example": 4,
             "enum": [
               0,
               1,
@@ -9451,12 +9574,12 @@
               26,
               27,
               28
-            ]
+            ],
+            "description": "Change the GPIO pin assigned to the DHT11 sensor. Must be a valid user I/O pin (excludes GP23-25, GP29 which are WiFi-reserved on Pico 2W).",
+            "example": 4
           },
           "humidifier": {
             "type": "number",
-            "description": "Change the GPIO pin assigned to the humidifier. Must be a valid user I/O pin (excludes GP23-25, GP29 which are WiFi-reserved on Pico 2W).",
-            "example": 6,
             "enum": [
               0,
               1,
@@ -9484,12 +9607,12 @@
               26,
               27,
               28
-            ]
+            ],
+            "description": "Change the GPIO pin assigned to the humidifier. Must be a valid user I/O pin (excludes GP23-25, GP29 which are WiFi-reserved on Pico 2W).",
+            "example": 6
           },
           "fan": {
             "type": "number",
-            "description": "Change the GPIO pin assigned to the fan. Must be a valid user I/O pin (excludes GP23-25, GP29 which are WiFi-reserved on Pico 2W).",
-            "example": 7,
             "enum": [
               0,
               1,
@@ -9517,12 +9640,12 @@
               26,
               27,
               28
-            ]
+            ],
+            "description": "Change the GPIO pin assigned to the fan. Must be a valid user I/O pin (excludes GP23-25, GP29 which are WiFi-reserved on Pico 2W).",
+            "example": 7
           },
           "heater": {
             "type": "number",
-            "description": "Change the GPIO pin assigned to the heater. Must be a valid user I/O pin (excludes GP23-25, GP29 which are WiFi-reserved on Pico 2W).",
-            "example": 8,
             "enum": [
               0,
               1,
@@ -9550,7 +9673,9 @@
               26,
               27,
               28
-            ]
+            ],
+            "description": "Change the GPIO pin assigned to the heater. Must be a valid user I/O pin (excludes GP23-25, GP29 which are WiFi-reserved on Pico 2W).",
+            "example": 8
           }
         }
       },
@@ -9590,7 +9715,22 @@
       },
       "OutputsDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "humidifier": {
+            "type": "boolean"
+          },
+          "heater": {
+            "type": "boolean"
+          },
+          "fan": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "humidifier",
+          "heater",
+          "fan"
+        ]
       },
       "ControlLoopDto": {
         "type": "object",
@@ -9664,21 +9804,21 @@
             "nullable": true
           },
           "status": {
-            "type": "string",
             "enum": [
               "unmonitored",
               "healthy",
               "degraded",
               "offline"
-            ]
+            ],
+            "type": "string"
           },
           "api_compatibility": {
-            "type": "string",
             "enum": [
               "compatible",
               "incompatible",
               "unknown"
             ],
+            "type": "string",
             "description": "Computed api_version contract-generation verdict (same as PicoUnit.api_compatibility) — independent from `status`; deliberately NOT folded into health counts or warnings."
           },
           "lastSeenSecondsAgo": {
@@ -9955,11 +10095,11 @@
             ]
           },
           "severity": {
-            "type": "string",
             "enum": [
               "warning",
               "error"
-            ]
+            ],
+            "type": "string"
           },
           "unitId": {
             "type": "integer"

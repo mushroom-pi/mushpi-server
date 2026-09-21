@@ -6,8 +6,13 @@ import { closeTestApp, createTestApp } from './test-setup';
 /**
  * Regression guard: asserts that every entity / DTO consumed by the
  * auto-generated client carries the expected @ApiProperty / @ApiPropertyOptional
- * decorators. A missing decorator silently drops the field from the committed
- * spec/openapi.json, which breaks the client's tsc build.
+ * decorators — source-level shape-intent completeness. This document is built
+ * via ts-jest WITHOUT the @nestjs/swagger CLI plugin, so a property appears only
+ * if explicitly decorated here. The committed spec/openapi.json is generated from
+ * the compiled output, where the plugin infers a shape for every undecorated
+ * declared property — a missing decorator no longer silently drops the field, it
+ * commits with a plugin-guessed type/requiredness that may not be the intent.
+ * This suite therefore pins what the DECORATORS alone declare.
  *
  * Read-only — no DB writes.
  */

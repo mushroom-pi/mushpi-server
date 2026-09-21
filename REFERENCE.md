@@ -10,7 +10,7 @@ Long-tail gotchas and detailed conventions. **Load only when the task touches th
 - [Batch Lifecycle & Relation Loading](#batch-lifecycle--relation-loading) — create/update constraints, recipe template snapshot, immutable FKs, selective relation loading
 - [Image Uploads & Static Serving](#image-uploads--static-serving) — recipe/batch image uploads, ServeStaticModule, SPA serving, static CORS, helmet CSP
 - [API Versioning Internals](#api-versioning-internals) — version application sites, `operationIdFactory`, middleware×versioning workarounds, named wildcards, `main.ts` coverage gap
-- [Spec Tooling Internals](#spec-tooling-internals) — generated artifacts table, Husky git hooks, runtime-vs-export title, SwaggerModule dual wiring, ts-node script conventions, generator-version churn of committed `spec/`
+- [Spec Tooling Internals](#spec-tooling-internals) — generated artifacts table, Husky git hooks, runtime-vs-export title, generation from compiled output (swagger CLI plugin `_OPENAPI_METADATA_FACTORY`), served-vs-committed reconciliation checks, ts-node script conventions, generator-version churn of committed `spec/`
 - [Release Versioning](#release-versioning) — package-version bump policy, post-bump spec regeneration, `release.json`/tags prohibition (moved from core)
 - [Cron Polling](#cron-polling) — sweep overlap/parallelism, readings ingestion funnel & quality gates, MAC/version refresh, time-windowed state changes, proxy-vs-batch poll visibility split
 - [Pass-Through & Response Shape](#pass-through--response-shape) — non-persisted response fields, `@ApiProperty` coverage rule, validation-pipe safety, `forbidNonWhitelisted`, GPIO pin validation
@@ -190,15 +190,37 @@ The server code (NestJS decorators) is the **source of truth** for the REST API.
 
 ### `setupSwagger()` at runtime vs spec export
 
-`SwaggerModule.setupSwagger()` calls `buildOpenApiDocument()` with `appendEnvSuffix: true` to produce the title `"mushpi-server LOCAL"` (or DEV/PROD). The `spec:export` script calls it with `appendEnvSuffix: false` to produce a deterministic title (`"mushpi-server"`) suitable for committed output.
+`SwaggerModule.setupSwagger()` calls `buildOpenApiDocument()` with `appendEnvSuffix: true` to produce the title `"mushpi-server LOCAL"` (or DEV/PROD). The `spec:export` script calls it with `appendEnvSuffix: false` to produce a deterministic title (`"mushpi-server"`) suitable for committed output. `info.title` is the **only** sanctioned served-vs-committed difference (see §generation from compiled output).
+
+### Generation from compiled output (swagger CLI plugin)
+
+`spec:export` = `yarn build && node dist/spec/generators/openapi.generator.js` — the committed spec is generated from the **compiled app**, never from ts-node-transpiled source. Mechanism: `nest-cli.json` registers the `@nestjs/swagger` CLI plugin (`dtoFileNameSuffix: ['.dto.ts', '.entity.ts']` + `classValidatorShim: true`), which injects a static `_OPENAPI_METADATA_FACTORY()` into every compiled entity/DTO class in `dist/`; at document-build time `ModelPropertiesAccessor.applyMetadataFactory()` merges that metadata **under** the explicit decorators (decorator-set keys win their own keys, factory-only keys leak through: inferred types, `required` from TS optionality, class-validator constraints). The historical defect: the old ts-node path ran no plugin transform, so the committed spec carried only explicitly-decorated properties while the served contract (compiled `main.js`) carried the plugin's merged shape. Generating from `dist` reconciles served === committed modulo `info.title`.
+
+Consequences:
+
+- An undecorated class property no longer drops out of the committed spec — it arrives plugin-**inferred** (`number` where `@IsInt()` meant integer, requiredness from `?`/`!`/initializer, no description/example). Hence the `@ApiProperty` rule guards **shape intent** (§Pass-Through & Response Shape).
+- `spec/generators/openapi.generator.ts` itself is unchanged: tsc rewrites its `src/*` alias imports to relative requires (`../../src/...`), output paths stay `resolve(process.cwd(), 'spec')`, so run it with cwd = repo root.
+- The generator boots `AppModule`: opens SQLite with dev `synchronize: true` and fires `CronService`'s `OnApplicationBootstrap` sweep (real HTTP to monitored units). **Always** regenerate with throwaway `SQLITE_PATH`/`LOGS_PATH` (e.g. under `/tmp/opencode/`) — a throwaway DB has zero units, hence no Pico traffic. Same rule as [Local Verification](#local-verification-smoke-boot-without-disturbing-a-live-instance).
+
+### Reconciliation checks (run after any spec-tooling or dependency-refresh change)
+
+```bash
+# (a) committed spec is exactly what a fresh build emits (idempotence / no staleness):
+SQLITE_PATH=/tmp/opencode/spec-gen.sqlite LOGS_PATH=/tmp/opencode/spec-gen-logs yarn spec:all
+git diff --exit-code -- spec/openapi.json spec/openapi.yaml   # must be exit 0
+
+# (b) served contract === committed spec, modulo info.title: smoke-boot on a free APP_PORT +
+#     throwaway SQLITE_PATH/LOGS_PATH, GET /<DOCS_ENDPOINT>-json (local default: /contract-json),
+#     deep-compare both documents with info.title stripped, then ALWAYS kill the instance.
+```
 
 ### SwaggerModule dual wiring
 
-`SwaggerModule` is registered as a **provider in `AppModule`** but invoked **manually in `main.ts`** (not via DI in a controller). This exists because `setupSwagger()` needs the `INestApplication` instance before the server starts. The `spec:export` script (`spec/generators/openapi.generator.ts`) gets it via `app.get(SwaggerModule)` after booting a `NestFactory.create(AppModule, { logger: false })` instance (no HTTP listener — `app.listen()` is never called).
+`SwaggerModule` is registered as a **provider in `AppModule`** but invoked **manually in `main.ts`** (not via DI in a controller). This exists because `setupSwagger()` needs the `INestApplication` instance before the server starts. The `spec:export` script (source `spec/generators/openapi.generator.ts`, executed from `dist/` post-build) gets it via `app.get(SwaggerModule)` after booting a `NestFactory.create(AppModule, { logger: false })` instance (no HTTP listener — `app.listen()` is never called).
 
 ### Script conventions (ts-node)
 
-Scripts that import TypeScript source using `src/*` path aliases (e.g. `spec/generators/`, `docs/`) require `tsconfig-paths/register`. The `typeorm` CLI script follows the same pattern.
+Scripts that import TypeScript source using `src/*` path aliases require `tsconfig-paths/register` when run under ts-node. Since the switch to compiled-output generation, `spec:export` no longer runs under ts-node; the surviving ts-node consumers don't need the hook either — `spec:bruno` reads `spec/openapi.json` from cwd (imports only `dotenv`/`fs`/`path`; its register hook is now vestigial) and `docs:env` imports its Joi schema via a relative path. The `typeorm` CLI script runs compiled `dist/` paths like `spec:export` does.
 
 ### Committed `spec/` is sensitive to generator versions
 
@@ -259,12 +281,12 @@ Certain fields appear in API responses but are **not stored** in any database co
 
 ### Every stored column returned by a controller must carry `@ApiProperty`/`@ApiPropertyOptional`
 
-The Docker image build regenerates the client from the **committed** `spec/openapi.json` (`COPY mushpi-server/spec/openapi.json ./openapi.json` → `yarn gen:client && gen:schemas` → `tsc -b && vite build`). If an entity field has `@Column` + class-validator decorators but NO Swagger decorator, the committed spec omits it, the regenerated client type is incomplete, and the client `tsc` build FAILS with `Property 'X' does not exist on type '<Entity>'` — even though runtime responses serialize the field fine (`ClassSerializerInterceptor` runs without `excludeExtraneousValues`). Rule:
+The Docker image build regenerates the client from the **committed** `spec/openapi.json` (`COPY mushpi-server/spec/openapi.json ./openapi.json` → `yarn gen:client && gen:schemas` → `tsc -b && vite build`). The committed spec is generated from the **compiled** app, so the swagger CLI plugin's `_OPENAPI_METADATA_FACTORY` now synthesises a schema entry for every declared class property — an undecorated field no longer *silently drops* out of the spec; it **arrives with a plugin-inferred shape**: design type from TS reflection (`number` even where `@IsInt()` means integer — e.g. the undecorated `SetpointsDto` fields commit as `type: number`, not `integer`), requiredness from the TS `?`/`!`/initializer rather than intent, and class-validator constraints leaking into the schema. A field the class never declares (a bare getter with no backing property) is still omitted, and an explicit `@ApiProperty` on an optionally-declared (`?`) property no longer forces `required` — the factory supplies that key. **The rule therefore guards shape *intent* (type, requiredness, description, example), not presence**: without the decorator the committed contract carries whatever the plugin guesses, and the client's `strict: true` types inherit the guess. Rule:
 
-- **Any `@Column` field that a controller returns (directly or via `latest_reading`/relations) must be decorated** with `@ApiProperty` or `@ApiPropertyOptional`. Do not blanket-add — only expose fields the client actually consumes (cross-reference `mushpi-client`).
+- **Any `@Column` field that a controller returns (directly or via `latest_reading`/relations) must be decorated** with `@ApiProperty` or `@ApiPropertyOptional`. Do not blanket-add — only describe fields the client actually consumes (cross-reference `mushpi-client`); since compiled-output generation a *missing* decorator no longer hides a declared property from the client (only `@ApiHideProperty()` does — deliberately not yet applied to the relation properties `Readings.pico_unit`, `PicoUnit.readings`, `Recipe.batches`).
 - **Match decorator requiredness/nullability to how the client accesses the field** (client is `strict: true`): client uses `field ?? fallback` (null-safe) → `@ApiPropertyOptional({ nullable: true })`; client renders directly or passes to a non-nullable param (e.g. `formatDate(iso: string)`) → required `@ApiProperty` with **no** `nullable: true`.
 - **Relations that are conditionally loaded**: if some endpoint omits the relation (e.g. `GET /v1/pico-units/:id/batches` omits `pico_unit`), type it `@ApiPropertyOptional(...)` (optional, not `nullable: true` unless it can genuinely be null — a batch always *has* a `pico_unit_id`, it's just not always *expanded*). Use lazy refs `type: () => PicoUnit` to avoid circular `$ref`s.
-- **Regression guard**: `test/openapi-schemas.e2e-spec.ts` boots the app, builds the doc in-process, and asserts every client-consumed field exists per schema. Add new fields to it when you add new entity fields.
+- **Regression guard**: `test/openapi-schemas.e2e-spec.ts` boots the app, builds the doc in-process via ts-jest (**no CLI plugin** — so the doc reflects decorator coverage only, i.e. source-level shape intent), and asserts every client-consumed field exists per schema. Add new fields to it when you add new entity fields.
 
 ### `devices` block — not persisted
 

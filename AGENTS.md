@@ -123,7 +123,7 @@ Computed `@Expose()` getters: `PicoUnit` host, address, ipAddress, status, api_c
 | test | `test:debug` | inspector, in-band |
 | test | `test:e2e` | jest --config test/jest-e2e.json |
 | test | `test:e2e:cov` | |
-| spec | `spec:export` | → committed spec/openapi.{json,yaml} (client contract) |
+| spec | `spec:export` | `yarn build` + run compiled generator (dist incl. swagger CLI-plugin metadata) → committed spec/openapi.{json,yaml} (client contract) |
 | spec | `spec:bruno` | → spec/bruno/ (gitignored) |
 | spec | `spec:all` | both |
 | db | `typeorm` | CLI on dist data-source |

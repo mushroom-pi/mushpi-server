@@ -30,7 +30,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "test:e2e:cov": "jest --config ./test/jest-e2e.json --coverage",
     "typeorm": "node ./node_modules/typeorm/cli.js -d dist/src/modules/sqlite/data-source.js",
-    "spec:export": "ts-node -r tsconfig-paths/register spec/generators/openapi.generator.ts",
+    "spec:export": "yarn build && node dist/spec/generators/openapi.generator.js",
     "spec:bruno": "ts-node -r tsconfig-paths/register spec/generators/bruno.generator.ts",
     "spec:all": "yarn spec:export && yarn spec:bruno",
     "prepare": "husky"
