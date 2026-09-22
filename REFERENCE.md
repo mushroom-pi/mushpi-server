@@ -11,7 +11,7 @@ Long-tail gotchas and detailed conventions. **Load only when the task touches th
 - [Image Uploads & Static Serving](#image-uploads--static-serving) — recipe/batch image uploads, ServeStaticModule, SPA serving, static CORS, helmet CSP
 - [API Versioning Internals](#api-versioning-internals) — version application sites, `operationIdFactory`, middleware×versioning workarounds, named wildcards, `main.ts` coverage gap
 - [Spec Tooling Internals](#spec-tooling-internals) — generated artifacts table, Husky git hooks, runtime-vs-export title, generation from compiled output (swagger CLI plugin `_OPENAPI_METADATA_FACTORY`), served-vs-committed reconciliation checks, ts-node script conventions, generator-version churn of committed `spec/`
-- [Release Versioning](#release-versioning) — package-version bump policy, post-bump spec regeneration, `release.json`/tags prohibition (moved from core)
+- [Release Versioning](#release-versioning) — package-version bump policy, post-bump spec regeneration, `mushpi-ops/release.json`/tags prohibition (moved from core)
 - [Cron Polling](#cron-polling) — sweep overlap/parallelism, readings ingestion funnel & quality gates, MAC/version refresh, time-windowed state changes, proxy-vs-batch poll visibility split
 - [Pass-Through & Response Shape](#pass-through--response-shape) — non-persisted response fields, `@ApiProperty` coverage rule, validation-pipe safety, `forbidNonWhitelisted`, GPIO pin validation
 - [Timezone](#timezone) — UTC storage, Settings module, TimezoneInterceptor
@@ -236,7 +236,7 @@ Policy detail (core keeps a one-line pointer here):
 - Commit messages follow **Conventional Commits**, enforced by commitlint (`commitlint.config.mjs`, `@commitlint/config-conventional`) via the Husky `commit-msg` hook (see [Spec Tooling Internals → Git hooks](#git-hooks-husky)).
 - The `package.json` `version` is bumped **only when releasing, on the `main` branch** — never during day-to-day `dev` work.
 - After any version bump, run `yarn spec:all` so the committed OpenAPI spec carries the same `info.version` as `package.json`.
-- Never edit the root `release.json` or git tags.
+- Never edit `mushpi-ops/release.json` or git tags.
 
 ## Cron Polling
 
