@@ -49,3 +49,7 @@ $ yarn run test:e2e
 # test coverage
 $ yarn run test:cov
 ```
+
+## License
+
+Released under the [MIT license](LICENSE) — Copyright (c) 2026 [Adriana Martín de Aguilera](https://www.amda.dev).

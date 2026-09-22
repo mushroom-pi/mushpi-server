@@ -4,7 +4,7 @@
   "description": "A backend for the Mushroom Pi project",
   "author": "amda-phd",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "MIT",
   "packageManager": "yarn@4.14.1",
   "scripts": {
     "audit:ci": "yarn npm audit --environment production --recursive --no-deprecations --severity high",
