@@ -30,7 +30,11 @@ The inclusion of detailed error properties (`timestamp`, `path`, `emitter`) in e
 
 #### Rate-limit errors
 
-This service will only impose rate limits if the `MAX_REQUESTS` and `MAX_REQUESTS_TIME` environment variables are provided. Hence, the `429 Too many requests` global error will only be displayed if those variables are present.
+Rate limiting is **opt-in**: the service imposes it only when **both** `MAX_REQUESTS` (requests allowed per window) and `MAX_REQUESTS_TIME` (window length in **milliseconds**, e.g. `60000`) are configured as positive integers. The variables are validated as a pair — supplying only one of them is a startup configuration error.
+
+When the pair is configured, throttled responses carry the `@nestjs/throttler` headers `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset` (the latter two in **relative seconds**), plus `Retry-After` on the blocked request. When it is not configured, no throttling happens and **no rate-limit headers are emitted at all**. `GET /health` is exempt either way (`@SkipThrottle()`), so the container health check can never be rate limited.
+
+Hence, the `429 Too many requests` global error is only displayed in the documentation if those variables are present.
 
 #### Basic authentication
 

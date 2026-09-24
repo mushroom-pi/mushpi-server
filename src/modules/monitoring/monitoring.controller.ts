@@ -5,6 +5,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 
 import { HealthCheckQueryDto, HealthCheckResponseDto } from './monitoring.dto';
 import { MonitoringService } from './monitoring.service';
@@ -28,6 +29,11 @@ export class MonitoringController {
   }
 
   @Get('health')
+  // Docker HEALTHCHECK target: must stay reachable and header-free regardless
+  // of how much traffic the rest of the API is taking (the throttler emits its
+  // X-RateLimit-* headers from inside the guard, so skipping is what removes
+  // them — see REFERENCE.md §Guards).
+  @SkipThrottle()
   @ApiOperation({
     summary:
       'Check server and dependencies status. All the information will be returned if no query is included. Use query parameters to filter the checks that you want implemented',

@@ -57,7 +57,7 @@ The full, generated reference is `docs/ENVIRONMENT.md` (regenerate with `yarn do
 | `DOCS_ENDPOINT` | `contract` (local) | Swagger UI path; empty/absent disables docs |
 | `DOCS_USERNAME` / `DOCS_PASSWORD` | — | Basic-auth protecting the docs endpoint (when set) |
 | `LOGS_LEVEL` · `LOGS_PATH` · `LOGS_LIFE_DAYS` | `info` · `data/logs` · `7` | pino level, rolling log dir, retention days |
-| `MAX_REQUESTS` / `MAX_REQUESTS_TIME` | — | Rate limiter (requests / window) |
+| `MAX_REQUESTS` / `MAX_REQUESTS_TIME` | — | Rate limiter — **opt-in**: max requests per window, plus the window length in **milliseconds** (e.g. `60000`). Both must be set together as positive integers (a partial pair fails at boot). With neither set, no throttling is applied **and no `X-RateLimit-*` response headers are emitted at all**; `/health` is always exempt |
 | `MAX_EVENT_LOOP_DELAY` | `100` | Event-loop lag ceiling (ms) before the server backs off |
 
 ## Running the App

@@ -16,7 +16,7 @@ Long-tail gotchas and detailed conventions. **Load only when the task touches th
 - [Pass-Through & Response Shape](#pass-through--response-shape) — non-persisted response fields, `@ApiProperty` coverage rule, validation-pipe safety, `forbidNonWhitelisted`, GPIO pin validation
 - [Timezone](#timezone) — UTC storage, Settings module, TimezoneInterceptor
 - [Logging](#logging) — error-vs-warn policy, `formatPollError`, pino-http duplicate suppression
-- [Guards](#guards) — guard inventory and the composite-decorator bundling requirement
+- [Guards](#guards) — guard inventory, the composite-decorator bundling requirement, and the opt-in rate-limit response headers (names, units, `/health` exemption)
 - [Migrations](#migrations) — directory, naming, barrel registration, baseline convention, prod `migrationsRun`
 - [Environment Variables](#environment-variables) — key env var table (full generated reference: `docs/ENVIRONMENT.md`)
 - [Config](#config) — `CustomConfigService` getter grouping philosophy
@@ -370,7 +370,11 @@ This ensures one canonical log entry per exception. Non-exception responses (404
 - `IsPicoUnitMonitoredGuard` (410 Gone for unmonitored units) — used via `@OnlyMonitoredPicoUnits()` decorator
 - `IsControlLoopEnabledGuard` (409 Conflict when control loop active, prevents manual output changes) — used via `@OnlyMonitoredPicoUnitsWithControlLoop()`
 - `PicoAnnounceSecretGuard` (401 Unauthorized, validates `X-Pico-Secret` header against `PICO_ANNOUNCE_SECRET`) — used via `@PicoAnnounceSecret()` composite decorator
-- `TooManyRequestsGuard` — `@nestjs/throttler` rate limiting
+- `TooManyRequestsGuard` — `@nestjs/throttler` (installed **6.7.0**) rate limiting. Throttling is **opt-in**: `ThrottlerModule.forRootAsync()` in `app.module.ts` resolves a single `[{ ttl, limit }]` definition only when both `MAX_REQUESTS` and `MAX_REQUESTS_TIME` are positive safe integers, and an **empty definitions array** otherwise. The empty array is what suppresses the headers: every header write lives inside `ThrottlerGuard.handleRequest()`, which the guard calls from its per-throttler loop, so zero definitions ⇒ the loop body never runs ⇒ no headers and no 429 (`[].every(…)` → `true`). Never hand the library a definition with an `undefined` `ttl`/`limit` — it then emits literally `X-RateLimit-Limit: undefined` with `NaN` in the other two.
+  - **Header names are the library's own** (prefix `X-RateLimit`): `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset` on every throttled response, plus `Retry-After` **only when blocked** (a `-<name>` suffix appears only for a *named* throttler; the default throttler is unsuffixed). Do not set them manually, add an interceptor, or rename them.
+  - **Units**: the configured `MAX_REQUESTS_TIME` / `ttl` is **milliseconds**, while `X-RateLimit-Reset` and `Retry-After` are **relative seconds** (`Math.ceil(ms / 1000)`).
+  - **`/health` is exempt** via `@SkipThrottle()` on `MonitoringController.health()` only — the Docker HEALTHCHECK target must stay reachable and header-free regardless of API traffic. `/ping` and every `/v1` route stay throttled when configured. `@SkipThrottle()` with no args keys its `THROTTLER_SKIP` metadata on the throttler name `default`, which is the name the single unnamed definition gets.
+  - The guard subclass overrides **only** the 429 exception body — it does not bypass header generation. Regression guard: `test/rate-limit-headers.e2e-spec.ts`.
 - `AppSecretBearerMiddleware` — optional Bearer token auth from `APP_SECRET`
 - `ProtectEventLoopMiddleware` — toobusy-js overload rejection
 
@@ -425,6 +429,8 @@ Schema changes for production (`NODE_ENV=prod`, where `synchronize: false`) requ
 | `DOCS_ENDPOINT`        | —                   | Swagger UI path                                                               |
 | `LOGS_LEVEL`           | `info`              | Pino level                                                                    |
 | `READINGS_RETENTION_MONTHS` | `6`              | Months of readings to retain before cleanup                                    |
+| `MAX_REQUESTS`             | —                  | Rate limiting is **opt-in**: max requests per window (integer ≥ 1). Must be set **together** with `MAX_REQUESTS_TIME` — a partial pair fails at boot. Neither set ⇒ no throttling **and no `X-RateLimit-*` headers at all**; see [Guards](#guards) |
+| `MAX_REQUESTS_TIME`        | —                  | Rate-limit window in **milliseconds** (e.g. `60000`), paired with `MAX_REQUESTS` (integer ≥ 1). Note `X-RateLimit-Reset` / `Retry-After` are emitted in **seconds**; see [Guards](#guards) |
 
 > `READINGS_SAFETY_MAX_ROWS` is **not** an env var — it is a hardcoded module constant in `cron.service.ts` (no Joi key, no `CustomConfigService` getter); see [Cron Polling](#cron-polling) → Readings cleanup.
 
@@ -503,6 +509,7 @@ kill "$SMOKE_PID"
   const setup = await import('./test-setup');
   const app = await setup.createTestApp();
   ```
+- **Per-app rate-limit env flips need the same `jest.resetModules()` + dynamic-import dance, and the value must be set BEFORE the import.** `MAX_REQUESTS`/`MAX_REQUESTS_TIME` are `.optional()` with **no** Joi default, so when absent they are missing from the validated-env map and `ConfigService.get()` falls through to a **live, uncoerced `process.env` read**: a var assigned *after* the first module-graph import reaches the `ThrottlerModule.forRootAsync()` factory as a **string**, which the defensive `Number.isSafeInteger()` check rejects ⇒ the app silently behaves as unconfigured (no headers, no 429). Only a value present at import time goes through Joi validation + numeric conversion. So: set/delete both vars, **then** `jest.resetModules()`, **then** `await import('./test-setup')`; restore originally-absent vars with `delete process.env.X` (never assign `undefined`). Close every fresh app (`closeTestApp`) between cases so the per-app in-memory `ThrottlerStorageService` hit counts reset — see `test/rate-limit-headers.e2e-spec.ts`.
 - Only `console.error`-level output surfaces in e2e runs (custom reporters drop `console.log`) — silence expected error-path logging with `jest.spyOn(logger, 'error')`.
 - Axios auto-mock makes `isAxiosError` return `undefined` — install manually in `beforeEach`:
   ```ts

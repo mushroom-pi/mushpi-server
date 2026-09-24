@@ -104,11 +104,27 @@ export const validationSchema = Joi.object({
       'Declares that the browser-facing deployment is reached over HTTPS (TLS terminated upstream or directly). Does NOT configure TLS in this app — it only gates the HTTPS-only security headers: helmet HSTS and the CSP upgrade-insecure-requests directive.',
     ),
   MAX_EVENT_LOOP_DELAY: Joi.number().default(100),
-  MAX_REQUESTS: Joi.number(),
-  MAX_REQUESTS_TIME: Joi.number(),
+  MAX_REQUESTS: Joi.number()
+    .integer()
+    .min(1)
+    .optional()
+    .description(
+      'Rate limiting is opt-in: the maximum number of requests allowed per window, must be set TOGETHER with MAX_REQUESTS_TIME. If either one is absent the app applies no throttling and emits no X-RateLimit-* response headers.',
+    ),
+  MAX_REQUESTS_TIME: Joi.number()
+    .integer()
+    .min(1)
+    .optional()
+    .description(
+      'Rate-limit window length in MILLISECONDS (e.g. 60000 = 1 minute), must be set TOGETHER with MAX_REQUESTS. If either one is absent the app applies no throttling and emits no X-RateLimit-* response headers.',
+    ),
   SQLITE_PATH: Joi.string().default('data/app.sqlite'),
   SQLITE_LOG: Joi.boolean().truthy('true').falsy('false').default(false),
   UPLOAD_DIR: Joi.string().default('data'),
   PICO_ANNOUNCE_SECRET: picoAnnounceSecret,
   READINGS_RETENTION_MONTHS: Joi.number().integer().min(1).default(6),
-});
+})
+  // Rate limiting is opt-in and needs both halves of the pair: a lone
+  // MAX_REQUESTS or MAX_REQUESTS_TIME is a configuration mistake, so it fails
+  // at boot (validation error) instead of silently half-configuring the guard.
+  .and('MAX_REQUESTS', 'MAX_REQUESTS_TIME');

@@ -146,7 +146,7 @@ Env reference is **generated**, never hand-maintained: `yarn docs:env` → `docs
 |---|---|
 | `server` | host/port, NODE_ENV, errorsDetail |
 | `logs` | pino level |
-| `security` | APP_SECRET, httpsEnabled (APP_HTTPS_ENABLED), throttler, event-loop |
+| `security` | APP_SECRET, httpsEnabled (APP_HTTPS_ENABLED), throttler (opt-in: positive `MAX_REQUESTS` + `MAX_REQUESTS_TIME` ms window, both required together), event-loop |
 | `docs` | Swagger endpoint + auth |
 | `sqlite` | DB path |
 | `upload` | UPLOAD_DIR → imageDir |

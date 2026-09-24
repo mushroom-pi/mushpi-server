@@ -115,12 +115,30 @@ import { SwaggerModule } from './swagger/swagger.module';
     ThrottlerModule.forRootAsync({
       imports: [CustomConfigModule],
       inject: [CustomConfigService],
-      useFactory: ({ security }: CustomConfigService) => [
-        {
-          ttl: security.maxRequestsTime,
-          limit: security.maxRequests,
-        },
-      ],
+      /**
+       * Rate limiting is opt-in. Both values must be positive safe integers;
+       * anything else (absent, or a value that never passed the Joi schema)
+       * resolves to an EMPTY definitions array.
+       *
+       * That is load-bearing: with zero throttler definitions the guard's
+       * per-throttler loop never runs at all, so the library writes no
+       * X-RateLimit-* headers and never raises 429. Returning a definition with
+       * an undefined ttl/limit instead makes the library emit literal
+       * `X-RateLimit-Limit: undefined` and `NaN` remaining/reset headers on
+       * every response. Headers themselves are the library's native
+       * X-RateLimit-Limit / -Remaining / -Reset (reset and Retry-After are
+       * relative seconds; the configured ttl is milliseconds).
+       */
+      useFactory: ({ security }: CustomConfigService) => {
+        const limit = security.maxRequests;
+        const ttl = security.maxRequestsTime;
+        const configured =
+          Number.isSafeInteger(limit) &&
+          limit > 0 &&
+          Number.isSafeInteger(ttl) &&
+          ttl > 0;
+        return configured ? [{ ttl, limit }] : [];
+      },
     }),
     SQLiteModule,
     PicoUnitsModule,
