@@ -55,7 +55,7 @@ The full, generated reference is `docs/ENVIRONMENT.md` (regenerate with `yarn do
 | `APP_HTTPS_ENABLED` | `false` | Set `true` only when the browser-facing deployment is HTTPS (TLS terminated upstream or directly). Emits HSTS + CSP `upgrade-insecure-requests`; on plain HTTP the defaults (off) keep the SPA loadable from LAN addresses |
 | `READINGS_RETENTION_MONTHS` | `6` | How long readings are kept before the retention cleanup prunes them |
 | `DOCS_ENDPOINT` | `contract` (local) | Swagger UI path; empty/absent disables docs |
-| `DOCS_USERNAME` / `DOCS_PASSWORD` | — | Basic-auth protecting the docs endpoint (when set) |
+| `DOCS_USERNAME` / `DOCS_PASSWORD` | — | Optional basic-auth protecting the docs endpoint, **in every environment** — never required; a non-empty username must be paired with a password (a partial pair fails at boot). Absent/empty leaves enabled docs unauthenticated |
 | `LOGS_LEVEL` · `LOGS_PATH` · `LOGS_LIFE_DAYS` | `info` · `data/logs` · `7` | pino level, rolling log dir, retention days |
 | `MAX_REQUESTS` / `MAX_REQUESTS_TIME` | — | Rate limiter — **opt-in**: max requests per window, plus the window length in **milliseconds** (e.g. `60000`). Both must be set together as positive integers (a partial pair fails at boot). With neither set, no throttling is applied **and no `X-RateLimit-*` response headers are emitted at all**; `/health` is always exempt |
 | `MAX_EVENT_LOOP_DELAY` | `100` | Event-loop lag ceiling (ms) before the server backs off |

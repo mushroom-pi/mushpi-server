@@ -16,23 +16,36 @@ const addValids = (valids: string[], def?: string): Joi.StringSchema => {
   return V;
 };
 
-const username = Joi.string()
-  .not('admin')
-  .not('user')
-  .trim()
-  .when('NODE_ENV', {
-    is: 'prod',
-    then: Joi.required(),
-    otherwise: Joi.valid('').optional(),
-  });
+/**
+ * Docs basic-auth credentials are **optional in every environment** —
+ * permitted, never required. A non-empty username must pair with a password
+ * (see `password()`); an explicitly empty pair means "docs enabled,
+ * unauthenticated". The old rules that forced `''` outside `NODE_ENV=prod`
+ * and required the pair inside it are gone: there is one uniform policy.
+ */
+const username = Joi.string().not('admin').not('user').trim().allow('');
 
+/**
+ * All-or-nothing pair: require a password only when the username is
+ * non-empty, and reject a password supplied without its username rather
+ * than silently ignoring a half-configured pair.
+ *
+ * The `is` schema carries `.required()` deliberately — the definedness
+ * trap: Joi short-circuits `undefined` for a non-required `is` schema, so a
+ * bare `Joi.string().not('')` ALSO matches an absent reference (and an empty
+ * one), which is exactly how a `NODE_ENV=prod` boot came to demand
+ * "DOCS_USERNAME" even with the docs endpoint unset. `Joi.exist()` is not a
+ * substitute here: it rejects an absent reference but counts an empty string
+ * as present, and emptiness must stay a distinct state from "enabled".
+ */
 const password = (usernameReference: string) =>
   Joi.any().when(usernameReference, {
+    is: Joi.string().not('').required(),
     then: Joi.string()
       .not('admin', 'abc', '123')
       .pattern(new RegExp('^[a-zA-Z0-9]{6,30}$'))
       .required(),
-    otherwise: Joi.optional(),
+    otherwise: Joi.string().valid('').optional(),
   });
 
 const secret = Joi.any().when('NODE_ENV', {
@@ -82,12 +95,17 @@ export const validationSchema = Joi.object({
     otherwise: Joi.optional(),
   }),
   DOCS_UI_URL: Joi.any().when('DOCS_ENDPOINT', {
-    is: Joi.string().not(''),
+    // `.required()` makes an ABSENT endpoint unambiguously select the
+    // disabled branch (see the definedness note on `password()`).
+    is: Joi.string().not('').required(),
     then: Joi.string().uri().optional(),
     otherwise: Joi.optional(),
   }),
   DOCS_USERNAME: Joi.any().when('DOCS_ENDPOINT', {
-    is: Joi.string().not(''),
+    // Same definedness-safe idiom: with the old `Joi.string().not('')` the
+    // absent endpoint matched, taking the enabled branch and (in prod)
+    // making the credentials mandatory on a boot where docs were disabled.
+    is: Joi.string().not('').required(),
     then: username,
     otherwise: Joi.optional(),
   }),

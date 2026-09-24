@@ -1,5 +1,6 @@
 import {
   ClassSerializerInterceptor,
+  Logger as NestLogger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { HttpAdapterHost, NestFactory, Reflector } from '@nestjs/core';
@@ -50,6 +51,15 @@ async function bootstrap() {
 
   // Customized tools
   if (configService.docs.makeDocs) {
+    // Docs credentials are optional in every environment, so a production
+    // boot with the endpoint enabled and no credential pair is legal — warn
+    // loudly instead of failing. A partial pair never reaches here: the Joi
+    // schema rejects it at boot.
+    if (configService.isProd && !configService.docs.useAuth)
+      NestLogger.warn(
+        `Swagger docs are enabled at "/${configService.docs.endpoint}" (and its "/${configService.docs.endpoint}-json" OpenAPI document) WITHOUT authentication: the docs/OpenAPI surface — including the proxied control routes it documents — is served unauthenticated. Set both DOCS_USERNAME and DOCS_PASSWORD to enable HTTP basic auth on it.`,
+        'Bootstrap',
+      );
     /**
      * Adding the basic authentication for the documentation endpoint BEFORE the swaggerModule is created is pretty important. If you add the authentication after you create the endpoint, it won't work.
      */
