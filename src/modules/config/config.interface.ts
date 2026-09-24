@@ -15,6 +15,7 @@ export interface EnvironmentVariables {
   LOGS_PATH: string;
   LOGS_LIFE_DAYS: number;
   ERRORS_DETAIL?: boolean;
+  APP_HTTPS_ENABLED: boolean;
   MAX_EVENT_LOOP_DELAY: number;
   MAX_REQUESTS?: number;
   MAX_REQUESTS_TIME?: number;
@@ -42,6 +43,7 @@ export interface LogsConfig {
 
 export interface SecurityConfig {
   secret?: EnvironmentVariables['APP_SECRET'];
+  httpsEnabled: boolean;
   maxEventLoopDelay: EnvironmentVariables['MAX_EVENT_LOOP_DELAY'];
   maxRequests?: EnvironmentVariables['MAX_REQUESTS'];
   maxRequestsTime?: EnvironmentVariables['MAX_REQUESTS_TIME'];

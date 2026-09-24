@@ -7,7 +7,7 @@
 | `NODE_ENV` | string | Never | `"local"` | Allowed values: `dev`, `local`, `prod`, `staging`, `test` |  |
 | `APP_HOST` | string | Never | `"localhost"` |  |  |
 | `APP_PORT` | number | Never |  |  |  |
-| `APP_SECRET` | any | Never |  |  |  |
+| `APP_SECRET` | string | Never |  |  |  |
 | `CLIENT_URL` | string | Never |  |  |  |
 | `CLIENT_DIST_DIR` | string | Never |  |  |  |
 | `DOCS_ENDPOINT` | any | Never |  |  |  |
@@ -18,6 +18,7 @@
 | `LOGS_PATH` | string | Never | `"data/logs"` |  |  |
 | `LOGS_LIFE_DAYS` | number | Never | `7` |  |  |
 | `ERRORS_DETAIL` | boolean | Never |  |  |  |
+| `APP_HTTPS_ENABLED` | boolean | Never | `false` |  | Declares that the browser-facing deployment is reached over HTTPS (TLS terminated upstream or directly). Does NOT configure TLS in this app — it only gates the HTTPS-only security headers: helmet HSTS and the CSP upgrade-insecure-requests directive. |
 | `MAX_EVENT_LOOP_DELAY` | number | Never | `100` |  |  |
 | `MAX_REQUESTS` | number | Never |  |  |  |
 | `MAX_REQUESTS_TIME` | number | Never |  |  |  |

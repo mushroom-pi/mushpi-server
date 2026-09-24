@@ -4,12 +4,12 @@ Long-tail gotchas and detailed conventions. **Load only when the task touches th
 
 ## Index
 
-- [Pico Proxy Internals](#pico-proxy-internals) — axios retry centralization, Pico response validation, `api_compatibility` resolution table, accept-and-flag, strict-announce vs lenient-poll ingestion
-- [Computed Status Fields](#computed-status-fields) — derivation rules for `Batch.status`, `PicoUnit.status`, `PicoUnit.api_compatibility` (moved from core)
+- [Pico Proxy Internals](#pico-proxy-internals) — cross-repo contract pointers (root `AGENTS.md` ownership, spec endpoint, CORS origin), axios retry centralization, Pico response validation, `api_compatibility` resolution table, accept-and-flag, strict-announce vs lenient-poll ingestion
+- [Computed Status Fields](#computed-status-fields) — derivation rules for `Batch.status`, `PicoUnit.status`, `PicoUnit.api_compatibility` (moved from core), camelCase-getter naming exceptions
 - [E2E Test Conventions](#e2e-test-conventions) — project-specific e2e rules: time windows, state reset
 - [Batch Lifecycle & Relation Loading](#batch-lifecycle--relation-loading) — create/update constraints, recipe template snapshot, immutable FKs, selective relation loading
-- [Image Uploads & Static Serving](#image-uploads--static-serving) — recipe/batch image uploads, ServeStaticModule, SPA serving, static CORS, helmet CSP
-- [API Versioning Internals](#api-versioning-internals) — version application sites, `operationIdFactory`, middleware×versioning workarounds, named wildcards, `main.ts` coverage gap
+- [Image Uploads & Static Serving](#image-uploads--static-serving) — recipe/batch image uploads, ServeStaticModule, SPA serving, static CORS, helmet CSP, `APP_HTTPS_ENABLED` HSTS/CSP gating
+- [API Versioning Internals](#api-versioning-internals) — version application sites, version-neutral exception + `V1` suffix naming, `operationIdFactory`, middleware×versioning workarounds, named wildcards, `main.ts` coverage gap
 - [Spec Tooling Internals](#spec-tooling-internals) — generated artifacts table, Husky git hooks, runtime-vs-export title, generation from compiled output (swagger CLI plugin `_OPENAPI_METADATA_FACTORY`), served-vs-committed reconciliation checks, ts-node script conventions, generator-version churn of committed `spec/`
 - [Release Versioning](#release-versioning) — package-version bump policy, post-bump spec regeneration, `mushpi-ops/release.json`/tags prohibition (moved from core)
 - [Cron Polling](#cron-polling) — sweep overlap/parallelism, readings ingestion funnel & quality gates, MAC/version refresh, time-windowed state changes, proxy-vs-batch poll visibility split
@@ -23,6 +23,7 @@ Long-tail gotchas and detailed conventions. **Load only when the task touches th
 - [Dependency Remediation Notes](#dependency-remediation-notes) — node-gyp/native builds, the multer `resolutions` pin + removal condition, the knip nested-repo gitignore hazard (`--no-gitignore` mitigation)
 - [Tooling & Style Deviations](#tooling--style-deviations) — tsconfig strictness disabled; `settings.v1.controller.ts` branching (skill deviations)
 - [Raw SQL](#raw-sql) — SQLite datetime conversion for raw SQL + QueryBuilder string predicates; aggregation response shape (`AggregatedReadingsResponseDto`)
+- [Build Output & Entrypoint](#build-output--entrypoint) — `dist/src/main.js` path and why (tsc `rootDir` push), `start:prod` + Docker `CMD`
 - [Local Verification](#local-verification-smoke-boot-without-disturbing-a-live-instance) — smoke-booting on throwaway paths without touching a live instance
 - [E2E Gotchas](#e2e-gotchas) — jest worker/mocking/fixture quirks
 
@@ -30,6 +31,7 @@ Long-tail gotchas and detailed conventions. **Load only when the task touches th
 
 ## Pico Proxy Internals
 
+- **Cross-repo contract pointers**: the Pico announce/poll/proxy contracts and the client-codegen contract are **owned by the project-root [`AGENTS.md`](../AGENTS.md)** — check there before changing any cross-tier shape (the server's global `forbidNonWhitelisted: true` pipe makes announce-payload field changes a hard 422 cutover across grow/mock/server). The client consumes the OpenAPI spec at `/<DOCS_ENDPOINT>-json`; the CORS allowed origin is `CLIENT_URL` (`config.client.clientUrl`). This section holds the server-side internals of that contract.
 - **Axios retry config is centralized**: all Pico-bound axios calls must use `configureAxiosRetry(axios)` from `http-fallback.ts`. Do **not** call `axiosRetry(axios, ...)` directly in service constructors. `configureAxiosRetry` is the single source of truth for retry count, retry condition, and retry delay. It only retries on transient HTTP server errors (5xx, 429) — connection-level errors (`EHOSTUNREACH`, `ECONNREFUSED`, `ENETUNREACH`, `ETIMEDOUT`) fail immediately.
 - **Pico response validation**: `validateDeviceResponse()` in `readings.service.ts` validates the Pico `GET /` response against `DeviceResponseDto` with `whitelist: true` + `forbidNonWhitelisted: false`. Any key the Pico emits that is not decorated on the DTO is **silently dropped** — no error, no warning, no `failed_calls` increment. Firmware field names must match the DTO exactly (e.g. `outputs.heater`, not `outputs.heater_on`).
 - **`api_compatibility` — the compatibility resolution table**: the computed (never stored) three-state verdict is derived at response time by `getPicoApiCompatibility(apiVersion, hasContactEvidence)` in `pico-unit-compatibility.util.ts`. `hasContactEvidence` is **`last_seen != null`** — `last_seen` is the sole contact-evidence marker. Because `PicoUnitsService.create()` (manual add) leaves `api_version` NULL, it **must set `last_seen`** after its successful `/ping` reachability check, or a manually-created unit would misclassify as `unknown` instead of `incompatible`.
@@ -46,7 +48,7 @@ Long-tail gotchas and detailed conventions. **Load only when the task touches th
 
 ## Computed Status Fields
 
-All three status fields are computed `@Expose()` getters — never `@Column`s, never migrated, never cron-maintained. Core (`AGENTS.md`) keeps a one-line pointer here.
+All three status fields are computed `@Expose()` getters — never `@Column`s, never migrated, never cron-maintained. Core (`AGENTS.md`) keeps a one-line pointer here. **Contract exceptions to the camelCase-getter naming rule** (wire-contract names that must not be renamed): `api_compatibility`, `images_left`, and `PicoUnit`'s `host`/`status`/`latest_reading` — all other computed `@Expose()` getters use camelCase.
 
 - **Batch `status`**: `'planned'` (`start_at > now`) / `'in-progress'` / `'finished'` (`finish_at < now`). Requires `@Expose()` + `@ApiProperty()`.
 - **PicoUnit `status`** (health): `'unmonitored'` / `'offline'` / `'degraded'` / `'healthy'` derived from `monitored`, `failed_calls` (threshold 3), `failed_readings`, `consecutive_empty_readings`. Requires `@Expose()` + `@ApiProperty({ enum: PICO_UNIT_STATUSES })`. Canonical values array/type live in `pico-unit.type.ts`.
@@ -113,7 +115,9 @@ When a computed field needs access to services (like `CustomConfigService` for `
 
 **Registration order is safe**: Express registers controller routes (`/v1/*`, `/ping`, `/health`) and Swagger docs **before** `ServeStaticModule`'s `onModuleInit` static middleware + catch-all, and before Nest's not-found handler. So the SPA catch-all can only fire for requests matching no controller route — it cannot shadow the API, monitoring, docs, or `/images` (whose `fallthrough: false` responds 404 ahead of it). Note also: every `serveRoot` entry additionally registers a renderFn GET route at `serveRoot + '{*any}'` that resolves `index.html` — if that route ever handled a request for an asset-only root, it would throw on the missing `index.html`; `fallthrough: false` makes the static middleware answer the request (200 or terminal 404) first, so the renderFn stays dead code for `/images` and `/public`. **`/metrics` was removed** (no controller route): with the SPA entry active the catch-all now serves `index.html` for `GET /metrics` (200 text/html), and in the API-only e2e fixture (no SPA) it falls to Nest's not-found handler (404).
 
-**helmet CSP governs the SPA**: once the server serves the client HTML, helmet's `contentSecurityPolicy` applies to it (in dev the UI came from Vite :5173, outside helmet's reach). `img-src` is relaxed to `["'self'", 'data:', 'blob:', 'https:']` in `main.ts` for hotlinked recipe images and blob/object-URL previews. Any future client feature that loads cross-origin resources must be CSP-audited against helmet defaults.
+**helmet CSP governs the SPA**: once the server serves the client HTML, helmet's `contentSecurityPolicy` applies to it (in dev the UI came from Vite :5173, outside helmet's reach). `img-src` is relaxed to `["'self'", 'data:', 'blob:', 'https:']` in `src/common/middleware/helmet.middleware.ts` (shared factory, applied by `main.ts` and `test/test-setup.ts`) for hotlinked recipe images and blob/object-URL previews. Any future client feature that loads cross-origin resources must be CSP-audited against helmet defaults.
+
+**HTTPS-only headers are gated by `APP_HTTPS_ENABLED`** (default `false` = plain-HTTP deployment). The factory sets `'upgrade-insecure-requests': httpsEnabled ? [] : null` and `hsts: httpsEnabled`. The `null` is load-bearing: helmet re-applies any default directive that is merely *omitted* from the directives object, so leaving the key out would bring `upgrade-insecure-requests` back and break the SPA on LAN addresses (browsers rewrite `/assets/*` to `https://` with no fallback; `localhost` is exempt as a potentially trustworthy origin, so local dev masks the bug — classic `SSL_ERROR_RX_RECORD_TOO_LONG` white page). With the flag on, HSTS ships helmet's stock default (`max-age=31536000; includeSubDomains`) and the directive stays for mixed-content protection. The flag only *declares* that TLS is terminated upstream/directly; it configures no TLS itself. Express `trust proxy` is deliberately **not** enabled.
 
 #### Static files and CORS
 
@@ -142,6 +146,8 @@ Upload paths are driven by the `UPLOAD_DIR` env var (default `data`). Access via
 ### Version application sites
 
 `app.enableVersioning({ type: VersioningType.URI, defaultVersion: API_VERSION })` (constant `API_VERSION = '1'` in `src/common/utils/api-version.ts`) must be applied in **three** places — `main.ts`, `test/test-setup.ts`, and `spec/generators/openapi.generator.ts` — each time **before** any route registration or Swagger document building. Without the spec-generator application the committed `openapi.json` silently omits the `/v1/` prefix and the generated client uses wrong paths.
+
+The sole version-neutral exception is `MonitoringController`, declared with `@Controller({ version: VERSION_NEUTRAL })` (infra endpoints `/ping`, `/health` stay unprefixed). Every other controller carries a `V1` class/filename suffix — `batches.v1.controller.ts` → `BatchesV1Controller` — which the `operationIdFactory` strips (next subsection).
 
 ### Swagger operationIdFactory
 
@@ -248,6 +254,8 @@ Policy detail (core keeps a one-line pointer here):
 
 **Readings ingestion funnel**: `ReadingsService.createFromDeviceResponse()` is the **only** write path for the `readings` table — there is no direct POST endpoint for readings and no batch-side writes. Any quality filter or validation rule for incoming readings belongs in `ReadingsService.pollReadingsFromUnit()` (the caller), not in `createFromDeviceResponse` itself, which should remain a pure mapper/persister. Failed units increment `failed_calls` but are not auto-disabled. Uses error-safe wrappers (`applyBatchSettingsSafe`) to avoid crashing the cron job.
 
+**Zero-value skip**: if either raw sensor value is exactly `0` (`sensors.dht.temperature === 0` or `.humidity === 0`), the reading is treated as sensor glitch/warmup noise: a warn is logged and **no reading row is persisted** (`pollReadingsFromUnit()` in `readings.service.ts`, before the empty-readings gate).
+
 **Sensor range validation**: out-of-range DHT11 readings (outside `SENSOR_RANGE` in `pico-units.constant.ts`: temperature 0–50°C, humidity 10–90%) increment `failed_readings` on the PicoUnit instead of persisting a reading row. `failed_readings` resets to 0 on the next valid in-range reading (consecutive-failure model, independent from `failed_calls`). Temperature > 40°C logs a warning but does not block persistence (valid sensor data — safety threshold only). The range gate lives in `pollReadingsFromUnit()`, not in `DeviceResponseDto` (which is a structural validator, not a data-quality gate).
 
 **Empty-readings tracking**: when both `temperature` and `humidity` are `null` (sensor returned no data), `consecutive_empty_readings` on the PicoUnit is incremented and no reading row is persisted. When at least one sensor value is non-null, `consecutive_empty_readings` resets to 0. This is distinct from `failed_readings` (out-of-range) and `failed_calls` (unreachable). The empty-readings gate runs after the zero-value skip and before the range check in `pollReadingsFromUnit()`.
@@ -306,6 +314,10 @@ The global pipe runs with `forbidNonWhitelisted: true`: **any key on a `/v1` req
 ### Pin validation for setup proxy
 
 `PUT /v1/pico-units/:id/control/setup` validates GPIO pins against `VALID_USER_GPIO_PINS` from `src/common/constants/hardware.constants.ts` — valid user I/O GPIOs are 0–22, 26–28 (GP23/24/25/29 are WiFi-reserved on Pico 2W). A `NoDuplicatePinsConstraint` class-level validator rejects configs where two devices share the same GPIO (returns 422).
+
+### Partial PATCH — `Object.assign` semantics (why DTO fields must have no initializers)
+
+`PicoUnitsService.update()` applies a partial PATCH with `Object.assign(unit, dto)`. Fields the request body omitted are **not own-enumerable** on the DTO instance, so `Object.assign` skips them and stored values survive. A default value or property initializer (e.g. `?: string = ''`) makes the field own-enumerable even when omitted — every PATCH would then incorrectly overwrite the stored value with the default. The rule (no initializers in ANY `UpdateXxxDto`) is core (`AGENTS.md` §DTO partial-update contract); the mechanism is here.
 
 ## Timezone
 
@@ -408,6 +420,7 @@ Schema changes for production (`NODE_ENV=prod`, where `synchronize: false`) requ
 | `CLIENT_URL`           | —                   | CORS allowed origin (required in `local`, optional elsewhere)                 |
 | `CLIENT_DIST_DIR`      | —                   | Absolute path to the built `mushpi-client` SPA (`dist/`). Required in `prod`; unset = SPA serving disabled (dev uses Vite :5173). Docker sets e.g. `/usr/src/app/client`. |
 | `APP_SECRET`           | —                   | Optional Bearer token for human auth (optional in all envs; LAN/Tailscale is the security boundary) |
+| `APP_HTTPS_ENABLED`    | `false`             | Declares the browser-facing deployment is HTTPS (TLS terminated upstream/directly; configures no TLS itself). Gates helmet HSTS + CSP `upgrade-insecure-requests` — keep `false` on plain-HTTP LAN deployments or the SPA breaks off-`localhost`; see [Image Uploads & Static Serving](#image-uploads--static-serving) → HTTPS-only headers |
 | `PICO_ANNOUNCE_SECRET` | `mushpi-dev-secret` | Shared secret for `POST /v1/pico-units/announce` (required in prod, min 6 chars) |
 | `DOCS_ENDPOINT`        | —                   | Swagger UI path                                                               |
 | `LOGS_LEVEL`           | `info`              | Pino level                                                                    |
@@ -417,7 +430,7 @@ Schema changes for production (`NODE_ENV=prod`, where `synchronize: false`) requ
 
 ## Config
 
-`CustomConfigService` exposes typed getters grouped by **domain area** — not by "what kind of value" (string, secret, etc.). The `security` getter is reserved for **cross-cutting/infra** concerns (global auth, rate limiting, event-loop protection). Domain-specific secrets belong in their own domain getter (e.g., `pico.announceSecret` for Pico-hardware trust, not `security.picoAnnounceSecret`). The `client` getter holds client-domain config — `clientUrl` (the CORS allowed origin, used in local dev) and `distDir` (the served SPA path) — so CORS lives beside the other client concerns rather than in `security`. This keeps domain concerns colocated and prevents the `security` getter from becoming a grab-bag.
+`CustomConfigService` exposes typed getters grouped by **domain area** — not by "what kind of value" (string, secret, etc.). The `security` getter is reserved for **cross-cutting/infra** concerns (global auth, HTTPS-only header gating, rate limiting, event-loop protection). Domain-specific secrets belong in their own domain getter (e.g., `pico.announceSecret` for Pico-hardware trust, not `security.picoAnnounceSecret`). The `client` getter holds client-domain config — `clientUrl` (the CORS allowed origin, used in local dev) and `distDir` (the served SPA path) — so CORS lives beside the other client concerns rather than in `security`. This keeps domain concerns colocated and prevents the `security` getter from becoming a grab-bag.
 
 ## Dependency Remediation Notes
 
@@ -461,6 +474,10 @@ The private `toSqliteDatetime()` method in `ReadingsService` (`src/modules/readi
 
 **Aggregation response shape** (`GET …/readings`, unit and batch): `AggregatedReadingsResponseDto` { `data`: `AggregatedReadingDto[]` — per-bucket avg/min/max of temperature/humidity, relay on-counts, and the setpoints active in the bucket — `points`: requested bucket count, `actualReadings`: raw row count in the window }. There is **no** `AggregatedReading` class — the bucket DTO is `AggregatedReadingDto` (`readings.dto.ts`).
 
+## Build Output & Entrypoint
+
+`nest build` emits `dist/src/main.js` — **not** `dist/main.js`. Cause: `docs/` and `spec/` (generator sources) are in the tsc compile set, which pushes the inferred `rootDir` to the project root. Both `yarn start:prod` and the Docker `CMD` use that path; the smoke-boot command in [Local Verification](#local-verification-smoke-boot-without-disturbing-a-live-instance) reflects it. Core (`AGENTS.md`) carries the path only in the Scripts table (`start:prod` row); this section owns the *why*.
+
 ## Local Verification (smoke-boot without disturbing a live instance)
 
 `yarn start` (from AGENTS.md's verification list) binds port 3000. If a live instance is already running there, it fails with `EADDRINUSE`. To smoke-boot without touching that server, launch with a free `APP_PORT` and throwaway paths under `/tmp`:
@@ -479,6 +496,13 @@ kill "$SMOKE_PID"
 - `maxWorkers: 1` in `jest-e2e.json` — parallel workers cause SQLite lock contention. `forceExit` is **not** needed: `@nestjs/schedule` v6 clears cron jobs on `app.close()` and `@nestjs/typeorm` destroys the DataSource. If the suite ever hangs at exit, run `npx jest --config ./test/jest-e2e.json --detectOpenHandles` to diagnose.
 - **CronService is stubbed by default** in e2e via `createModuleFixture()` → `NoopCronService`. Scheduled sweeps and batch/pico-unit event handlers never issue real HTTP. Specs testing cron behaviour opt in via `createModuleFixture({ withCron: true })` + `createTestApp(moduleFixture)` and must keep `jest.mock('axios')`.
 - `process.env` mutations are contained per-file (Jest 30 node environment copies `process` per test file), but always restore env in `afterAll`/`afterEach` and use `delete process.env.X` (assigning `undefined` stores the string `"undefined"`).
+- **Joi-defaulted env vars freeze at first module-graph import — toggling one per-app needs `jest.resetModules()` + dynamic import.** `@nestjs/config` v4 runs `validationSchema` synchronously inside `ConfigModule.forRoot()`, i.e. when `src/modules/config/config.module.ts` is first *imported* — not when an app is created. Keys Joi resolves with a default (e.g. `APP_HTTPS_ENABLED`, `SQLITE_LOG`) are then cached in the validated-env map, so a later `process.env.X = 'true'` + `createTestApp()` still reads the stale import-time value. Keys that are *absent* from validation output (`.optional()` with no default, e.g. `APP_SECRET`, `ERRORS_DETAIL`) fall through to a live `process.env` read and can be flipped with plain mutations. To exercise both states of a defaulted flag, set the env, then re-import the fixture in the same spec (`test/security-headers.e2e-spec.ts` pattern):
+  ```ts
+  process.env.APP_HTTPS_ENABLED = 'true';
+  jest.resetModules();
+  const setup = await import('./test-setup');
+  const app = await setup.createTestApp();
+  ```
 - Only `console.error`-level output surfaces in e2e runs (custom reporters drop `console.log`) — silence expected error-path logging with `jest.spyOn(logger, 'error')`.
 - Axios auto-mock makes `isAxiosError` return `undefined` — install manually in `beforeEach`:
   ```ts

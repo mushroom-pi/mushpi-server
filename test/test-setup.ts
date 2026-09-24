@@ -6,6 +6,7 @@ import { Test, TestingModule, TestingModuleBuilder } from '@nestjs/testing';
 
 import { ExceptionsFilter } from '../src/common/filters/exceptions.filter';
 import { AppSecretBearerMiddleware } from '../src/common/middleware/app-secret-bearer.middleware';
+import { createHelmetMiddleware } from '../src/common/middleware/helmet.middleware';
 import { ProtectEventLoopMiddleware } from '../src/common/middleware/protect-event-loop.middleware';
 import { validationPipe } from '../src/common/pipes/validation.pipe';
 import { applyApiVersioning } from '../src/common/utils/api-version';
@@ -84,6 +85,7 @@ export async function createTestApp(
   /** Global nest middleware — registered via app.use() to bypass route versioning */
   const protectEventLoop = new ProtectEventLoopMiddleware(configService);
   const appSecretBearer = new AppSecretBearerMiddleware(configService);
+  app.use(createHelmetMiddleware(configService.security.httpsEnabled));
   app.use(protectEventLoop.use.bind(protectEventLoop));
   app.use(appSecretBearer.use.bind(appSecretBearer));
 

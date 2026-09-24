@@ -52,6 +52,7 @@ The full, generated reference is `docs/ENVIRONMENT.md` (regenerate with `yarn do
 | `UPLOAD_DIR` | `data` | Upload root; images live under `$UPLOAD_DIR/images` |
 | `PICO_ANNOUNCE_SECRET` | `mushpi-dev-secret` (non-prod) | Shared secret Pico units send as `X-Pico-Secret` on announce; required in prod |
 | `APP_SECRET` | — | Optional bearer secret guarding the API (`Authorization` header) |
+| `APP_HTTPS_ENABLED` | `false` | Set `true` only when the browser-facing deployment is HTTPS (TLS terminated upstream or directly). Emits HSTS + CSP `upgrade-insecure-requests`; on plain HTTP the defaults (off) keep the SPA loadable from LAN addresses |
 | `READINGS_RETENTION_MONTHS` | `6` | How long readings are kept before the retention cleanup prunes them |
 | `DOCS_ENDPOINT` | `contract` (local) | Swagger UI path; empty/absent disables docs |
 | `DOCS_USERNAME` / `DOCS_PASSWORD` | — | Basic-auth protecting the docs endpoint (when set) |

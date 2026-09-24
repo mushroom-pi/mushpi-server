@@ -79,6 +79,7 @@ export class CustomConfigService {
   get security(): SecurityConfig {
     return {
       secret: this.configService.get('APP_SECRET'),
+      httpsEnabled: this.configService.get('APP_HTTPS_ENABLED'),
       maxEventLoopDelay: this.configService.get('MAX_EVENT_LOOP_DELAY'),
       maxRequests: this.configService.get('MAX_REQUESTS'),
       maxRequestsTime: this.configService.get('MAX_REQUESTS_TIME'),

@@ -96,6 +96,13 @@ export const validationSchema = Joi.object({
   LOGS_PATH: Joi.string().default('data/logs'),
   LOGS_LIFE_DAYS: Joi.number().integer().default(7),
   ERRORS_DETAIL: Joi.boolean().optional(),
+  APP_HTTPS_ENABLED: Joi.boolean()
+    .truthy('true')
+    .falsy('false')
+    .default(false)
+    .description(
+      'Declares that the browser-facing deployment is reached over HTTPS (TLS terminated upstream or directly). Does NOT configure TLS in this app — it only gates the HTTPS-only security headers: helmet HSTS and the CSP upgrade-insecure-requests directive.',
+    ),
   MAX_EVENT_LOOP_DELAY: Joi.number().default(100),
   MAX_REQUESTS: Joi.number(),
   MAX_REQUESTS_TIME: Joi.number(),

@@ -6,13 +6,13 @@ import { HttpAdapterHost, NestFactory, Reflector } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 
 import basicAuth from 'express-basic-auth';
-import helmet from 'helmet';
 import hpp from 'hpp';
 import { Logger } from 'nestjs-pino';
 import toobusy from 'toobusy-js';
 
 import { ExceptionsFilter } from './common/filters/exceptions.filter';
 import { AppSecretBearerMiddleware } from './common/middleware/app-secret-bearer.middleware';
+import { createHelmetMiddleware } from './common/middleware/helmet.middleware';
 import { ProtectEventLoopMiddleware } from './common/middleware/protect-event-loop.middleware';
 import { validationPipe } from './common/pipes/validation.pipe';
 import { applyApiVersioning } from './common/utils/api-version';
@@ -40,16 +40,7 @@ async function bootstrap() {
   /** General safeguards */
   toobusy.maxLag(configService.security.maxEventLoopDelay);
   app.use(hpp());
-  app.use(
-    helmet({
-      contentSecurityPolicy: {
-        directives: {
-          ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-          'img-src': ["'self'", 'data:', 'blob:', 'https:'],
-        },
-      },
-    }),
-  );
+  app.use(createHelmetMiddleware(configService.security.httpsEnabled));
 
   /** Global Nest middleware — registered via app.use() to bypass route versioning */
   const protectEventLoop = new ProtectEventLoopMiddleware(configService);
