@@ -90,7 +90,9 @@ export class AnnouncePicoUnitDto {
     minLength: NAME_MIN_LENGTH,
     maxLength: STANDARD_TEXT_MAX_LENGTH,
     description: 'Version tag for the Micropython executed by the unit',
-    examples: ['v1.26.0 on 2025-08-09 (GNU 14.2.0 MinSizeRel)', '1.26.0.'],
+    // OAS 3.0 Schema Object has no `examples` keyword (that is 3.1) — a
+    // singular `example` is required for the spec to validate.
+    example: 'v1.26.0 on 2025-08-09 (GNU 14.2.0 MinSizeRel)',
   })
   @IsString()
   @IsOptional()
@@ -104,7 +106,7 @@ export class AnnouncePicoUnitDto {
     pattern: PICO_FIRMWARE_VERSION_REGEX.source,
     description:
       'Version tag for the custom firmware executed by the unit (_SOFTWARE_VERSION in app/state.py). Strict SemVer `MAJOR.MINOR.PATCH` — pre-release/build suffixes are rejected (mushpi-docs/versioning.md §3.4). Optional: legacy firmware that omits it still announces successfully.',
-    examples: ['0.1.0'],
+    example: '0.1.0',
   })
   @IsString()
   @IsOptional()
@@ -134,7 +136,7 @@ export class AnnouncePicoUnitDto {
     minLength: NAME_MIN_LENGTH,
     maxLength: STANDARD_TEXT_MAX_LENGTH,
     description: "Name of the unit's board",
-    examples: ['Raspberry Pi Pico 2 W with RP2350'],
+    example: 'Raspberry Pi Pico 2 W with RP2350',
   })
   @IsString()
   @IsOptional()
@@ -171,7 +173,7 @@ export class AnnouncePicoUnitDto {
   @ApiPropertyOptional({
     type: String,
     description: 'Physical MAC address of the unit',
-    examples: ['2c:cf:67:be:95:30'],
+    example: '2c:cf:67:be:95:30',
   })
   @IsMACAddress()
   @IsOptional()
@@ -197,7 +199,7 @@ export class UpdatePicoUnitDto {
     minLength: 0,
     maxLength: NAME_MAX_LENGTH,
     description: 'Friendly name of the unit.',
-    examples: ['Grow Tent A'],
+    example: 'Grow Tent A',
     required: false,
   })
   @IsOptional()

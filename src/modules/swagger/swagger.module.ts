@@ -107,10 +107,10 @@ export class SwaggerModule {
 
     const swaggerConfig = new DocumentBuilder()
       .addSecurity('secret', {
+        // OAS3 http-bearer scheme: the Authorization header is implicit;
+        // `in`/`name` are Swagger 2.0 keys the 3.0 schema rejects.
         type: 'http',
         scheme: 'bearer',
-        in: 'header',
-        name: 'authorization',
       })
       .setTitle(title)
       .setDescription(documentDescriptor?.description || description)

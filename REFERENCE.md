@@ -188,6 +188,15 @@ The server code (NestJS decorators) is the **source of truth** for the REST API.
 | `spec/openapi.yaml` | Yes | Human-readable YAML version of the same contract |
 | `spec/bruno/` | No (gitignored) | Bruno collection — directory of `.bru` files + `bruno.json`, fully regenerable |
 
+### Decorator pitfalls that make the committed spec invalid
+
+The generated document must be **valid OpenAPI 3.0**, and the published documentation site renders its API reference straight from `spec/openapi.json` — so a malformed decorator is a broken public page, not just an internal wart. Two classes have already shipped and been fixed:
+
+- **Swagger 2.0 / OAS 3.1 keys in OAS 3.0 positions.** A response-level `schema` alongside `type` (`@ApiOkResponse({ schema: {...}, type: String })`) emits a 2.0-style key beside the OAS3 `content` block, which validators reject. The same trap catches `in`/`name` on an `http` bearer security scheme (implicit for bearer — drop them), and the plural `examples:` array on `@ApiProperty`, which is an **3.1** keyword in a 3.0 document — use singular `example:`.
+- **A parameter-carrying composite used on a route that does not have the parameter.** `@ApiBatch()` on `GET /v1/pico-units/{picoUnitId}/batches/current` injected a phantom `batchId` path parameter into the spec. That is invalid OAS3 *and* it silently changed the generated client's method signature, committing a required argument no caller could supply. Only decorate a route whose template actually contains the parameter.
+
+**Gate spec changes with `npx swagger-cli validate spec/openapi.json`.** Validators give different verdicts: redocly's default rule set mixes in opinionated style rules (an operation declaring no `security`, an empty `servers`, example-versus-schema drift) that are not validity errors and are deliberately not all satisfied here. `swagger-cli` answers the question that matters — is the document valid OpenAPI 3.
+
 ### Git hooks (Husky)
 
 - **`pre-commit`**: runs `yarn format` + `yarn lint`, then regenerates + stages `docs/ENVIRONMENT.md` when `src/modules/config/config.schema.ts` is part of the staged changes, then detects `src/` changes and automatically runs `yarn spec:all`, staging `spec/openapi.json` and `spec/openapi.yaml` (no `src/` changes → skipped). `yarn build` runs **last**, after the generator blocks, so it validates exactly the content being committed. This keeps the committed spec and generated docs in lockstep with the code.

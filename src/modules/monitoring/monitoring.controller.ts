@@ -21,8 +21,13 @@ export class MonitoringController {
   @ApiOperation({ summary: 'The simplest server status check' })
   @ApiOkResponse({
     description: 'Server is up and running',
-    schema: { example: 'pong' },
-    type: String,
+    // Media-type-scoped schema (OAS3); a response-level `schema` is Swagger 2.0
+    // and makes the generated spec fail validation.
+    content: {
+      'application/json': {
+        schema: { type: 'string', example: 'pong' },
+      },
+    },
   })
   ping(): string {
     return this.monitoringService.ping();
