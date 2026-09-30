@@ -8,11 +8,11 @@ import {
   IsOptional,
   Max,
   Min,
-  Validate,
   ValidateNested,
   ValidationArguments,
   ValidatorConstraint,
   ValidatorConstraintInterface,
+  registerDecorator,
 } from 'class-validator';
 
 import {
@@ -67,6 +67,35 @@ class NoDuplicatePinsConstraint implements ValidatorConstraintInterface {
   }
 }
 
+/**
+ * Anchors the duplicate-pin check at the CLASS level of the whole-object
+ * constraint — it must not be anchored on a pin field, because `@IsOptional()`
+ * is a CONDITIONAL_VALIDATION that suppresses ALL validators on its property
+ * when the value is absent: a field-anchored check silently no-ops whenever
+ * that one field is missing (e.g. `{ humidifier: 6, fan: 6 }` without `dht`).
+ *
+ * The built-in `@Validate` cannot be used here: it is a `PropertyDecorator`
+ * (`object.constructor` only resolves the class when the decorator runs on a
+ * property; on a class declaration it resolves `Function`, registering the
+ * constraint against the wrong target — a silent no-op). So the constraint is
+ * registered directly against the constructor with no property name, which is
+ * exactly the shape `@Validate` produces for a property, and the executor
+ * hands the constraint the instance via `args.object`.
+ */
+function NoDuplicatePins(): ClassDecorator {
+  return (target) => {
+    registerDecorator({
+      name: 'noDuplicatePins',
+      target,
+      // Class-level constraint: no single property to anchor; the executor
+      // validates the whole object and the constraint reads `args.object`.
+      propertyName: undefined as unknown as string,
+      validator: NoDuplicatePinsConstraint,
+    });
+  };
+}
+
+@NoDuplicatePins()
 class ChangeDevicePinsDto {
   @ApiPropertyOptional({
     type: Number,
@@ -75,7 +104,6 @@ class ChangeDevicePinsDto {
     example: 4,
     enum: VALID_USER_GPIO_PINS,
   })
-  @Validate(NoDuplicatePinsConstraint)
   @IsOptional()
   @Type(() => Number)
   @IsInt()

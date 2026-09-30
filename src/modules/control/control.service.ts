@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
 
 import {
   DevicesDto,
@@ -9,6 +9,7 @@ import {
 } from 'src/common/dto/pico-unit-response.dto';
 import {
   configureAxiosRetry,
+  getWithFallback,
   postWithFallback,
 } from 'src/common/utils/http-fallback';
 import { Batch } from 'src/modules/batches/batches.entity';
@@ -22,6 +23,11 @@ import {
   ChangeSetupDto,
   ControlLoopDto,
 } from './control.dto';
+import {
+  findSetupPinConflict,
+  formatPinConflict,
+  hasSetupPinChanges,
+} from './pin-collision.util';
 
 @Injectable()
 export class ControlService {
@@ -76,11 +82,50 @@ export class ControlService {
     picoUnit: PicoUnit,
     setupDto: ChangeSetupDto,
   ): Promise<DevicesDto> {
+    await this.assertNoPinCollision(picoUnit, setupDto);
     return this.callPollAndUpdate(
       picoUnit,
       '/setup',
       setupDto,
     ) as unknown as DevicesDto;
+  }
+
+  /**
+   * Pre-flight for partial pin updates: the DTO can only see the pins present
+   * in the request body, but the device may already hold the requested GPIO.
+   * When the body changes at least one pin, fetch the live mapping fresh
+   * (`GET /setup` — pin state is not persisted server-side), merge the partial
+   * body over it, and reject a conflict with 422 BEFORE anything is forwarded.
+   * Nothing reaches the device on rejection, so both functions cannot end up
+   * on one GPIO. The original partial body is what gets forwarded on success —
+   * the device applies only present keys; never fabricate a merged full
+   * mapping. A body without pins (e.g. `active_high` only) skips the device
+   * round trip entirely.
+   */
+  private async assertNoPinCollision(
+    picoUnit: PicoUnit,
+    setupDto: ChangeSetupDto,
+  ): Promise<void> {
+    if (!hasSetupPinChanges(setupDto.pins)) return;
+
+    let res: AxiosResponse;
+    try {
+      res = await getWithFallback(picoUnit, '/setup', { timeout: 10000 });
+    } catch (error) {
+      // The device could not be consulted — mirror callSilent: a failed call
+      // counts against the unit and surfaces through the axios filter as the
+      // same 417/502/424 class a failed forward POST would produce.
+      await this.picoUnitsService.addFailedCall(picoUnit);
+      throw error;
+    }
+
+    // Parse leniently: untrusted device response, unknown values are excluded
+    // from the merge (findSetupPinConflict is total).
+    const conflict = findSetupPinConflict(res.data?.pins, setupDto.pins);
+    if (conflict) {
+      // A validation rejection is not a device fault — no failed_calls.
+      throw new UnprocessableEntityException(formatPinConflict(conflict));
+    }
   }
 
   async outputs(
