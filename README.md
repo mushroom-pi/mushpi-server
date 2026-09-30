@@ -154,7 +154,7 @@ Everything under `/v1/` (URI versioning, `defaultVersion: '1'`); `/ping` and `/h
 - [`docs/logs.md`](docs/logs.md) — how to retrieve and query logs.
 - [`spec/openapi.yaml`](spec/openapi.yaml) — the committed OpenAPI contract.
 - `mushpi-docs/architecture/c4-container.md` and `mushpi-docs/architecture/c4-component-server.md` — where this service fits in the system and its internals.
-- `mushpi-docs/versioning.md` — release & version semantics.
+- Release & version semantics — reader-facing on the docs site (`releases.mdx`); normative rules in `mushpi-ops/MAINTAINING.md` §Version & Release Semantics.
 
 > This README is for humans. `AGENTS.md` + `REFERENCE.md` are the authoritative instructions that coding agents read.
 
