@@ -15,6 +15,7 @@ import { ControlService } from 'src/modules/control/control.service';
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
 import {
   PICO_UNIT_EVENTS,
+  PicoUnitCreatedEvent,
   PicoUnitMonitoringStartedEvent,
   PicoUnitMonitoringStoppedEvent,
   PicoUnitRegisteredEvent,
@@ -113,6 +114,32 @@ export class CronService implements OnApplicationBootstrap {
     if (!batch) return;
     this.logger.log(
       `Pico unit ${unit.id} registered — restoring active batch ${batch.id} settings`,
+    );
+    await this.applyBatchSettingsSafe(batch);
+  }
+
+  // Manually created units get the same immediate first contact that an
+  // announce (REGISTERED) or a monitoring toggle (MONITORING_STARTED) gets:
+  // one poll right now, so the unit is not stranded waiting for the next
+  // 60s sweep (and so its `ip` backfills from the poll response, arming the
+  // mDNS→IP fallback). One-shot and idempotent — a single poll plus a
+  // no-op batch query for a fresh row — per the cron-side state-change rule.
+  // The poll error is swallowed (warn) so a down device never throws back
+  // into the synchronous emit from PicoUnitsService.create().
+  @OnEvent(PICO_UNIT_EVENTS.CREATED)
+  async handlePicoUnitCreated({ unit }: PicoUnitCreatedEvent) {
+    this.logger.log(
+      `Pico unit ${unit.id} created — polling immediately to capture the first reading`,
+    );
+    try {
+      await this.readingsService.pollReadingsFromUnit(unit);
+    } catch (error) {
+      this.logger.warn(formatPollError(unit, error));
+    }
+    const batch = await this.batchesService.findInProgressForUnit(unit.id);
+    if (!batch) return;
+    this.logger.log(
+      `Pico unit ${unit.id} created — applying active batch ${batch.id} settings`,
     );
     await this.applyBatchSettingsSafe(batch);
   }

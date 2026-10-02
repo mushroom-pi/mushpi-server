@@ -940,6 +940,181 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
     });
   });
 
+  describe('ip refresh on poll', () => {
+    // Manual create (POST /v1/pico-units) leaves ip NULL — only announce
+    // writes it. The poll ingestion must therefore BACKFILL ip from
+    // system.wifi.ip so the mDNS→IP fallback arms itself at the first
+    // successful poll (self-heal of pre-fix stranded units), then REFRESH it
+    // on every poll like firmware_version (DHCP changes), UNLIKE mac
+    // (set-once hardware identity).
+    it('backfills a NULL ip from the poll response (manual-create recovery)', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-ip-backfill',
+        port: 5148,
+        ip: undefined as unknown as string,
+      });
+      expect(unit.ip).toBeFalsy();
+
+      // sampleDeviceResponse reports system.wifi.ip = 192.168.1.127
+      mockedAxios.get.mockResolvedValueOnce({
+        data: sampleDeviceResponse,
+        status: 200,
+      });
+
+      await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      expect(updated!.ip).toBe('192.168.1.127');
+    });
+
+    it('overwrites the stored ip when a later poll reports a new address (DHCP change)', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-ip-refresh',
+        port: 5149,
+        ip: '10.0.0.5',
+      });
+
+      mockedAxios.get.mockResolvedValueOnce({
+        data: sampleDeviceResponse,
+        status: 200,
+      });
+
+      await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      // Present value OVERWRITES (contrast with mac, set-once below).
+      expect(updated!.ip).toBe('192.168.1.127');
+    });
+
+    it('preserves the stored ip when the poll reports an empty ip string (preserve-when-absent)', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-ip-empty',
+        port: 5150,
+        ip: '10.0.0.6',
+      });
+
+      const emptyIpResponse = structuredClone(sampleDeviceResponse);
+      emptyIpResponse.system.wifi.ip = '';
+
+      mockedAxios.get.mockResolvedValueOnce({
+        data: emptyIpResponse,
+        status: 200,
+      });
+
+      const polled = await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      // Empty string never clobbers — same preserve rule as the version
+      // fields, and the reading still persists (lenient ingestion).
+      expect(polled.body.latest_reading).toBeDefined();
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      expect(updated!.ip).toBe('10.0.0.6');
+    });
+
+    it('stored ip survives a null wifi.ip — rejected structurally (412), unlike the lenient version fields', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-ip-null',
+        port: 5151,
+        ip: '10.0.0.8',
+      });
+
+      const nullIpResponse = structuredClone(sampleDeviceResponse);
+      nullIpResponse.system.wifi.ip = null;
+
+      mockedAxios.get.mockResolvedValueOnce({
+        data: nullIpResponse,
+        status: 200,
+      });
+
+      // system.wifi.ip is a REQUIRED @IsString on SystemWifiDto (unlike the
+      // deliberately untyped top-level version fields), so a null ip fails
+      // validateDeviceResponse → 412. The poll aborts before any touch, so
+      // the stored ip is untouched — no clobber path exists.
+      await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(412);
+
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      expect(updated!.ip).toBe('10.0.0.8');
+      expect(await readingsRepo.count()).toBe(0);
+    });
+
+    it('mac stays set-once while ip refreshes on the same poll (semantics contrast)', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-ip-vs-mac',
+        port: 5152,
+        ip: '10.0.0.7',
+        mac: 'aa:bb:cc:dd:ee:ff',
+      });
+
+      // sampleDeviceResponse reports mac 2c:cf:67:be:95:30 + ip 192.168.1.127.
+      mockedAxios.get.mockResolvedValueOnce({
+        data: sampleDeviceResponse,
+        status: 200,
+      });
+
+      await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      // MAC: immutable hardware identity — the FIRST value is kept.
+      expect(updated!.mac).toBe('aa:bb:cc:dd:ee:ff');
+      // IP: address is lease-bound — the LATEST report wins.
+      expect(updated!.ip).toBe('192.168.1.127');
+    });
+
+    it('the backfilled ip arms the mDNS→IP fallback for the next cycle (recovery sequence)', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-ip-recover',
+        port: 5153,
+        ip: undefined as unknown as string,
+      });
+
+      // Cycle 1: mDNS reachable — reading stored, ip backfilled.
+      mockedAxios.get.mockResolvedValueOnce({
+        data: sampleDeviceResponse,
+        status: 200,
+      });
+      await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+      expect((await picoRepo.findOneBy({ id: unit.id }))!.ip).toBe(
+        '192.168.1.127',
+      );
+      expect(await readingsRepo.count()).toBe(1);
+
+      // Cycle 2: mDNS responder dead (connection-level error), the unit kept
+      // its DHCP lease — the poll now succeeds through the IP fallback.
+      const networkError = Object.assign(new Error('no route'), {
+        isAxiosError: true,
+        code: 'EHOSTUNREACH',
+        request: {},
+      });
+      mockedAxios.get.mockReset();
+      mockedAxios.isAxiosError = jest.fn(
+        (err: any) => err?.isAxiosError === true,
+      ) as any;
+      mockedAxios.get
+        .mockRejectedValueOnce(networkError as AxiosError)
+        .mockResolvedValueOnce({ data: sampleDeviceResponse, status: 200 });
+
+      await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      const urls = mockedAxios.get.mock.calls.map((c) => c[0]);
+      expect(urls[0]).toBe('http://poll-ip-recover.local:5153/?force=1');
+      expect(urls[1]).toBe('http://192.168.1.127:5153/?force=1');
+      expect(await readingsRepo.count()).toBe(2);
+    });
+  });
+
   describe('devices block passthrough', () => {
     it('returns the live devices block from the Pico response even when reading is filtered', async () => {
       const unit = await seedPicoUnit(app, {

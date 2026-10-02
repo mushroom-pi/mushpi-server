@@ -289,12 +289,18 @@ export class PicoUnitsService {
     return this.picoUnitRepo.save(unit);
   }
 
+  /**
+   * Called on every successful poll: refreshes `last_seen`, resets
+   * `failed_calls`, and ingests the unit-reported metadata (`mac`, plus the
+   * `reported` object carrying `firmware_version`, `api_version`, and `ip`).
+   */
   async touchAndResetFailedCalls(
     unit: PicoUnit,
     mac?: string,
-    reportedVersions?: {
+    reported?: {
       firmware_version?: string | null;
       api_version?: number | null;
+      ip?: string | null;
     },
   ): Promise<PicoUnit> {
     unit.last_seen = new Date();
@@ -310,17 +316,26 @@ export class PicoUnitsService {
     // values ABOVE PICO_API_VERSION_MAX are still stored — accept-and-flag;
     // PICO_API_VERSION_MAX is verdict-only via the api_compatibility getter).
     if (
-      reportedVersions?.firmware_version != null &&
-      isValidPicoFirmwareVersion(reportedVersions.firmware_version)
+      reported?.firmware_version != null &&
+      isValidPicoFirmwareVersion(reported.firmware_version)
     )
-      unit.firmware_version = reportedVersions.firmware_version;
-    const apiVersion = Number(reportedVersions?.api_version);
+      unit.firmware_version = reported.firmware_version;
+    const apiVersion = Number(reported?.api_version);
     if (
-      reportedVersions?.api_version != null &&
+      reported?.api_version != null &&
       Number.isInteger(apiVersion) &&
       apiVersion >= PICO_API_VERSION_MIN
     )
       unit.api_version = apiVersion;
+    // `ip` follows the version refresh rule (overwrite when the unit actually
+    // reports it), NOT the mac set-once rule — the Pico's DHCP address can
+    // change, so the last reported value is the freshest fallback target.
+    // Absent/null/empty must NEVER clobber the stored value: a manually
+    // created unit (ip NULL) self-heals at its first poll reporting
+    // `system.wifi.ip`, which arms the mDNS→IP fallback in getWithFallback
+    // for every later cycle.
+    if (typeof reported?.ip === 'string' && reported.ip !== '')
+      unit.ip = reported.ip;
     return this.picoUnitRepo.save(unit);
   }
 }

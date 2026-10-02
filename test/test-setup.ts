@@ -47,6 +47,7 @@ class NoopCronService {
   async handleBatchStarted(): Promise<void> {}
   async handleBatchFinished(): Promise<void> {}
   async handlePicoUnitRegistered(): Promise<void> {}
+  async handlePicoUnitCreated(): Promise<void> {}
   async handlePicoUnitMonitoringStopped(): Promise<void> {}
   async handlePicoUnitMonitoringStarted(): Promise<void> {}
   async cleanReadings(): Promise<void> {}
