@@ -140,7 +140,7 @@ A short map to read the code with:
 - **Batch** — a growing run on a unit, with start/finish times, species, and target temperature/humidity. Carries a status computed from the current time window and up to five images.
 - **Recipe** — a reusable template (species + temperature/humidity targets + duration) that a batch can be snapshotted from, or reverse-derived from a finished batch.
 - **Announce** — on boot a Pico `POST`s to `/v1/pico-units/announce` (upsert by `handle`, guarded by `X-Pico-Secret`). The payload carries `firmware_version` + `api_version`.
-- **Polling cron** — every 60 s the server sweeps monitored units, `GET /` each, and stores a reading. On-demand polls also exist at `POST /v1/pico-units/:id/poll`.
+- **Polling cron** — every 60 s the server sweeps monitored units, `GET /` each, and stores a reading. On-demand polls also exist at `POST /v1/pico-units/:id/poll`. Server-side manual creation of a unit also triggers one immediate first poll at creation, which captures the unit's IP and arms the mDNS→IP fallback.
 - **Control proxy** — `PUT /v1/pico-units/:id/control/{setpoints,outputs,setup,loop}` forwards to the Pico's own endpoints. Sensors and status are *not* proxied — they arrive via the poll.
 
 Everything under `/v1/` (URI versioning, `defaultVersion: '1'`); `/ping` and `/health` are version-neutral.
