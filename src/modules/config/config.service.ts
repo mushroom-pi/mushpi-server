@@ -57,7 +57,6 @@ export class CustomConfigService {
   get server(): ServerConfig {
     return {
       nodeEnv: this.configService.get('NODE_ENV'),
-      host: this.configService.get('APP_HOST'),
       port:
         this.configService.get('APP_PORT') || this.configService.get('PORT'),
       errorsDetail:

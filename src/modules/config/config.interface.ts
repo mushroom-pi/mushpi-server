@@ -3,7 +3,6 @@ import { LogLevels, NodeEnvironments } from './config.types';
 export interface EnvironmentVariables {
   NODE_ENV: NodeEnvironments;
   PORT?: string;
-  APP_HOST: string;
   APP_PORT?: number;
   APP_SECRET?: string;
   CLIENT_URL?: string;
@@ -29,7 +28,6 @@ export interface EnvironmentVariables {
 
 export interface ServerConfig {
   nodeEnv: EnvironmentVariables['NODE_ENV'];
-  host: EnvironmentVariables['APP_HOST'];
   port: EnvironmentVariables['APP_PORT'];
   errorsDetail?: EnvironmentVariables['ERRORS_DETAIL'];
   isProd: boolean;

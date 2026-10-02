@@ -449,6 +449,8 @@ Schema changes for production (`NODE_ENV=prod`, where `synchronize: false`) requ
 | `MAX_REQUESTS`             | —                  | Rate limiting is **opt-in**: max requests per window (integer ≥ 1). Must be set **together** with `MAX_REQUESTS_TIME` — a partial pair fails at boot. Neither set ⇒ no throttling **and no `X-RateLimit-*` headers at all**; see [Guards](#guards) |
 | `MAX_REQUESTS_TIME`        | —                  | Rate-limit window in **milliseconds** (e.g. `60000`), paired with `MAX_REQUESTS` (integer ≥ 1). Note `X-RateLimit-Reset` / `Retry-After` are emitted in **seconds**; see [Guards](#guards) |
 
+> Unknown env keys are tolerated, never fatal: `CustomConfigModule` passes no `validationOptions`, so @nestjs/config validates with its own defaults (`allowUnknown: true`, `abortEarly: false`). That is why the schemaless legacy `PORT` works and why a key removed from the schema — e.g. `APP_HOST` — survives as an ignored leftover in deployed env files instead of breaking boot (pinned in `config.schema.spec.ts`).
+
 > `READINGS_SAFETY_MAX_ROWS` is **not** an env var — it is a hardcoded module constant in `cron.service.ts` (no Joi key, no `CustomConfigService` getter); see [Cron Polling](#cron-polling) → Readings cleanup.
 
 ## Config

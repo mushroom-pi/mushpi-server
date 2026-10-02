@@ -272,3 +272,49 @@ describe('config validationSchema — Swagger docs configuration', () => {
     });
   });
 });
+
+/**
+ * Unknown environment keys stay tolerated: `CustomConfigModule` passes no
+ * `validationOptions`, so @nestjs/config validates with its defaults —
+ * `allowUnknown: true`, `abortEarly: false`. Deployed env files can therefore
+ * carry keys the schema no longer knows about. `APP_HOST` was deleted as a
+ * variable with zero runtime consumers while `.env` files in the wild still
+ * set it; this pins that such a leftover (URL-shaped, port and all) is
+ * ignored rather than fatal, and that the schema no longer injects a default
+ * for it.
+ */
+describe('config validationSchema — unknown keys stay tolerated', () => {
+  // Exactly the options @nestjs/config uses when none are configured.
+  const libraryDefaults = { allowUnknown: true, abortEarly: false };
+
+  const leftoverEnv = {
+    NODE_ENV: 'test',
+    APP_HOST: 'http://picopi.local:8080',
+  };
+
+  it('accepts a leftover APP_HOST and does not inject the removed default', () => {
+    const { error, value } = validationSchema.validate(
+      leftoverEnv,
+      libraryDefaults,
+    );
+    expect(error).toBeUndefined();
+    // Unknown key passes through untouched — no Joi rules apply to it.
+    expect(value.APP_HOST).toBe('http://picopi.local:8080');
+
+    // With the key absent, the schema holds no APP_HOST default anymore.
+    const clean = validationSchema.validate(
+      { NODE_ENV: 'test' },
+      libraryDefaults,
+    );
+    expect(clean.error).toBeUndefined();
+    expect('APP_HOST' in clean.value).toBe(false);
+  });
+
+  it('fails without allowUnknown — the tolerance is the option, not a Joi default', () => {
+    const { error } = validationSchema.validate(leftoverEnv, {
+      abortEarly: false,
+    });
+    expect(error).toBeDefined();
+    expect(error.message).toContain('APP_HOST');
+  });
+});

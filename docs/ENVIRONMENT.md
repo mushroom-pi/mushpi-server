@@ -5,7 +5,6 @@
 | Variable | Type | Required | Default | Conditions | Description |
 |----------|------|----------|---------|------------|-------------|
 | `NODE_ENV` | string | Never | `"local"` | Allowed values: `dev`, `local`, `prod`, `staging`, `test` |  |
-| `APP_HOST` | string | Never | `"localhost"` |  |  |
 | `APP_PORT` | number | Never |  |  |  |
 | `APP_SECRET` | string | Never |  |  |  |
 | `CLIENT_URL` | string | Never |  |  |  |

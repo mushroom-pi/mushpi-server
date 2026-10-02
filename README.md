@@ -43,7 +43,6 @@ The full, generated reference is `docs/ENVIRONMENT.md` (regenerate with `yarn do
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `APP_HOST` | `localhost` | Bind host |
 | `APP_PORT` | `3000` *(falls back to legacy `PORT`)* | Listen port |
 | `NODE_ENV` | `local` | `local` / `dev` / `staging` / `prod` / `test` — switches several behaviours |
 | `CLIENT_URL` | — | CORS origin (the dashboard's origin); required in local mode |

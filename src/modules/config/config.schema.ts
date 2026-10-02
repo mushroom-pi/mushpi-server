@@ -76,7 +76,6 @@ const generateServiceSchema = (serviceName: Services) => {
 
 export const validationSchema = Joi.object({
   NODE_ENV: addValids(nodeEnvironments, 'local'),
-  APP_HOST: Joi.string().default('localhost'),
   APP_PORT: Joi.number().port().optional(),
   APP_SECRET: Joi.string().optional(),
   CLIENT_URL: Joi.string().uri().when('NODE_ENV', {
