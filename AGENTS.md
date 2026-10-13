@@ -136,7 +136,7 @@ Computed `@Expose()` getters: `PicoUnit` host, address, ipAddress, status, api_c
 | hooks | `prepare` | husky |
 | prune | `knip:ci` | unused prod deps (`--no-gitignore`: nested-repo gotcha in REFERENCE.md) |
 
-**Husky hooks**: `pre-commit` = format + lint, conditional docs/spec regeneration, build last; `commit-msg`, `pre-push` (+ merge gate) — full pipelines: REFERENCE.md §Git hooks (Husky).
+**Husky hooks**: `pre-commit` = format + lint, conditional docs/spec regeneration (spec regeneration boots the app against throwaway DB/log paths — never `data/`; REFERENCE.md §Spec Tooling Internals), build last; `commit-msg`, `pre-push` (+ merge gate) — full pipelines: REFERENCE.md §Git hooks (Husky).
 
 ## Env & Config
 

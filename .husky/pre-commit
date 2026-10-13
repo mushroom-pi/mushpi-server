@@ -17,6 +17,8 @@ else
 fi
 
 # Regenerate OpenAPI spec + Bruno collection when source changes
+# yarn spec:all boots the app but forces throwaway DB/log paths itself via
+# applyThrowawayRuntimePaths() — it never touches data/ (REFERENCE.md §Spec Tooling Internals).
 if git diff --cached --name-only | grep -qE '^src/'; then
   echo "🔄 src/ changed - regenerating OpenAPI spec and Bruno collection"
   yarn spec:all

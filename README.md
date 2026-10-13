@@ -81,6 +81,8 @@ The server listens on **port 3000** by default. Once running:
 
 The committed OpenAPI spec lives in `spec/openapi.json` + `spec/openapi.yaml`, regenerated from the NestJS decorators with `yarn spec:all`.
 
+> **Spec generation never touches `data/`.** Running `yarn spec:all` (and the pre-commit hook) boots the app, but always against throwaway database/log paths under the OS temp dir — committing never touches `data/app.sqlite`, `data/logs/`, or real growing units. Manual boots (`yarn start`, smoke tests) must still point `SQLITE_PATH`/`LOGS_PATH` at temp locations themselves (see `REFERENCE.md` §Local Verification).
+
 ## Day-to-Day Commands
 
 | Command | What it does |
@@ -92,9 +94,9 @@ The committed OpenAPI spec lives in `spec/openapi.json` + `spec/openapi.yaml`, r
 | `yarn test` | Jest unit tests |
 | `yarn test:e2e` | Jest end-to-end tests (`test/jest-e2e.json`) |
 | `yarn test:cov` | Unit coverage |
-| `yarn spec:export` | Build + regenerate `spec/openapi.{json,yaml}` |
+| `yarn spec:export` | Build + regenerate `spec/openapi.{json,yaml}` (boots against throwaway temp DB/log paths — never `data/`) |
 | `yarn spec:bruno` | Regenerate the Bruno collection (`spec/bruno/`, gitignored) |
-| `yarn spec:all` | Both of the above |
+| `yarn spec:all` | Both of the above (throwaway temp paths enforced — never `data/`) |
 | `yarn docs:env` | Regenerate `docs/ENVIRONMENT.md` |
 | `yarn migration:generate` / `:run` / `:revert` / `:show` | TypeORM migrations (build first) |
 | `yarn audit:prod` / `yarn audit:ci` | Dependency audit (informational / gating) |
