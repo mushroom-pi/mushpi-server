@@ -126,7 +126,7 @@ export class MonitoringService {
     this.logger.log(`Checking ${name} Service status`);
 
     switch (name) {
-      case 'mockService':
+      case 'serviceMock':
         return {
           hasKey: true,
           available: true,

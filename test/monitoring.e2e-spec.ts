@@ -160,6 +160,58 @@ describe('AppController (e2e)', () => {
         expect(res.body.databases).toHaveProperty('sqlite');
       });
     });
+
+    describe('service health (serviceMock)', () => {
+      it('should include the configured serviceMock status by default', async () => {
+        const res = await request(app.getHttpServer())
+          .get('/health')
+          .expect(200);
+
+        expect(res.body.services).toEqual({
+          serviceMock: { hasKey: true, available: true },
+        });
+      });
+
+      it('should include serviceMock when services=all and gate out databases', async () => {
+        const res = await request(app.getHttpServer())
+          .get('/health')
+          .query({
+            services: 'all',
+            databases: 'none',
+            server: 'false',
+            system: 'false',
+          })
+          .expect(200);
+
+        expect(res.body.services).toEqual({
+          serviceMock: { hasKey: true, available: true },
+        });
+        expect(res.body).not.toHaveProperty('databases');
+      });
+
+      it('should accept the explicit serviceMock query value', async () => {
+        const res = await request(app.getHttpServer())
+          .get('/health')
+          .query({ services: 'serviceMock', databases: 'none' })
+          .expect(200);
+
+        expect(res.body.services).toEqual({
+          serviceMock: { hasKey: true, available: true },
+        });
+      });
+
+      it('should reject the misspelled mockService query value with 422', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/health')
+          .query({ services: 'mockService' });
+
+        expect(response.status).toBe(422); // Unprocessable Entity
+        expect(response.body).toHaveProperty('message');
+        expect(response.body.message[0]).toContain(
+          "services must be 'all', 'none', or a comma-separated list of valid values",
+        );
+      });
+    });
   });
 
   describe('GET /metrics', () => {

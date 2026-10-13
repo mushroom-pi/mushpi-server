@@ -274,8 +274,8 @@ describe('MonitoringService', () => {
   });
 
   describe('checkServiceStatus', () => {
-    it('should return a mocked service status', async () => {
-      const result = await service['checkServiceStatus']('mockService');
+    it('checkServiceStatus("serviceMock") returns the configured service status', async () => {
+      const result = await service['checkServiceStatus']('serviceMock');
       expect(result).toEqual({
         hasKey: true,
         available: true,
@@ -297,6 +297,11 @@ describe('MonitoringService', () => {
       expect(result).toHaveProperty('system');
       expect(result).toHaveProperty('databases');
       expect(result).toHaveProperty('services');
+      // Ties config.constants `services` to the checkServiceStatus case:
+      // fails if the constant drifts, the case drifts, or the case is misspelled.
+      expect(result.services).toEqual({
+        serviceMock: { hasKey: true, available: true },
+      });
     });
 
     it('should return an empty response if server, system, databases, and services are false or none', async () => {
