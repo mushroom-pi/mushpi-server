@@ -7686,11 +7686,11 @@
             "type": "number",
             "example": 74.57
           },
-          "readonlyheapTotal": {
+          "heapTotal": {
             "type": "number",
             "example": 54.23
           },
-          "readonlyheapUsed": {
+          "heapUsed": {
             "type": "number",
             "example": 35.67
           },
@@ -7705,8 +7705,8 @@
         },
         "required": [
           "rss",
-          "readonlyheapTotal",
-          "readonlyheapUsed",
+          "heapTotal",
+          "heapUsed",
           "external",
           "arrayBuffers"
         ]

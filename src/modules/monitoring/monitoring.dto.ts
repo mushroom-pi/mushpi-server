@@ -61,10 +61,10 @@ class MemoryUsageDto {
   readonly rss: number;
 
   @ApiProperty({ type: Number, example: 54.23 })
-  readonlyheapTotal: number;
+  readonly heapTotal: number;
 
   @ApiProperty({ type: Number, example: 35.67 })
-  readonlyheapUsed: number;
+  readonly heapUsed: number;
 
   @ApiProperty({ type: Number, example: 1.18 })
   readonly external: number;

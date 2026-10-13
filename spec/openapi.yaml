@@ -5328,10 +5328,10 @@ components:
         rss:
           type: number
           example: 74.57
-        readonlyheapTotal:
+        heapTotal:
           type: number
           example: 54.23
-        readonlyheapUsed:
+        heapUsed:
           type: number
           example: 35.67
         external:
@@ -5342,8 +5342,8 @@ components:
           example: 0.44
       required:
         - rss
-        - readonlyheapTotal
-        - readonlyheapUsed
+        - heapTotal
+        - heapUsed
         - external
         - arrayBuffers
     UpTime:

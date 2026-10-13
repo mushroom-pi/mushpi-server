@@ -187,4 +187,30 @@ describe('OpenAPI schemas (e2e)', () => {
       }
     });
   });
+
+  describe('MemoryUsageDto', () => {
+    it('names the heap fields heapTotal/heapUsed, not readonlyheapTotal/readonlyheapUsed', () => {
+      const props = schemas().MemoryUsageDto.properties;
+      expect(props).toHaveProperty('heapTotal');
+      expect(props).toHaveProperty('heapUsed');
+      // Exact key set — matches the process.memoryUsage() payload shape.
+      expect(Object.keys(props).sort()).toEqual([
+        'arrayBuffers',
+        'external',
+        'heapTotal',
+        'heapUsed',
+        'rss',
+      ]);
+      expect(props).not.toHaveProperty('readonlyheapTotal');
+      expect(props).not.toHaveProperty('readonlyheapUsed');
+    });
+
+    it('requires heapTotal and heapUsed (and never the typo names)', () => {
+      const required = schemas().MemoryUsageDto.required;
+      expect(required).toContain('heapTotal');
+      expect(required).toContain('heapUsed');
+      expect(required).not.toContain('readonlyheapTotal');
+      expect(required).not.toContain('readonlyheapUsed');
+    });
+  });
 });
