@@ -21,6 +21,7 @@ Long-tail gotchas and detailed conventions. **Load only when the task touches th
 - [Environment Variables](#environment-variables) — key env var table (full generated reference: `docs/ENVIRONMENT.md`)
 - [Config](#config) — `CustomConfigService` getter grouping philosophy
 - [Dependency Remediation Notes](#dependency-remediation-notes) — node-gyp/native builds, the multer `resolutions` pin + removal condition, the `proxy-addr` lockfile-only refresh (GHSA-jqcg-44mw-7w3h), the knip nested-repo gitignore hazard (`--no-gitignore` mitigation)
+- [Scripts — Operational Notes](#scripts--operational-notes) — per-script commentary trimmed from the core Scripts table: lint autofixing vs CI gate, format scope, test:debug inspector, audit informational-vs-gating semantics, knip:ci flag rationale
 - [Tooling & Style Deviations](#tooling--style-deviations) — tsconfig strictness disabled; `settings.v1.controller.ts` branching (skill deviations)
 - [Raw SQL](#raw-sql) — SQLite datetime conversion for raw SQL + QueryBuilder string predicates; aggregation response shape (`AggregatedReadingsResponseDto`)
 - [Build Output & Entrypoint](#build-output--entrypoint) — `dist/src/main.js` path and why (tsc `rootDir` push), `start:prod` + Docker `CMD`
@@ -497,6 +498,18 @@ Gotchas from the production-advisory backlog clearance (recursive lockfile refre
 - `knip.json` also declares `test/**/*.e2e-spec.ts` as `entry`: knip's jest plugin only reads `testMatch` (never `testRegex`) and cannot discover `test/jest-e2e.json` by filename, so without it all e2e specs report as unused files and `supertest`/`@types/supertest` as unused devDependencies.
 - `knip.json` also declares `src/modules/sqlite/data-source.ts` as `entry`: the TypeORM CLI reaches it only through the **compiled** path in the `typeorm` script (`cli.js -d dist/src/modules/sqlite/data-source.js`), which knip cannot trace from any `src/` import, so without the entry the TypeORM CLI data source reports as an unused file.
 - `knip.json` also declares `spec/generators/openapi.generator.ts` as `entry`: it is a real executable entry (the `spec:export` compiled-output run), like `data-source.ts`. Its `project` globs cover only `src/**`/`test/**`, so without this entry anything imported solely by the generator — e.g. `applyThrowawayRuntimePaths()` — reports as an unused file.
+
+## Scripts — Operational Notes
+
+Per-script commentary trimmed from the core Scripts table (the table keeps only the self-documenting tags):
+
+- **`lint`** — `eslint --fix`: rewrites files on every run (autofixing); the glob covers only `.ts`.
+- **`lint:ci`** — same pass with no `--fix` and `--max-warnings=0`: in CI it fails on warnings, never rewrites.
+- **`format`** — `prettier` over `.ts` only; agent instruction `.md` files are deliberately excluded from the write path.
+- **`test:debug`** — runs Jest under the Node inspector, in-band (single worker, `--runInBand`).
+- **`audit:prod`** — `yarn npm audit` over the production dependency graph, deprecations excluded (`--no-deprecations`). Informational: findings do not fail the script.
+- **`audit:ci`** — `audit:prod` plus `--severity high`: the gating variant — Yarn's own exit code fails the run on high-severity production findings (`pre-push` runs it first).
+- **`knip:ci`** — unused-production-dependency check; the `--no-gitignore` flag is the nested-repo gitignore-hazard mitigation — full gotcha in [Dependency Remediation Notes](#dependency-remediation-notes).
 
 ## Tooling & Style Deviations
 

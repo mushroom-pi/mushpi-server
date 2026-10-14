@@ -6,11 +6,7 @@ NestJS 11 backend: polls Pico units via cron, stores readings in SQLite. Exposes
 
 ## Verification Commands
 
-Run after every feature delivery, no need to ask — all must exit 0:
-
-```bash
-yarn build && yarn lint && yarn test && yarn test:e2e && yarn start
-```
+Run after every feature delivery, no need to ask — all must exit 0: `yarn build && yarn lint && yarn test && yarn test:e2e && yarn start`
 
 ## Module Layout
 
@@ -19,7 +15,7 @@ Feature modules live in `src/modules/`; **the DB module is `sqlite/`** (there is
 ```
 src/main.ts — bootstrap: versioning, security, docs auth, Swagger, globals
 src/common/ — constants, decorators, dto, exceptions, filters, guards, interceptors, middleware, pipes, utils, validators
-src/common/middleware/helmet.middleware.ts — shared Helmet factory (HSTS/CSP gated by APP_HTTPS_ENABLED); main.ts + test-setup.ts
+src/common/middleware/helmet.middleware.ts — shared Helmet factory
 app.module.ts — root module (APP_GUARD, global middleware)
 pino-logger.module.ts — nestjs-pino HTTP logging
 config/ — @Global env+Joi config module
@@ -44,7 +40,7 @@ test/jest-e2e.json — e2e jest config
 
 ## API Versioning
 
-URI versioning (`VersioningType.URI`, `defaultVersion: API_VERSION`): all functional endpoints under `/v1/`. Sole exception: `MonitoringController` (version-neutral). Other controllers carry a `V1` class/filename suffix, stripped from operationIds by a custom factory — REFERENCE.md §API Versioning Internals.
+URI versioning (`VersioningType.URI`, `defaultVersion: API_VERSION`): all functional endpoints under `/v1/`. Sole exception: `MonitoringController` (version-neutral). Other controllers carry a `V1` class/filename suffix — REFERENCE.md §API Versioning Internals.
 
 ## REST API — 40 operations
 
@@ -63,16 +59,16 @@ URI versioning (`VersioningType.URI`, `defaultVersion: API_VERSION`): all functi
 | PUT | /v1/pico-units/:id/control/loop | → Pico `/control` toggle |
 | POST | /v1/pico-units/:id/poll | On-demand poll → store reading → `PollPicoUnitResponseDto` |
 | PUT | /v1/pico-units/:id/reboot | → Pico POST `/reboot`; 202 |
-| GET | /v1/pico-units/:id/readings | `points`-bucket NTILE over range → `AggregatedReadingsResponseDto` (no pagination) |
+| GET | /v1/pico-units/:id/readings | Bucketed NTILE → `AggregatedReadingsResponseDto` (no pagination) |
 | GET | /v1/pico-units/:id/readings/export | CSV: raw reading rows |
 | GET | /v1/pico-units/:id/batches | Batches for unit |
 | GET | /v1/pico-units/:id/batches/current | Active batch |
 | GET | /v1/batches | List (pag.) |
-| POST | /v1/batches | Create (`recipe_id` snapshot-copied) |
+| POST | /v1/batches | Create (recipe snapshot) |
 | GET | /v1/batches/:batchId |
 | PATCH | /v1/batches/:batchId | Partial |
 | DELETE | /v1/batches/:batchId | Wipes image dir |
-| GET | /v1/batches/:batchId/readings | Same; clamped to batch window |
+| GET | /v1/batches/:batchId/readings | Clamped to batch window |
 | GET | /v1/batches/:batchId/readings/export | CSV: raw reading rows |
 | POST | /v1/batches/:batchId/recipe | Recipe from finished batch |
 | PUT | /v1/batches/:batchId/images | Upload (append, max 5) |
@@ -84,7 +80,7 @@ URI versioning (`VersioningType.URI`, `defaultVersion: API_VERSION`): all functi
 | DELETE | /v1/recipes/:recipeId | Removes image file |
 | GET | /v1/recipes/:recipeId/batches | Batches using this recipe |
 | PUT | /v1/recipes/:recipeId/image | Upload |
-| DELETE | /v1/recipes/:recipeId/image | Remove |
+| DELETE | /v1/recipes/:recipeId/image | Removes image |
 | GET | /v1/dashboard/summary | units/batches/recipes/stats/warnings |
 | GET | /v1/settings | Timezone (default: OS) |
 | PATCH | /v1/settings | IANA-validated |
@@ -109,13 +105,13 @@ Computed `@Expose()` getters: `PicoUnit` host, address, ipAddress, status, api_c
 | Group | Script | Notes |
 |---|---|---|
 | build | `build` |
-| lint | `lint` | eslint --fix (.ts only; autofixing) |
-| lint | `lint:ci` | no --fix, `--max-warnings=0` (CI; fails, never rewrites) |
-| lint | `format` | prettier (.ts only; agent .md excluded) |
+| lint | `lint` | eslint --fix (.ts only) |
+| lint | `lint:ci` | no --fix; `--max-warnings=0` (CI) |
+| lint | `format` | prettier (.ts only) |
 | test | `test` | jest unit |
 | test | `test:watch` | |
 | test | `test:cov` | --coverage |
-| test | `test:debug` | inspector, in-band |
+| test | `test:debug` | inspector |
 | test | `test:e2e` | jest --config test/jest-e2e.json |
 | test | `test:e2e:cov` | |
 | spec | `spec:export` | `yarn build` + run compiled generator → committed spec/openapi.{json,yaml} |
@@ -126,17 +122,17 @@ Computed `@Expose()` getters: `PicoUnit` host, address, ipAddress, status, api_c
 | db | `migration:run` | ↑ |
 | db | `migration:revert` | ↑ |
 | db | `migration:show` | ↑ |
-| audit | `audit:prod` | yarn npm audit; prod graph, deprecations excluded (informational) |
-| audit | `audit:ci` | audit:prod + `--severity high` (gating; Yarn exit code) |
+| audit | `audit:prod` | informational |
+| audit | `audit:ci` | gating (high severity) |
 | docs | `docs:env` | → docs/ENVIRONMENT.md |
 | start | `start` |
 | start | `start:dev` | --watch |
 | start | `start:debug` | --debug --watch |
 | start | `start:prod` | node dist/src/main.js |
 | hooks | `prepare` | husky |
-| prune | `knip:ci` | unused prod deps (`--no-gitignore`: nested-repo gotcha in REFERENCE.md) |
+| prune | `knip:ci` | unused prod deps (gotcha: REFERENCE.md §Dependency Remediation) |
 
-**Husky hooks**: `pre-commit` = format + lint, conditional docs/spec regeneration (spec regeneration boots the app against throwaway DB/log paths — never `data/`; REFERENCE.md §Spec Tooling Internals), build last; `commit-msg`, `pre-push` (+ merge gate) — full pipelines: REFERENCE.md §Git hooks (Husky).
+**Husky hooks**: `pre-commit` / `commit-msg` / `pre-merge-commit` / `pre-push` — full pipelines and spec-regeneration live-state rules: REFERENCE.md §Git hooks (Husky).
 
 ## Env & Config
 
@@ -146,7 +142,7 @@ Env reference is **generated**, never hand-maintained: `yarn docs:env` → `docs
 |---|---|
 | `server` | port (`APP_PORT`, legacy `PORT` fallback), NODE_ENV, errorsDetail |
 | `logs` | pino level |
-| `security` | APP_SECRET, httpsEnabled (APP_HTTPS_ENABLED), throttler (opt-in: positive `MAX_REQUESTS` + `MAX_REQUESTS_TIME` ms window, both required together), event-loop |
+| `security` | APP_SECRET, httpsEnabled (APP_HTTPS_ENABLED), throttler (opt-in `MAX_REQUESTS` + `MAX_REQUESTS_TIME` pair; REFERENCE.md §Guards), event-loop |
 | `docs` | Swagger endpoint + auth |
 | `sqlite` | DB path |
 | `upload` | UPLOAD_DIR → imageDir |
@@ -162,7 +158,7 @@ Stored columns use **snake_case property names** matching the DB column — no `
 
 ### DTO partial-update contract
 
-**`UpdateXxxDto` fields must have no initializers** (no `?: string = ''`) — `PicoUnitsService.update()` applies partial PATCH with `Object.assign(unit, dto)`, so any default would overwrite stored values. Mechanism: REFERENCE.md §Pass-Through & Response Shape.
+**`UpdateXxxDto` fields must have no initializers** (no `?: string = ''`) — a default would overwrite stored values on partial PATCH. Mechanism: REFERENCE.md §Pass-Through & Response Shape.
 
 ### Status is computed, not stored
 
