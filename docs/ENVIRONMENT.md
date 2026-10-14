@@ -24,5 +24,5 @@
 | `SQLITE_PATH` | string | Never | `"data/app.sqlite"` |  |  |
 | `SQLITE_LOG` | boolean | Never | `false` |  |  |
 | `UPLOAD_DIR` | string | Never | `"data"` |  |  |
-| `PICO_ANNOUNCE_SECRET` | any | Never |  |  |  |
+| `PICO_ANNOUNCE_SECRET` | any | Never |  |  | Shared secret expected in the `X-Pico-Secret` header of `POST /v1/pico-units/announce`. Required (min 6 chars) when `NODE_ENV` is `prod` or `demo`; a `demo` instance additionally refuses the public development value `mushpi-dev-secret`; elsewhere defaults to that public development value. |
 | `READINGS_RETENTION_MONTHS` | number | Never | `6` | Minimum: `1` |  |

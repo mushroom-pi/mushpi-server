@@ -5,22 +5,137 @@ import { validationSchema } from './config.schema';
 import { CustomConfigService } from './config.service';
 
 /**
- * `demo` is a member of the node-environment list but is inert by design:
- * nothing is required to opt in and nothing changes until a variable later
- * acts on it. A `NODE_ENV=demo` boot is a plain non-production boot — it
- * takes the same `otherwise` branches as `dev`/`staging`/`test`. This pins
- * that: with no `APP_SECRET`, `CLIENT_URL` or `CLIENT_DIST_DIR`, validation
- * passes and `PICO_ANNOUNCE_SECRET` falls back to the development default.
+ * `NODE_ENV=demo` marks an internet-exposed demonstration instance, so its
+ * announce secret carries two rules: it must be set explicitly (the
+ * development default does not apply) and it must not be the published
+ * development value `mushpi-dev-secret` — that literal is public knowledge,
+ * so a demo boot keeping it would leave `POST /v1/pico-units/announce` open
+ * to anyone. `prod` keeps its original rule — presence of any value of six
+ * or more characters, the public one included — and every other environment
+ * keeps the default. `APP_SECRET` stays optional everywhere: a demo
+ * deployment leaves it unset (setting it would 426 the dashboard).
  */
 describe('config validationSchema — demo node environment', () => {
-  it('accepts demo as a node environment without imposing prod-only requirements', () => {
-    const { error, value } = validationSchema.validate(
-      { NODE_ENV: 'demo' },
-      { allowUnknown: true },
+  // Exactly the options @nestjs/config uses when none are configured.
+  const options = { allowUnknown: true, abortEarly: false };
+  const validate = (env: Record<string, unknown>) =>
+    validationSchema.validate(env, options);
+  const demo = (env: Record<string, unknown> = {}) =>
+    validate({ NODE_ENV: 'demo', ...env });
+
+  describe('PICO_ANNOUNCE_SECRET — set explicitly, never the public value', () => {
+    it('rejects a demo boot that does not set PICO_ANNOUNCE_SECRET', () => {
+      const { error } = demo();
+      expect(error).toBeDefined();
+      expect(error.message).toContain('PICO_ANNOUNCE_SECRET');
+    });
+
+    it('rejects the public development value of PICO_ANNOUNCE_SECRET on a demo boot', () => {
+      const { error } = demo({ PICO_ANNOUNCE_SECRET: 'mushpi-dev-secret' });
+      expect(error).toBeDefined();
+      expect(error.message).toContain('PICO_ANNOUNCE_SECRET');
+    });
+
+    it('rejects a demo PICO_ANNOUNCE_SECRET shorter than six characters', () => {
+      const { error } = demo({ PICO_ANNOUNCE_SECRET: 'x' });
+      expect(error).toBeDefined();
+      expect(error.message).toContain('PICO_ANNOUNCE_SECRET');
+    });
+
+    it('accepts a demo boot with a non-public PICO_ANNOUNCE_SECRET explicitly set', () => {
+      const { error, value } = demo({
+        PICO_ANNOUNCE_SECRET: 'unit-test-secret',
+      });
+      expect(error).toBeUndefined();
+      expect(value.PICO_ANNOUNCE_SECRET).toBe('unit-test-secret');
+    });
+
+    it('accepts a non-public PICO_ANNOUNCE_SECRET of six or more characters on a demo boot', () => {
+      for (const secret of ['abcdef', 'unit-test-secret']) {
+        const { error, value } = demo({ PICO_ANNOUNCE_SECRET: secret });
+        expect(error).toBeUndefined();
+        expect(value.PICO_ANNOUNCE_SECRET).toBe(secret);
+      }
+    });
+  });
+
+  describe('APP_SECRET is not required in any environment', () => {
+    it('does not require APP_SECRET on a demo boot', () => {
+      const { error, value } = demo({
+        PICO_ANNOUNCE_SECRET: 'unit-test-secret',
+      });
+      expect(error).toBeUndefined();
+      expect('APP_SECRET' in value).toBe(false);
+    });
+
+    it('still permits an explicitly set APP_SECRET on a demo boot', () => {
+      const { error, value } = demo({
+        PICO_ANNOUNCE_SECRET: 'unit-test-secret',
+        APP_SECRET: 'whatever-an-operator-picks',
+      });
+      expect(error).toBeUndefined();
+      expect(value.APP_SECRET).toBe('whatever-an-operator-picks');
+    });
+  });
+
+  describe('prod is unchanged — its rule is presence, not provenance', () => {
+    // A prod fixture carrying the unrelated CLIENT_DIST_DIR requirement, so
+    // the only thing under test is the announce secret.
+    const prod = (env: Record<string, unknown> = {}) =>
+      validate({
+        NODE_ENV: 'prod',
+        CLIENT_DIST_DIR: '/usr/src/app/client',
+        ...env,
+      });
+
+    it('keeps the prod requirement: a prod boot without PICO_ANNOUNCE_SECRET fails', () => {
+      const { error } = prod();
+      expect(error).toBeDefined();
+      expect(error.message).toContain('PICO_ANNOUNCE_SECRET');
+    });
+
+    it('accepts a prod boot with PICO_ANNOUNCE_SECRET', () => {
+      const { error, value } = prod({
+        PICO_ANNOUNCE_SECRET: 'unit-test-secret',
+      });
+      expect(error).toBeUndefined();
+      expect(value.PICO_ANNOUNCE_SECRET).toBe('unit-test-secret');
+    });
+
+    it('still accepts the public development value of PICO_ANNOUNCE_SECRET in prod when explicitly set', () => {
+      const { error, value } = prod({
+        PICO_ANNOUNCE_SECRET: 'mushpi-dev-secret',
+      });
+      expect(error).toBeUndefined();
+      expect(value.PICO_ANNOUNCE_SECRET).toBe('mushpi-dev-secret');
+    });
+  });
+
+  describe('the development default applies only outside prod and demo', () => {
+    it('leaves a boot without NODE_ENV not-demo and applies the development announce-secret default', () => {
+      // Absent NODE_ENV resolves to the schema's `local` default, which
+      // requires CLIENT_URL — an unrelated rule supplied here so the case
+      // asserts only about the announce secret.
+      const { error, value } = validate({
+        CLIENT_URL: 'http://localhost:5173',
+      });
+      expect(error).toBeUndefined();
+      expect(value.NODE_ENV).toBe('local');
+      expect(value.NODE_ENV).not.toBe('demo');
+      expect(value.PICO_ANNOUNCE_SECRET).toBe('mushpi-dev-secret');
+    });
+
+    it.each(['dev', 'local', 'staging', 'test'])(
+      'applies the development announce-secret default in %s',
+      (nodeEnv) => {
+        const env: Record<string, unknown> = { NODE_ENV: nodeEnv };
+        // local additionally requires CLIENT_URL (unrelated to the secret).
+        if (nodeEnv === 'local') env.CLIENT_URL = 'http://localhost:5173';
+        const { error, value } = validate(env);
+        expect(error).toBeUndefined();
+        expect(value.PICO_ANNOUNCE_SECRET).toBe('mushpi-dev-secret');
+      },
     );
-    expect(error).toBeUndefined();
-    expect(value.NODE_ENV).toBe('demo');
-    expect(value.PICO_ANNOUNCE_SECRET).toBe('mushpi-dev-secret');
   });
 });
 
@@ -33,9 +148,9 @@ describe('config validationSchema — demo node environment', () => {
  */
 describe('config validationSchema — rate limiting', () => {
   // NODE_ENV=test keeps unrelated conditional requirements (CLIENT_URL in
-  // local, CLIENT_DIST_DIR/PICO_ANNOUNCE_SECRET in prod) out of the way so
-  // each case asserts only about the rate-limit pair. Docs credentials are
-  // optional in every environment and need no fixture here.
+  // local, CLIENT_DIST_DIR/PICO_ANNOUNCE_SECRET in prod and demo) out of
+  // the way so each case asserts only about the rate-limit pair. Docs
+  // credentials are optional in every environment and need no fixture here.
   const baseEnv = { NODE_ENV: 'test' };
 
   const validate = (env: Record<string, unknown>) =>

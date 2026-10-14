@@ -446,9 +446,9 @@ Schema changes for production (`NODE_ENV=prod`, where `synchronize: false`) requ
 | `SQLITE_PATH`          | `./data/app.sqlite` | DB path                                                                       |
 | `CLIENT_URL`           | —                   | CORS allowed origin (required in `local`, optional elsewhere)                 |
 | `CLIENT_DIST_DIR`      | —                   | Absolute path to the built `mushpi-client` SPA (`dist/`). Required in `prod`; unset = SPA serving disabled (dev uses Vite :5173). Docker sets e.g. `/usr/src/app/client`. |
-| `APP_SECRET`           | —                   | Optional Bearer token for human auth (optional in all envs; LAN/Tailscale is the security boundary) |
+| `APP_SECRET`           | —                   | Optional Bearer token for human auth (optional in all envs; LAN/Tailscale is the security boundary). A `demo` deployment leaves it unset — setting it would 426 the dashboard. |
 | `APP_HTTPS_ENABLED`    | `false`             | Declares the browser-facing deployment is HTTPS (TLS terminated upstream/directly; configures no TLS itself). Gates helmet HSTS + CSP `upgrade-insecure-requests` — keep `false` on plain-HTTP LAN deployments or the SPA breaks off-`localhost`; see [Image Uploads & Static Serving](#image-uploads--static-serving) → HTTPS-only headers |
-| `PICO_ANNOUNCE_SECRET` | `mushpi-dev-secret` | Shared secret for `POST /v1/pico-units/announce` (required in prod, min 6 chars) |
+| `PICO_ANNOUNCE_SECRET` | `mushpi-dev-secret` | Shared secret for `POST /v1/pico-units/announce` (min 6 chars; **required in `prod` and `demo`**). A `demo` instance must set it explicitly **and must not use the public development value `mushpi-dev-secret`, which is rejected at boot**; `prod` accepts any value ≥6 chars, including that one. The `mushpi-dev-secret` default applies only outside `prod`/`demo`. |
 | `DOCS_ENDPOINT`        | —                   | Optional non-empty Swagger UI path; unset or empty disables the UI and its `-json` document route. Default `contract` in `local`. |
 | `DOCS_UI_URL`          | —                   | Optional CORS origin for Swagger UI when docs are enabled.                  |
 | `DOCS_USERNAME`        | —                   | Optional basic-auth username, **in every environment**. A non-empty username requires a matching `DOCS_PASSWORD`. |
@@ -468,6 +468,7 @@ Schema changes for production (`NODE_ENV=prod`, where `synchronize: false`) requ
 
 **Joi branch conditions — `valid('')` is not `allow('')`, and an unguarded `is:` matches absence.** Two independent traps in the same `when()` construct, both invisible until a boot:
 - **The `is` half.** A condition's `is` schema is validated against the referenced value, and Joi short-circuits `undefined` for a non-required schema — so `is: Joi.string().not('')` also matches an **absent** variable, taking the `then` branch on a stock boot (this is what made docs credentials mandatory in prod with the docs endpoint disabled). Write `is: Joi.string().not('').required()`. `Joi.exist()` also rejects absence but counts an *empty string* as present, so it is only safe where emptiness is not a distinct state.
+- **The `switch:` multi-branch form.** `.when(ref, { switch: [{ is, then }, …], otherwise })` evaluates entries in order and applies the **first** matching branch; the same definedness rule governs every `is`, so each carries the `.required()` idiom (e.g. `is: Joi.string().valid('prod').required()`) and an absent reference selects no branch.
 - **The `otherwise` half.** A branch meant to permit *only* an empty value must use `.valid('')`; `.allow('')` merely *adds* `''` to the accepted set while still accepting every other string, silently reopening the partial-pair hole the rule exists to close.
 - Cover both the **absent** and the **empty** case in the config-schema spec — `docs:env` does not render `when` branches, so nothing else surfaces either trap.
 

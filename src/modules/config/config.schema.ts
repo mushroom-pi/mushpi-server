@@ -54,11 +54,42 @@ const secret = Joi.any().when('NODE_ENV', {
   otherwise: Joi.optional(),
 });
 
-const picoAnnounceSecret = Joi.any().when('NODE_ENV', {
-  is: 'prod',
-  then: Joi.string().min(6).required(),
-  otherwise: Joi.string().min(6).default('mushpi-dev-secret'),
-});
+/**
+ * The shared secret Pico units present in the `X-Pico-Secret` header of
+ * `POST /v1/pico-units/announce`.
+ *
+ * A `demo` instance is internet-exposed, so its announce secret must be set
+ * explicitly AND must not be the published development value — that literal
+ * is public knowledge, and leaving it in place would keep the announce
+ * endpoint open to anyone. `prod` deliberately keeps accepting any value of
+ * six or more characters, including that one: its rule is presence, not
+ * provenance. The development default therefore applies only outside
+ * `prod`/`demo`.
+ *
+ * Each `is` schema carries `.required()` deliberately — the definedness
+ * trap: Joi short-circuits `undefined` for a non-required `is` schema, so a
+ * bare `Joi.string().valid('prod')` would ALSO match an absent `NODE_ENV`
+ * and select a required branch (see the note on `password()`). Do not add
+ * `.invalid()` to the `prod` or `otherwise` branches: only `demo` refuses
+ * the public value.
+ */
+const picoAnnounceSecret = Joi.any()
+  .when('NODE_ENV', {
+    switch: [
+      {
+        is: Joi.string().valid('prod').required(),
+        then: Joi.string().min(6).required(),
+      },
+      {
+        is: Joi.string().valid('demo').required(),
+        then: Joi.string().min(6).invalid('mushpi-dev-secret').required(),
+      },
+    ],
+    otherwise: Joi.string().min(6).default('mushpi-dev-secret'),
+  })
+  .description(
+    'Shared secret expected in the `X-Pico-Secret` header of `POST /v1/pico-units/announce`. Required (min 6 chars) when `NODE_ENV` is `prod` or `demo`; a `demo` instance additionally refuses the public development value `mushpi-dev-secret`; elsewhere defaults to that public development value.',
+  );
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const generateServiceSchema = (serviceName: Services) => {
