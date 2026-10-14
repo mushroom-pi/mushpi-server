@@ -4,7 +4,7 @@
 
 | Variable | Type | Required | Default | Conditions | Description |
 |----------|------|----------|---------|------------|-------------|
-| `NODE_ENV` | string | Never | `"local"` | Allowed values: `dev`, `local`, `prod`, `staging`, `test` |  |
+| `NODE_ENV` | string | Never | `"local"` | Allowed values: `demo`, `dev`, `local`, `prod`, `staging`, `test` |  |
 | `APP_PORT` | number | Never |  |  |  |
 | `APP_SECRET` | string | Never |  |  |  |
 | `CLIENT_URL` | string | Never |  |  |  |

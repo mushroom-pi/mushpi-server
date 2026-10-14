@@ -44,7 +44,7 @@ The full, generated reference is `docs/ENVIRONMENT.md` (regenerate with `yarn do
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `APP_PORT` | `3000` *(falls back to legacy `PORT`)* | Listen port |
-| `NODE_ENV` | `local` | `local` / `dev` / `staging` / `prod` / `test` — switches several behaviours |
+| `NODE_ENV` | `local` | `local` / `demo` / `dev` / `staging` / `prod` / `test` — switches several behaviours |
 | `CLIENT_URL` | — | CORS origin (the dashboard's origin); required in local mode |
 | `CLIENT_DIST_DIR` | — | Path to the built dashboard — enables SPA serving (required in prod) |
 | `SQLITE_PATH` | `data/app.sqlite` | SQLite database file |

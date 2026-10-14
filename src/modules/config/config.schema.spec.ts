@@ -5,6 +5,26 @@ import { validationSchema } from './config.schema';
 import { CustomConfigService } from './config.service';
 
 /**
+ * `demo` is a member of the node-environment list but is inert by design:
+ * nothing is required to opt in and nothing changes until a variable later
+ * acts on it. A `NODE_ENV=demo` boot is a plain non-production boot — it
+ * takes the same `otherwise` branches as `dev`/`staging`/`test`. This pins
+ * that: with no `APP_SECRET`, `CLIENT_URL` or `CLIENT_DIST_DIR`, validation
+ * passes and `PICO_ANNOUNCE_SECRET` falls back to the development default.
+ */
+describe('config validationSchema — demo node environment', () => {
+  it('accepts demo as a node environment without imposing prod-only requirements', () => {
+    const { error, value } = validationSchema.validate(
+      { NODE_ENV: 'demo' },
+      { allowUnknown: true },
+    );
+    expect(error).toBeUndefined();
+    expect(value.NODE_ENV).toBe('demo');
+    expect(value.PICO_ANNOUNCE_SECRET).toBe('mushpi-dev-secret');
+  });
+});
+
+/**
  * Rate-limit configuration is opt-in: MAX_REQUESTS (requests per window) and
  * MAX_REQUESTS_TIME (window length in milliseconds) must be supplied together
  * as positive integers. A partial or malformed pair is a startup validation

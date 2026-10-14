@@ -5373,6 +5373,7 @@ components:
           type: boolean
         environment:
           enum:
+            - demo
             - dev
             - local
             - prod

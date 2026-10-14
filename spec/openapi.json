@@ -7746,6 +7746,7 @@
           },
           "environment": {
             "enum": [
+              "demo",
               "dev",
               "local",
               "prod",

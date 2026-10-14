@@ -442,7 +442,7 @@ Schema changes for production (`NODE_ENV=prod`, where `synchronize: false`) requ
 | Variable               | Default             | Description                                                                   |
 | ---------------------- | ------------------- | ----------------------------------------------------------------------------- |
 | `PORT`                 | `3000`              | Listen port                                                                   |
-| `NODE_ENV`             | `local`             | `dev/local/prod/staging/test`                                                 |
+| `NODE_ENV`             | `local`             | `demo/dev/local/prod/staging/test`                                            |
 | `SQLITE_PATH`          | `./data/app.sqlite` | DB path                                                                       |
 | `CLIENT_URL`           | —                   | CORS allowed origin (required in `local`, optional elsewhere)                 |
 | `CLIENT_DIST_DIR`      | —                   | Absolute path to the built `mushpi-client` SPA (`dist/`). Required in `prod`; unset = SPA serving disabled (dev uses Vite :5173). Docker sets e.g. `/usr/src/app/client`. |
