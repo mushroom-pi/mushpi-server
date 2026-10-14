@@ -1,4 +1,8 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  ApiHideProperty,
+  ApiProperty,
+  ApiPropertyOptional,
+} from '@nestjs/swagger';
 
 import { IsInt, IsOptional, IsString, Length, Max, Min } from 'class-validator';
 import {
@@ -126,6 +130,11 @@ export class Recipe {
   @UpdateDateColumn({ type: 'datetime' })
   updated_at!: Date;
 
+  // Never serialized: per-recipe batches are served by
+  // `GET /v1/recipes/:recipeId/batches` as a paginated list, not as a
+  // property of Recipe. Hidden so the swagger CLI plugin cannot infer it
+  // into the contract.
+  @ApiHideProperty()
   @OneToMany(() => Batch, (b) => b.recipe ?? undefined)
   batches?: Batch[];
 }

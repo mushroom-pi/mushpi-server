@@ -1,4 +1,8 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  ApiHideProperty,
+  ApiProperty,
+  ApiPropertyOptional,
+} from '@nestjs/swagger';
 
 import {
   Column,
@@ -132,6 +136,11 @@ export class Readings {
   time_to_response_ms!: number;
 
   // --- Relation to PicoUnit ---
+  // Never serialized: no readings path loads this relation, but the swagger
+  // CLI plugin would otherwise infer it into the contract as a required
+  // property that no endpoint can satisfy. Re-add it to the contract with an
+  // explicit @ApiProperty only if a future endpoint starts returning it.
+  @ApiHideProperty()
   @Index()
   @ManyToOne(() => PicoUnit, (u) => u.readings ?? undefined, {
     nullable: false,

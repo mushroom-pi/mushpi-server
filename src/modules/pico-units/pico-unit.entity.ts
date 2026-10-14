@@ -1,4 +1,8 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  ApiHideProperty,
+  ApiProperty,
+  ApiPropertyOptional,
+} from '@nestjs/swagger';
 
 import { Expose, Transform } from 'class-transformer';
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
@@ -252,6 +256,11 @@ export class PicoUnit {
     return getPicoApiCompatibility(this.api_version, this.last_seen != null);
   }
 
+  // Never serialized: no pico-units path loads this relation (the latest
+  // reading is served via the computed `latest_reading`). Hidden from the
+  // contract so the swagger CLI plugin cannot infer it as a property no
+  // endpoint can satisfy.
+  @ApiHideProperty()
   @OneToMany(() => Readings, (r) => r.pico_unit)
   readings?: Readings[];
 
