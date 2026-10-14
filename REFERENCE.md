@@ -20,7 +20,7 @@ Long-tail gotchas and detailed conventions. **Load only when the task touches th
 - [Migrations](#migrations) — directory, naming, barrel registration, baseline convention, prod `migrationsRun`
 - [Environment Variables](#environment-variables) — key env var table (full generated reference: `docs/ENVIRONMENT.md`)
 - [Config](#config) — `CustomConfigService` getter grouping philosophy
-- [Dependency Remediation Notes](#dependency-remediation-notes) — node-gyp/native builds, the multer `resolutions` pin + removal condition, the knip nested-repo gitignore hazard (`--no-gitignore` mitigation)
+- [Dependency Remediation Notes](#dependency-remediation-notes) — node-gyp/native builds, the multer `resolutions` pin + removal condition, the `proxy-addr` lockfile-only refresh (GHSA-jqcg-44mw-7w3h), the knip nested-repo gitignore hazard (`--no-gitignore` mitigation)
 - [Tooling & Style Deviations](#tooling--style-deviations) — tsconfig strictness disabled; `settings.v1.controller.ts` branching (skill deviations)
 - [Raw SQL](#raw-sql) — SQLite datetime conversion for raw SQL + QueryBuilder string predicates; aggregation response shape (`AggregatedReadingsResponseDto`)
 - [Build Output & Entrypoint](#build-output--entrypoint) — `dist/src/main.js` path and why (tsc `rootDir` push), `start:prod` + Docker `CMD`
@@ -472,7 +472,7 @@ Schema changes for production (`NODE_ENV=prod`, where `synchronize: false`) requ
 
 ## Dependency Remediation Notes
 
-Gotchas from the production-advisory backlog clearance (recursive lockfile refreshes + one `resolutions` pin). Load when touching dependencies, native builds, or the audit/knip gates.
+Gotchas from the production-advisory backlog clearance (recursive lockfile refreshes + one `resolutions` pin). Individual advisory remedies are recorded here whether the fix is a `resolutions` **pin** or a lockfile-only **refresh**. Load when touching dependencies, native builds, or the audit/knip gates.
 
 ### Native module builds / `node-gyp`
 
@@ -485,6 +485,10 @@ Gotchas from the production-advisory backlog clearance (recursive lockfile refre
 
 - `resolutions.multer = "2.3.0"` exists because `@nestjs/platform-express@11.2.5` hard-pins `multer: 2.2.0`, which carries **4 advisories (3 high)** — fixed in 2.3.0. **Removal condition:** drop the pin once Nest permits `>= 2.3.0`.
 - A `resolutions` entry overrides parents' declared ranges and does not expire — each one needs its rationale and removal condition recorded here (or in its commit message) the day it is added.
+
+### Lockfile-only refreshes (no pin)
+
+- **2026-10-14 — `GHSA-jqcg-44mw-7w3h` (CVE-2026-90711, critical)**: `proxy-addr` IP spoofing via IPv4-mapped IPv6 trust subnets. Path: `@nestjs/platform-express@^11.1.6` → `express@5.2.1` → `proxy-addr@^2.0.7` (the lockfile's sole `proxy-addr` descriptor). **Remedy:** lockfile-only refresh `yarn up -R proxy-addr`, **2.0.7 → 2.0.8** — in-range for `^2.0.7`, so **no pin was added** and `package.json` stayed untouched (`git diff -- package.json` empty at commit time). **Exposure finding:** the vulnerable `proxyaddr.compile()` trust-subnet path is **unreachable** — Express `trust proxy` is deliberately not enabled and no code in `src/` or `test/` consumes `req.ip`/`req.ips`/`X-Forwarded-For` — so real exposure was the development tree only. No removal condition needed (nothing was pinned to remove).
 
 ### `knip:ci` in the nested-repo sandbox (gitignore hazard — mitigated)
 
