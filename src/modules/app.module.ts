@@ -14,6 +14,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { DataSource } from 'typeorm';
 
+import { DemoReadOnlyGuard } from 'src/common/guards/demo-readonly.guard';
 import { TooManyRequestsGuard } from 'src/common/guards/too-many-requests.guard';
 import { TimezoneInterceptor } from 'src/common/interceptors/timezone.interceptor';
 import { PicoUnitByIdMiddleware } from 'src/common/middleware/pico-unit-by-id.middleware';
@@ -156,6 +157,15 @@ import { SwaggerModule } from './swagger/swagger.module';
     {
       provide: APP_GUARD,
       useClass: TooManyRequestsGuard,
+    },
+    // Registered AFTER TooManyRequestsGuard: Nest runs global guards in
+    // provider registration order, so a request is counted against the pace
+    // budget before the demo read-only guard refuses it — the 403 response
+    // still carries X-RateLimit-* headers when throttling is configured.
+    // Inert on every non-demo boot (`NODE_ENV=demo` is the only armed state).
+    {
+      provide: APP_GUARD,
+      useClass: DemoReadOnlyGuard,
     },
     {
       provide: APP_INTERCEPTOR,

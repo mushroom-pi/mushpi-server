@@ -21,6 +21,7 @@ import {
 
 import { ApiPicoUnit } from 'src/common/decorators/docs/api-pico-unit.decorator';
 import { ApiAxiosErrorResponses } from 'src/common/decorators/docs/axios-errors.decorator';
+import { DemoReadOnlyRefused } from 'src/common/decorators/docs/demo-readonly-refused.decorator';
 import { ApiEmptyOkResponse } from 'src/common/decorators/docs/empty-ok-response.decorator';
 import { OnlyMonitoredPicoUnits } from 'src/common/decorators/docs/only-monitored-pico-unit.decorator';
 import { GetPicoUnit } from 'src/common/decorators/get-pico-unit.decorator';
@@ -69,6 +70,9 @@ export class PicoUnitIdV1Controller {
 
   @ApiTags('proxy')
   @Get('ping')
+  // Safe method, but the proxy records the call outcome on the unit row
+  // (last_seen / failed_calls) — so on a demo boot it is refused, not allowed.
+  @DemoReadOnlyRefused()
   @ApiOperation({
     summary: 'Ping the Pico Unit',
     description:

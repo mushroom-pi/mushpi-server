@@ -337,6 +337,45 @@
               }
             }
           },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "406": {
             "description": "Database-related error",
             "content": {
@@ -884,7 +923,8 @@
         "summary": "Announce a Pico Unit (hardware)",
         "tags": [
           "pico-units"
-        ]
+        ],
+        "x-demo-readonly": "exempt"
       }
     },
     "/v1/pico-units/{picoUnitId}": {
@@ -1097,6 +1137,45 @@
               }
             }
           },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "PicoUnit not found",
             "content": {
@@ -1265,6 +1344,45 @@
         "responses": {
           "204": {
             "description": "Deleted"
+          },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
           },
           "404": {
             "description": "PicoUnit not found",
@@ -1437,6 +1555,45 @@
             "content": {
               "application/json": {
                 "example": "pong"
+              }
+            }
+          },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
               }
             }
           },
@@ -1616,7 +1773,8 @@
         "tags": [
           "pico-units",
           "proxy"
-        ]
+        ],
+        "x-demo-readonly": "refused"
       }
     },
     "/v1/pico-units/{picoUnitId}/poll": {
@@ -1642,6 +1800,45 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PollPicoUnitResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
                 }
               }
             }
@@ -1879,6 +2076,45 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RebootResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
                 }
               }
             }
@@ -2948,6 +3184,45 @@
               }
             }
           },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "The provided pico_unit_id doesn't correspond to any existing and monitored Pico Unit",
             "content": {
@@ -3528,6 +3803,45 @@
               }
             }
           },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "Batch not found",
             "content": {
@@ -3710,6 +4024,45 @@
         "responses": {
           "204": {
             "description": "Deleted"
+          },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
           },
           "404": {
             "description": "Batch not found",
@@ -3921,6 +4274,45 @@
               }
             }
           },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "Batch or image not found",
             "content": {
@@ -4128,6 +4520,45 @@
               }
             }
           },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "Batch or image not found",
             "content": {
@@ -4331,6 +4762,45 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Recipe"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
                 }
               }
             }
@@ -4896,6 +5366,45 @@
               }
             }
           },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "Conflict — a recipe with that name already exists",
             "content": {
@@ -5437,6 +5946,45 @@
               }
             }
           },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "Recipe not found",
             "content": {
@@ -5602,6 +6150,45 @@
         "responses": {
           "204": {
             "description": "Deleted"
+          },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
           },
           "404": {
             "description": "Recipe not found",
@@ -6037,6 +6624,45 @@
               }
             }
           },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "Recipe or image not found",
             "content": {
@@ -6220,6 +6846,45 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
                 }
               }
             }
@@ -6417,6 +7082,45 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SetpointsDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
                 }
               }
             }
@@ -6648,6 +7352,45 @@
               }
             }
           },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "PicoUnit not found",
             "content": {
@@ -6871,6 +7614,45 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OutputsDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
                 }
               }
             }
@@ -7108,6 +7890,45 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ControlLoopDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
                 }
               }
             }
@@ -7525,6 +8346,45 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SettingsResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
                 }
               }
             }

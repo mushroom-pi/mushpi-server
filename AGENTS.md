@@ -168,6 +168,10 @@ Stored columns use **snake_case property names** matching the DB column — no `
 
 Register every entity in BOTH `data-source.ts` (CLI) and `TypeOrmModule.forFeature()` (runtime). Snapshot/immutable-FK rules: REFERENCE.md §Batch Lifecycle.
 
+### Demo read-only contract
+
+On a demo boot (`NODE_ENV=demo`) every non-safe-method request is refused with 403 by the global `DemoReadOnlyGuard`, and the OpenAPI spec documents that 403 on exactly those operations — both from the same handler marks (`@DemoReadOnlyExempt()` / `@DemoReadOnlyRefused()` in `src/common/decorators/docs/`). **A new endpoint needs no demo work**: a non-safe method is refused and documented automatically; a safe-method handler that writes persisted data MUST carry `@DemoReadOnlyRefused()`. Exemptions are deliberate, explicit, and greppable — today only `POST /v1/pico-units/announce`. Guards are inert on every other boot; the cron/event-handler paths never pass through them. Details: REFERENCE.md §Guards / §Spec Tooling Internals.
+
 ### Versioning
 
 Release policy: REFERENCE.md §Release Versioning.

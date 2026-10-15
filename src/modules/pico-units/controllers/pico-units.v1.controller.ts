@@ -9,6 +9,7 @@ import {
 } from '@nestjs/swagger';
 
 import { ApiFailedDependencyResponse } from 'src/common/decorators/docs/api-failed-dependency-response.decorator';
+import { DemoReadOnlyExempt } from 'src/common/decorators/docs/demo-readonly-exempt.decorator';
 import { PicoAnnounceSecret } from 'src/common/decorators/docs/pico-announce-secret.decorator';
 import { ErrorDto } from 'src/common/dto/error.dto';
 
@@ -53,6 +54,10 @@ export class PicoUnitsV1Controller {
 
   @Post('announce')
   @PicoAnnounceSecret()
+  // The complete exemption set for the demo read-only guard: announcement is
+  // the only inbound writer left open on a demo boot (PicoAnnounceSecretGuard
+  // still enforces X-Pico-Secret — 401 without it).
+  @DemoReadOnlyExempt()
   @ApiOperation({
     summary: 'Announce a Pico Unit (hardware)',
     description:

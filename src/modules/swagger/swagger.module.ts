@@ -6,6 +6,13 @@ import {
   OpenAPIObject,
 } from '@nestjs/swagger';
 
+import {
+  DEMO_READONLY_FORBIDDEN_DESCRIPTION,
+  DEMO_READONLY_FORBIDDEN_MESSAGE,
+  DEMO_READONLY_SAFE_METHODS,
+  DEMO_READONLY_SPEC_EXTENSION,
+} from 'src/common/constants/demo-readonly.constants';
+
 import { description, name, version } from '../../../package.json';
 import { CustomConfigService } from '../config/config.service';
 import { globalErrors } from './swagger-global-errors';
@@ -95,6 +102,70 @@ export class SwaggerModule {
     };
   }
 
+  /**
+   * Demo read-only 403 injection — the OpenAPI projection of the same
+   * declaration the runtime `DemoReadOnlyGuard` reads (see the mark
+   * decorators under `src/common/decorators/docs/`).
+   *
+   * An operation gains the `403` response iff
+   * `(method key is not safe OR it carries the refused mark)
+   *  AND it does not carry the exempt mark`.
+   *
+   * Unlike the 429 global error (documented only when the *generating*
+   * deployment has rate limiting configured), this injection is
+   * **unconditional**: the committed spec is generated on pre-commit in a
+   * dev/local boot and must document demo-mode behaviour regardless of the
+   * generating environment. Runtime behaviour stays per-deployment — the
+   * guard is inert unless `NODE_ENV=demo`.
+   *
+   * Pure addition: never mutates or removes existing entries.
+   */
+  private addDemoReadOnlyResponses(document: OpenAPIObject) {
+    const safeMethodKeys = new Set(
+      DEMO_READONLY_SAFE_METHODS.map((method) => method.toLowerCase()),
+    );
+    const methodKeys = [
+      'get',
+      'put',
+      'post',
+      'patch',
+      'delete',
+      'head',
+      'options',
+    ];
+
+    for (const pathKey in document.paths) {
+      const pathItem = document.paths[pathKey];
+
+      for (const methodKey of methodKeys) {
+        const operation = pathItem[methodKey];
+        if (!operation) continue;
+
+        const mark = (operation as Record<string, unknown>)[
+          DEMO_READONLY_SPEC_EXTENSION
+        ];
+        if (mark === 'exempt') continue;
+
+        const refused = !safeMethodKeys.has(methodKey) || mark === 'refused';
+        if (!refused) continue;
+
+        if (!operation.responses) {
+          operation.responses = {};
+        }
+        if (operation.responses['403']) continue;
+
+        operation.responses['403'] = {
+          description: DEMO_READONLY_FORBIDDEN_DESCRIPTION,
+          content: this.generateContent({
+            statusCode: HttpStatus.FORBIDDEN,
+            error: 'Forbidden',
+            messageExample: DEMO_READONLY_FORBIDDEN_MESSAGE,
+          }),
+        };
+      }
+    }
+  }
+
   public buildOpenApiDocument(
     app: INestApplication,
     documentDescriptor?: DocumentDescriptor,
@@ -164,6 +235,8 @@ export class SwaggerModule {
       .forEach((errorResponse) =>
         this.errorResponseFactory(errorResponse)(document),
       );
+
+    this.addDemoReadOnlyResponses(document);
 
     return document;
   }
