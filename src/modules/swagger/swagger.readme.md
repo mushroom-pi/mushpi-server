@@ -23,10 +23,10 @@ Global error responses are defined in the `globalErrors` array. Each error inclu
 
 #### Error response objects
 
-The inclusion of detailed error properties (`timestamp`, `path`, `emitter`) in error responses is controlled by the `ERRORS_DETAIL` and `NODE_ENV` environment variables that are combined in the `errorsDetail` property in the `CustomConfigService`.
+The inclusion of detailed error properties (`timestamp`, `path`, `emitter`) in error responses is controlled by the `ERRORS_DETAIL` environment variable through the `errorsDetail` property in the `CustomConfigService`. The details are **on by default in every environment — `prod` and `demo` included** — and are suppressed only when `ERRORS_DETAIL='false'` is set explicitly; `NODE_ENV` plays no part.
 
-- `errorsDetail = true` (`ERRORS_DETAIL = true | undefined` or `NODE_ENV` not `prod`): Error responses include `timestamp`, `path`, and `emitter`.
-- `errorsDetail = false` (`ERRORS_DETAIL = false` or `NODE_ENV = prod`): These details are omitted.
+- `errorsDetail = true` (default: `ERRORS_DETAIL` unset, or any value other than `'false'`): Error responses include `timestamp`, `path`, and `emitter`.
+- `errorsDetail = false` (only `ERRORS_DETAIL='false'`): These details are omitted.
 
 #### Rate-limit errors
 
