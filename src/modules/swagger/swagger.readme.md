@@ -30,11 +30,14 @@ The inclusion of detailed error properties (`timestamp`, `path`, `emitter`) in e
 
 #### Rate-limit errors
 
-Rate limiting is **opt-in**: the service imposes it only when **both** `MAX_REQUESTS` (requests allowed per window) and `MAX_REQUESTS_TIME` (window length in **milliseconds**, e.g. `60000`) are configured as positive integers. The variables are validated as a pair — supplying only one of them is a startup configuration error.
+Rate limiting is defined by the deployment **profile** — two profiles, two threat models:
 
-When the pair is configured, throttled responses carry the `@nestjs/throttler` headers `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset` (the latter two in **relative seconds**), plus `Retry-After` on the blocked request. When it is not configured, no throttling happens and **no rate-limit headers are emitted at all**. `GET /health` is exempt either way (`@SkipThrottle()`), so the container health check can never be rate limited.
+- **Self-hosted profile** — a hub on a trusted local network; the network itself is the security boundary. Rate limiting is **opt-in**: the service imposes it only when **both** `MAX_REQUESTS` (requests allowed per window) and `MAX_REQUESTS_TIME` (window length in **milliseconds**, e.g. `60000`) are configured as positive integers, validated as a pair — supplying only one half is a startup configuration error. With the pair unset, no throttling happens and **no rate-limit headers are emitted at all**. The `DEMO_*` variables are ignored on this profile.
+- **Public-demo profile** (`NODE_ENV=demo`) — an internet-exposed, unauthenticated demonstration instance behind exactly one reverse proxy. Rate limiting is **always on**: three limiters — a per-visitor browse pace (the unnamed `default` bucket), the `demo-global` whole-instance backstop, and the `demo-abuse` refused-change limiter — built exclusively from the six `DEMO_*` env pairs (required in this profile; never hardcoded). The `DEMO_` prefix marks exactly this profile scope. Per-visitor bucketing is sound only behind a single known appending proxy — the demo's topology, not a hub's — which is why the triple belongs to this profile alone. The `MAX_REQUESTS` pair has no effect here.
 
-Hence, the `429 Too many requests` global error is only displayed in the documentation if those variables are present.
+Throttled responses carry the `@nestjs/throttler` headers `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset` (the latter in **relative seconds**), plus `Retry-After` on the blocked request; a *named* limiter adds its name as a suffix (`X-RateLimit-*-demo-global`, `Retry-After-demo-abuse`). `GET /health` is exempt on both profiles and on every demo bucket, so the container health check can never be rate limited; announcements skip the two named demo buckets but keep the visitor pace.
+
+Hence, the `429 Too many requests` global error is documented **per profile**: on the self-hosted profile only when the opt-in pair is configured; on the public-demo profile always. The demo arm affects only a demo instance's **served** document — the committed spec is generated on a local boot and stays unchanged.
 
 #### Basic authentication
 

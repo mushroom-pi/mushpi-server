@@ -20,8 +20,22 @@ describe('config validationSchema — demo node environment', () => {
   const options = { allowUnknown: true, abortEarly: false };
   const validate = (env: Record<string, unknown>) =>
     validationSchema.validate(env, options);
+  /**
+   * A demo boot additionally requires the three always-on rate-limit pairs.
+   * Supplied here so the announce-secret cases below control only about
+   * PICO_ANNOUNCE_SECRET; the pairs themselves are exercised by the
+   * 'demo rate limiting' block.
+   */
+  const demoLimits = {
+    DEMO_VISITOR_MAX_REQUESTS: 100,
+    DEMO_VISITOR_MAX_REQUESTS_TIME: 60000,
+    DEMO_ABUSE_MAX_REQUESTS: 10,
+    DEMO_ABUSE_MAX_REQUESTS_TIME: 60000,
+    DEMO_GLOBAL_MAX_REQUESTS: 1000,
+    DEMO_GLOBAL_MAX_REQUESTS_TIME: 60000,
+  };
   const demo = (env: Record<string, unknown> = {}) =>
-    validate({ NODE_ENV: 'demo', ...env });
+    validate({ NODE_ENV: 'demo', ...demoLimits, ...env });
 
   describe('PICO_ANNOUNCE_SECRET — set explicitly, never the public value', () => {
     it('rejects a demo boot that does not set PICO_ANNOUNCE_SECRET', () => {
@@ -234,6 +248,178 @@ describe('config validationSchema — rate limiting', () => {
         MAX_REQUESTS_TIME: 60000,
       });
       expect(error).toBeDefined();
+    });
+  });
+});
+
+/**
+ * Demo rate-limit configuration is required-when-demo: a `demo` boot is
+ * internet-exposed, so an unprotected demo is not an option — a missing
+ * limit pair fails the boot loudly instead of serving a demo with no
+ * throttling. The three pairs (visitor browse pace, abuse refused-change
+ * pace, global backstop) each follow the same all-or-nothing `.and()` rule
+ * as the historical MAX_REQUESTS pair. Outside `demo` the same keys are
+ * merely optional (and ignored by the throttler factory — a self-hosted hub
+ * gets no new limits, see the 'ignored outside demo' case).
+ *
+ * Every `.when('NODE_ENV', …)` condition's `is` schema carries
+ * `.required()` — the definedness trap: a non-required `is` schema also
+ * matches an ABSENT reference and would select the required branch on a
+ * stock boot. The absent-NODE_ENV case below pins that no branch fires.
+ */
+describe('config validationSchema — demo rate limiting', () => {
+  const options = { allowUnknown: true, abortEarly: false };
+  const validate = (env: Record<string, unknown>) =>
+    validationSchema.validate(env, options);
+
+  const allLimits = {
+    DEMO_VISITOR_MAX_REQUESTS: 100,
+    DEMO_VISITOR_MAX_REQUESTS_TIME: 60000,
+    DEMO_ABUSE_MAX_REQUESTS: 10,
+    DEMO_ABUSE_MAX_REQUESTS_TIME: 60000,
+    DEMO_GLOBAL_MAX_REQUESTS: 1000,
+    DEMO_GLOBAL_MAX_REQUESTS_TIME: 60000,
+  };
+  // A demo boot with the announce secret supplied so every case below
+  // controls only the rate-limit keys.
+  const demo = (env: Record<string, unknown> = {}) =>
+    validate({
+      NODE_ENV: 'demo',
+      PICO_ANNOUNCE_SECRET: 'unit-test-secret',
+      ...env,
+    });
+
+  it('accepts a demo boot with every pair present and coerces numeric strings', () => {
+    const { error, value } = demo({
+      DEMO_VISITOR_MAX_REQUESTS: '100',
+      DEMO_VISITOR_MAX_REQUESTS_TIME: '60000',
+      DEMO_ABUSE_MAX_REQUESTS: '10',
+      DEMO_ABUSE_MAX_REQUESTS_TIME: '60000',
+      DEMO_GLOBAL_MAX_REQUESTS: '1000',
+      DEMO_GLOBAL_MAX_REQUESTS_TIME: '60000',
+    });
+    expect(error).toBeUndefined();
+    expect(typeof value.DEMO_VISITOR_MAX_REQUESTS).toBe('number');
+    expect(value.DEMO_VISITOR_MAX_REQUESTS).toBe(100);
+  });
+
+  describe('required in demo — one failing case per pair', () => {
+    const pairKeys: Array<[string, string]> = [
+      ['DEMO_VISITOR_MAX_REQUESTS', 'DEMO_VISITOR_MAX_REQUESTS_TIME'],
+      ['DEMO_ABUSE_MAX_REQUESTS', 'DEMO_ABUSE_MAX_REQUESTS_TIME'],
+      ['DEMO_GLOBAL_MAX_REQUESTS', 'DEMO_GLOBAL_MAX_REQUESTS_TIME'],
+    ];
+    for (const [limit, ttl] of pairKeys) {
+      it(`rejects a demo boot missing the ${limit} pair`, () => {
+        const withoutPair = { ...allLimits };
+        delete withoutPair[limit];
+        delete withoutPair[ttl];
+        const { error } = demo(withoutPair);
+        expect(error).toBeDefined();
+        expect(error.message).toContain(limit);
+      });
+
+      it(`rejects a partial ${limit} pair in demo (all-or-nothing)`, () => {
+        const partial = { ...allLimits };
+        delete partial[ttl];
+        const { error } = demo(partial);
+        expect(error).toBeDefined();
+        expect(error.message).toContain(ttl);
+      });
+
+      it(`rejects a partial ${ttl} pair in demo (all-or-nothing)`, () => {
+        const partial = { ...allLimits };
+        delete partial[limit];
+        const { error } = demo(partial);
+        expect(error).toBeDefined();
+        expect(error.message).toContain(limit);
+      });
+    }
+  });
+
+  describe('rejected demo values', () => {
+    it.each([
+      ['zero', 0, 0],
+      ['negative', -1, -1],
+      ['fractional', 2.5, 60000.5],
+      ['non-numeric string', 'two', 'sixty seconds'],
+      ['empty string', '', ''],
+    ])('rejects a %s visitor pair in demo', (_label, limit, ttl) => {
+      const { error } = demo({
+        ...allLimits,
+        DEMO_VISITOR_MAX_REQUESTS: limit,
+        DEMO_VISITOR_MAX_REQUESTS_TIME: ttl,
+      });
+      expect(error).toBeDefined();
+      expect(error.message).toContain('DEMO_VISITOR_MAX_REQUESTS');
+    });
+
+    it('rejects a valid limit paired with a malformed ttl in demo', () => {
+      const { error } = demo({
+        ...allLimits,
+        DEMO_GLOBAL_MAX_REQUESTS: 10,
+        DEMO_GLOBAL_MAX_REQUESTS_TIME: 0,
+      });
+      expect(error).toBeDefined();
+      expect(error.message).toContain('DEMO_GLOBAL_MAX_REQUESTS_TIME');
+    });
+  });
+
+  describe('optional elsewhere', () => {
+    it('validates a non-demo boot with NO demo keys present', () => {
+      const { error, value } = validate({ NODE_ENV: 'test' });
+      expect(error).toBeUndefined();
+      for (const key of Object.keys(allLimits)) {
+        expect(key in value).toBe(false);
+      }
+    });
+
+    it('still accepts (and keeps) demo keys on a non-demo boot — the values are ignored, not rejected', () => {
+      const { error, value } = validate({ NODE_ENV: 'dev', ...allLimits });
+      expect(error).toBeUndefined();
+      expect(value.DEMO_VISITOR_MAX_REQUESTS).toBe(100);
+    });
+
+    it.each(['local', 'dev', 'staging', 'test', 'prod'])(
+      'does not require the demo pairs in %s',
+      (nodeEnv) => {
+        const env: Record<string, unknown> = { NODE_ENV: nodeEnv };
+        // Unrelated conditional requirements supplied so the cases assert
+        // only about the demo pairs: local needs CLIENT_URL; prod additionally
+        // needs CLIENT_DIST_DIR and PICO_ANNOUNCE_SECRET.
+        if (nodeEnv === 'local') env.CLIENT_URL = 'http://localhost:5173';
+        if (nodeEnv === 'prod') {
+          env.CLIENT_DIST_DIR = '/usr/src/app/client';
+          env.PICO_ANNOUNCE_SECRET = 'unit-test-secret';
+        }
+        const { error } = validate(env);
+        expect(error).toBeUndefined();
+      },
+    );
+
+    it('enforces the all-or-nothing rule for a partial demo pair outside demo as well', () => {
+      const { error } = validate({
+        NODE_ENV: 'test',
+        DEMO_ABUSE_MAX_REQUESTS: 10,
+      });
+      expect(error).toBeDefined();
+      expect(error.message).toContain('DEMO_ABUSE_MAX_REQUESTS_TIME');
+    });
+  });
+
+  describe('absent NODE_ENV fires no required branch', () => {
+    // The definedness trap, pinned for the demo pairs: without `.required()`
+    // on the `is` schema an absent NODE_ENV would also match and demand all
+    // six keys on a stock boot.
+    it('validates a boot with no NODE_ENV and no demo keys', () => {
+      const { error, value } = validate({
+        CLIENT_URL: 'http://localhost:5173',
+      });
+      expect(error).toBeUndefined();
+      expect(value.NODE_ENV).toBe('local');
+      for (const key of Object.keys(allLimits)) {
+        expect(key in value).toBe(false);
+      }
     });
   });
 });

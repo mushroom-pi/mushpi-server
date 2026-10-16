@@ -18,6 +18,12 @@ export interface EnvironmentVariables {
   MAX_EVENT_LOOP_DELAY: number;
   MAX_REQUESTS?: number;
   MAX_REQUESTS_TIME?: number;
+  DEMO_VISITOR_MAX_REQUESTS?: number;
+  DEMO_VISITOR_MAX_REQUESTS_TIME?: number;
+  DEMO_ABUSE_MAX_REQUESTS?: number;
+  DEMO_ABUSE_MAX_REQUESTS_TIME?: number;
+  DEMO_GLOBAL_MAX_REQUESTS?: number;
+  DEMO_GLOBAL_MAX_REQUESTS_TIME?: number;
   SQLITE_PATH: string;
   SQLITE_LOG: boolean;
   UPLOAD_DIR: string;
@@ -45,6 +51,31 @@ export interface SecurityConfig {
   maxEventLoopDelay: EnvironmentVariables['MAX_EVENT_LOOP_DELAY'];
   maxRequests?: EnvironmentVariables['MAX_REQUESTS'];
   maxRequestsTime?: EnvironmentVariables['MAX_REQUESTS_TIME'];
+  /**
+   * The three always-on demo rate-limit pairs (per-visitor browse pace,
+   * per-visitor refused-change pace, whole-instance backstop). Values come
+   * from the deployment; they are required in `demo` and simply unused on
+   * every other boot — a non-demo ConfigService reports them as they were
+   * validated (typically `undefined`) but no throttler definition reads
+   * them. Details: REFERENCE.md §Guards.
+   */
+  demo: DemoRateLimitsConfig;
+}
+
+/**
+ * One limit/window pair — the shape shared by the historical opt-in
+ * (`security.maxRequests` / `maxRequestsTime`) and each demo pair.
+ * Windows are milliseconds; `Retry-After`/`X-RateLimit-Reset` are seconds.
+ */
+export interface DemoRateLimitPair {
+  maxRequests?: number;
+  maxRequestsTime?: number;
+}
+
+export interface DemoRateLimitsConfig {
+  visitor: DemoRateLimitPair;
+  abuse: DemoRateLimitPair;
+  global: DemoRateLimitPair;
 }
 
 export interface DocsConfig {

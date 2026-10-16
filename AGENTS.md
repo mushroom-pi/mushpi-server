@@ -142,7 +142,7 @@ Env reference is **generated**, never hand-maintained: `yarn docs:env` → `docs
 |---|---|
 | `server` | port (`APP_PORT`, legacy `PORT` fallback), NODE_ENV, errorsDetail |
 | `logs` | pino level |
-| `security` | APP_SECRET, httpsEnabled (APP_HTTPS_ENABLED), throttler (opt-in `MAX_REQUESTS` + `MAX_REQUESTS_TIME` pair; REFERENCE.md §Guards), event-loop |
+| `security` | APP_SECRET, httpsEnabled (APP_HTTPS_ENABLED), throttler by deployment profile — self-hosted: opt-in `MAX_REQUESTS` + `MAX_REQUESTS_TIME`; public-demo (`NODE_ENV=demo`): always-on `DEMO_{VISITOR,ABUSE,GLOBAL}_MAX_REQUESTS(_TIME)` (prefix = profile scope, inert elsewhere); `isDemo`; REFERENCE.md §Guards | event-loop |
 | `docs` | Swagger endpoint + auth |
 | `sqlite` | DB path |
 | `upload` | UPLOAD_DIR → imageDir |
@@ -170,7 +170,7 @@ Register every entity in BOTH `data-source.ts` (CLI) and `TypeOrmModule.forFeatu
 
 ### Demo read-only contract
 
-On a demo boot (`NODE_ENV=demo`) every non-safe-method request is refused with 403 by the global `DemoReadOnlyGuard`, and the OpenAPI spec documents that 403 on exactly those operations — both from the same handler marks (`@DemoReadOnlyExempt()` / `@DemoReadOnlyRefused()` in `src/common/decorators/docs/`). **A new endpoint needs no demo work**: a non-safe method is refused and documented automatically; a safe-method handler that writes persisted data MUST carry `@DemoReadOnlyRefused()`. Exemptions are deliberate, explicit, and greppable — today only `POST /v1/pico-units/announce`. Guards are inert on every other boot; the cron/event-handler paths never pass through them. Details: REFERENCE.md §Guards / §Spec Tooling Internals.
+On a demo boot (`NODE_ENV=demo`) every non-safe-method request is refused with 403 by the global `DemoReadOnlyGuard`, and the OpenAPI spec documents that 403 on exactly those operations — both from the same handler marks (`@DemoReadOnlyExempt()` / `@DemoReadOnlyRefused()` in `src/common/decorators/docs/`). **A new endpoint needs no demo work**: a non-safe method is refused and documented automatically; a safe-method handler that writes persisted data MUST carry `@DemoReadOnlyRefused()`. Exemptions are deliberate, explicit, and greppable — today only `POST /v1/pico-units/announce`. Guards are inert on every other boot; the cron/event-handler paths never pass through them. Rate limiting follows the deployment profiles: a self-hosted hub arms nothing unless the opt-in pair is set (`DEMO_*` inert there); the public-demo profile (`NODE_ENV=demo`) always-runs three env-supplied limiters (browse pace, refused-change pace, whole-instance backstop) — the `DEMO_` prefix marks that profile scope. Details: REFERENCE.md §Guards / §Spec Tooling Internals.
 
 ### Versioning
 

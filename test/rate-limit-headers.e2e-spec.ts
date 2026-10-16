@@ -15,6 +15,13 @@ import request from 'supertest';
  * `/health` is exempt (`@SkipThrottle()`); `/ping` and every application route
  * are throttled when configured.
  *
+ * The final two cases pin the demo rate-limiting surface from the OTHER
+ * side: `DEMO_*` variables produce no throttler definition on a non-demo
+ * boot (no headers, no 429 — a hub without the demo environment has no new
+ * limits), and the announce/health `@SkipThrottle` marks keyed on the demo
+ * throttler NAMES stay inert here — the owner's historical limiter still
+ * counts announcement, per-route keys and all, byte-for-byte unchanged.
+ *
  * @nestjs/config runs the Joi validation schema once per module-graph import,
  * so each state sets/deletes the env vars BEFORE jest.resetModules() and then
  * dynamically imports the fixture. (An env var assigned after the first import
@@ -29,6 +36,20 @@ describe('Rate-limit headers (e2e)', () => {
   const originalLimit = process.env.MAX_REQUESTS;
   const originalTime = process.env.MAX_REQUESTS_TIME;
 
+  // The three demo pairs — always-on on a demo boot, IGNORED everywhere else.
+  // Restored exactly like the historical pair so a stray shell value survives
+  // the suite unchanged.
+  const DEMO_LIMIT_KEYS = [
+    'DEMO_VISITOR_MAX_REQUESTS',
+    'DEMO_VISITOR_MAX_REQUESTS_TIME',
+    'DEMO_ABUSE_MAX_REQUESTS',
+    'DEMO_ABUSE_MAX_REQUESTS_TIME',
+    'DEMO_GLOBAL_MAX_REQUESTS',
+    'DEMO_GLOBAL_MAX_REQUESTS_TIME',
+  ] as const;
+  const originalDemoLimits: Record<string, string | undefined> = {};
+  for (const key of DEMO_LIMIT_KEYS) originalDemoLimits[key] = process.env[key];
+
   afterAll(() => {
     if (hadLimit) {
       process.env.MAX_REQUESTS = originalLimit;
@@ -39,6 +60,10 @@ describe('Rate-limit headers (e2e)', () => {
       process.env.MAX_REQUESTS_TIME = originalTime;
     } else {
       delete process.env.MAX_REQUESTS_TIME;
+    }
+    for (const key of DEMO_LIMIT_KEYS) {
+      if (originalDemoLimits[key] === undefined) delete process.env[key];
+      else process.env[key] = originalDemoLimits[key];
     }
   });
 
@@ -192,6 +217,88 @@ describe('Rate-limit headers (e2e)', () => {
 
         const health = await get(launched.app, '/health').expect(200);
         expectNoRateLimitHeaders(health.headers);
+      } finally {
+        await launched.close();
+      }
+    });
+  });
+
+  describe('non-demo boot — DEMO_* vars are ignored entirely (criterion 10)', () => {
+    beforeEach(() => {
+      delete process.env.MAX_REQUESTS;
+      delete process.env.MAX_REQUESTS_TIME;
+      // Valid demo values on a self-hosted hub: they validate (optional
+      // outside demo) but must produce NO throttler definition — isDemo is
+      // checked first in the factory.
+      process.env.DEMO_VISITOR_MAX_REQUESTS = '2';
+      process.env.DEMO_VISITOR_MAX_REQUESTS_TIME = '60000';
+      process.env.DEMO_ABUSE_MAX_REQUESTS = '1';
+      process.env.DEMO_ABUSE_MAX_REQUESTS_TIME = '60000';
+      process.env.DEMO_GLOBAL_MAX_REQUESTS = '3';
+      process.env.DEMO_GLOBAL_MAX_REQUESTS_TIME = '60000';
+    });
+
+    it('emits no headers and no 429 under hammering — a hub without the demo environment has no new limits', async () => {
+      const launched = await launchWithCurrentEnv();
+      try {
+        for (let i = 1; i <= 8; i++) {
+          const res = await get(launched.app, '/ping').expect(200);
+          expect(res.text).toBe('pong');
+          expectNoRateLimitHeaders(res.headers);
+        }
+      } finally {
+        await launched.close();
+      }
+    });
+  });
+
+  describe('non-demo boot — the owner limiter still throttles announce (the new skip marks are inert)', () => {
+    beforeEach(() => {
+      process.env.MAX_REQUESTS = '2';
+      process.env.MAX_REQUESTS_TIME = '60000';
+      // Present but inert: the announce @SkipThrottle keys on the DEMO
+      // throttler NAMES, and no definition carries those names on a non-demo
+      // boot — so announcement stays counted, exactly as before.
+      process.env.DEMO_VISITOR_MAX_REQUESTS = '1000';
+      process.env.DEMO_VISITOR_MAX_REQUESTS_TIME = '60000';
+      process.env.DEMO_ABUSE_MAX_REQUESTS = '1000';
+      process.env.DEMO_ABUSE_MAX_REQUESTS_TIME = '60000';
+      process.env.DEMO_GLOBAL_MAX_REQUESTS = '1000';
+      process.env.DEMO_GLOBAL_MAX_REQUESTS_TIME = '60000';
+    });
+
+    const announce = (app: INestApplication) =>
+      request(app.getHttpServer())
+        .post('/v1/pico-units/announce')
+        // NODE_ENV=test resolves the announce secret to its development
+        // default — PicoAnnounceSecretGuard compares against it.
+        .set('X-Pico-Secret', 'mushpi-dev-secret')
+        .send({ handle: 'rlh-announce-unit', ip: '127.0.0.1', port: 5000 });
+
+    it('two announces succeed with headers, the third is 429 — unchanged opt-in behaviour', async () => {
+      const launched = await launchWithCurrentEnv();
+      try {
+        const first = await announce(launched.app).expect(201);
+        expect(first.headers['x-ratelimit-limit']).toBe('2');
+        const second = await announce(launched.app).expect(201);
+        expect(second.headers['x-ratelimit-remaining']).toBe('0');
+
+        const blocked = await announce(launched.app).expect(429);
+        expect(blocked.headers['retry-after']).toMatch(/^\d+$/);
+        expectWellFormedRateLimitHeaders(blocked.headers);
+        // the historical explicit body, in every environment, unchanged
+        expect(blocked.body).toMatchObject({
+          statusCode: 429,
+          error: 'Too many requests',
+          message: 'Too many requests',
+          emitter: 'ThrottlerGuard',
+        });
+
+        // the demo skips would only have matched names that do not exist on
+        // this boot; the historical per-route keying stays byte-for-byte:
+        // the exhausted announce bucket has nothing to do with /ping's
+        const ping = await get(launched.app, '/ping').expect(200);
+        expect(ping.headers['x-ratelimit-remaining']).toBe('1');
       } finally {
         await launched.close();
       }

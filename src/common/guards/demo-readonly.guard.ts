@@ -12,9 +12,9 @@ import { Request } from 'express';
 import {
   DEMO_READONLY_FORBIDDEN_MESSAGE,
   DEMO_READONLY_MARK,
-  DEMO_READONLY_SAFE_METHODS,
   DemoReadOnlyMark,
 } from 'src/common/constants/demo-readonly.constants';
+import { isDemoReadOnlyRefusal } from 'src/common/utils/demo-readonly-refusal.util';
 import { CustomConfigService } from 'src/modules/config/config.service';
 
 /**
@@ -47,18 +47,9 @@ export class DemoReadOnlyGuard implements CanActivate {
       DEMO_READONLY_MARK,
       context.getHandler(),
     );
-    if (mark === 'exempt') return true;
-    if (mark === 'refused') throw this.refusal();
-
     const req = context.switchToHttp().getRequest<Request>();
-    if (
-      DEMO_READONLY_SAFE_METHODS.includes(
-        req.method as (typeof DEMO_READONLY_SAFE_METHODS)[number],
-      )
-    ) {
-      return true;
-    }
-    throw this.refusal();
+    if (isDemoReadOnlyRefusal(mark, req.method)) throw this.refusal();
+    return true;
   }
 
   /**

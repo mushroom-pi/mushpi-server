@@ -18,6 +18,7 @@ import { DemoReadOnlyGuard } from 'src/common/guards/demo-readonly.guard';
 import { TooManyRequestsGuard } from 'src/common/guards/too-many-requests.guard';
 import { TimezoneInterceptor } from 'src/common/interceptors/timezone.interceptor';
 import { PicoUnitByIdMiddleware } from 'src/common/middleware/pico-unit-by-id.middleware';
+import { buildThrottlerDefinitions } from 'src/common/utils/build-throttler-definitions';
 
 import { BatchesModule } from './batches/batches.module';
 import { CustomConfigModule } from './config/config.module';
@@ -117,29 +118,19 @@ import { SwaggerModule } from './swagger/swagger.module';
       imports: [CustomConfigModule],
       inject: [CustomConfigService],
       /**
-       * Rate limiting is opt-in. Both values must be positive safe integers;
-       * anything else (absent, or a value that never passed the Joi schema)
-       * resolves to an EMPTY definitions array.
-       *
-       * That is load-bearing: with zero throttler definitions the guard's
-       * per-throttler loop never runs at all, so the library writes no
-       * X-RateLimit-* headers and never raises 429. Returning a definition with
-       * an undefined ttl/limit instead makes the library emit literal
-       * `X-RateLimit-Limit: undefined` and `NaN` remaining/reset headers on
-       * every response. Headers themselves are the library's native
-       * X-RateLimit-Limit / -Remaining / -Reset (reset and Retry-After are
-       * relative seconds; the configured ttl is milliseconds).
+       * Definitions come from `buildThrottlerDefinitions`: three always-on
+       * env-supplied throttlers on a demo boot (browse pace, refused-change
+       * pace, whole-instance backstop), and on every other boot the
+       * historical opt-in `MAX_REQUESTS`/`MAX_REQUESTS_TIME` pair verbatim
+       * — or an EMPTY definitions array when unset (zero definitions means
+       * the guard's per-throttler loop never runs: no 429, and no
+       * X-RateLimit-* headers at all; a definition with undefined ttl/limit
+       * would emit literally `undefined`/`NaN` headers instead). The demo
+       * branch fails loudly on a malformed value rather than serving an
+       * unprotected demo. Details: REFERENCE.md §Guards.
        */
-      useFactory: ({ security }: CustomConfigService) => {
-        const limit = security.maxRequests;
-        const ttl = security.maxRequestsTime;
-        const configured =
-          Number.isSafeInteger(limit) &&
-          limit > 0 &&
-          Number.isSafeInteger(ttl) &&
-          ttl > 0;
-        return configured ? [{ ttl, limit }] : [];
-      },
+      useFactory: (config: CustomConfigService) =>
+        buildThrottlerDefinitions(config),
     }),
     SQLiteModule,
     PicoUnitsModule,

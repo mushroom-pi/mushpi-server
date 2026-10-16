@@ -10,6 +10,7 @@ import { createHelmetMiddleware } from '../src/common/middleware/helmet.middlewa
 import { ProtectEventLoopMiddleware } from '../src/common/middleware/protect-event-loop.middleware';
 import { validationPipe } from '../src/common/pipes/validation.pipe';
 import { applyApiVersioning } from '../src/common/utils/api-version';
+import { applyDemoTrustProxy } from '../src/common/utils/trust-proxy';
 import { AppModule } from '../src/modules/app.module';
 import { CustomConfigService } from '../src/modules/config/config.service';
 import { CronService } from '../src/modules/cron/cron.service';
@@ -82,6 +83,10 @@ export async function createTestApp(
   applyApiVersioning(app);
   const httpAdapterHost = app.get(HttpAdapterHost);
   const configService = app.get(CustomConfigService);
+
+  // Mirror of the `main.ts` bootstrap — including the demo-only single-hop
+  // proxy trust (per-visitor throttler identity). Inert on non-demo boots.
+  applyDemoTrustProxy(app, configService);
 
   /** Global nest middleware — registered via app.use() to bypass route versioning */
   const protectEventLoop = new ProtectEventLoopMiddleware(configService);

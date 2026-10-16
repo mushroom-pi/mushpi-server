@@ -7,6 +7,11 @@ import {
 } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 
+import {
+  DEMO_ABUSE_THROTTLER_NAME,
+  DEMO_GLOBAL_THROTTLER_NAME,
+} from 'src/common/constants/demo.constants';
+
 import { HealthCheckQueryDto, HealthCheckResponseDto } from './monitoring.dto';
 import { MonitoringService } from './monitoring.service';
 
@@ -37,8 +42,15 @@ export class MonitoringController {
   // Docker HEALTHCHECK target: must stay reachable and header-free regardless
   // of how much traffic the rest of the API is taking (the throttler emits its
   // X-RateLimit-* headers from inside the guard, so skipping is what removes
-  // them — see REFERENCE.md §Guards).
-  @SkipThrottle()
+  // them — see REFERENCE.md §Guards). Skips ALL THREE demo definitions by
+  // name: the named skip keys are inert on non-demo boots (those throttler
+  // names only exist on a demo boot), and `default: true` preserves the
+  // historical exemption of the opt-in limiter.
+  @SkipThrottle({
+    default: true,
+    [DEMO_GLOBAL_THROTTLER_NAME]: true,
+    [DEMO_ABUSE_THROTTLER_NAME]: true,
+  })
   @ApiOperation({
     summary:
       'Check server and dependencies status. All the information will be returned if no query is included. Use query parameters to filter the checks that you want implemented',

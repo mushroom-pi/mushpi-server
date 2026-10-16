@@ -34,6 +34,7 @@ class MockCustomConfigService {
   security = { maxRequests: 40, maxRequestsTime: 60 * 1000 };
   docs = { endpoint: '/docs' };
   errorsDetail = true;
+  isDemo = false;
 }
 
 describe('SwaggerModule', () => {
@@ -262,6 +263,41 @@ describe('SwaggerModule', () => {
         }
       }
     }
+  });
+
+  describe('429 global-error inclusion — documentsTooManyRequests', () => {
+    // A SwaggerModule over a config stub covering only what the predicate
+    // reads (isDemo + the historical pair), exactly as
+    // `docsFlags` feeds validated values through CustomConfigService in
+    // config.schema.spec.ts.
+    const predicate = (
+      isDemo: boolean,
+      security: { maxRequests?: number; maxRequestsTime?: number },
+    ) =>
+      new SwaggerModule({
+        isDemo,
+        security,
+      } as unknown as CustomConfigService)['documentsTooManyRequests']();
+
+    it('documents 429 on a non-demo boot with the historical pair (unchanged behaviour)', () => {
+      expect(
+        predicate(false, { maxRequests: 40, maxRequestsTime: 60000 }),
+      ).toBe(true);
+    });
+
+    it('does not document 429 on a non-demo boot without the pair (unchanged behaviour)', () => {
+      expect(predicate(false, {})).toBe(false);
+      expect(predicate(false, { maxRequests: 40 })).toBe(false);
+      expect(predicate(false, { maxRequestsTime: 60000 })).toBe(false);
+    });
+
+    it('documents 429 on a demo boot even without the opt-in pair — the three demo throttlers are always armed', () => {
+      expect(predicate(true, {})).toBe(true);
+      // A demo boot that ALSO sets the historical pair stays documented.
+      expect(predicate(true, { maxRequests: 40, maxRequestsTime: 60000 })).toBe(
+        true,
+      );
+    });
   });
 
   describe('Demo read-only 403 injection', () => {

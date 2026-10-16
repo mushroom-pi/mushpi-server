@@ -82,6 +82,26 @@ export class CustomConfigService {
       maxEventLoopDelay: this.configService.get('MAX_EVENT_LOOP_DELAY'),
       maxRequests: this.configService.get('MAX_REQUESTS'),
       maxRequestsTime: this.configService.get('MAX_REQUESTS_TIME'),
+      demo: {
+        visitor: {
+          maxRequests: this.configService.get('DEMO_VISITOR_MAX_REQUESTS'),
+          maxRequestsTime: this.configService.get(
+            'DEMO_VISITOR_MAX_REQUESTS_TIME',
+          ),
+        },
+        abuse: {
+          maxRequests: this.configService.get('DEMO_ABUSE_MAX_REQUESTS'),
+          maxRequestsTime: this.configService.get(
+            'DEMO_ABUSE_MAX_REQUESTS_TIME',
+          ),
+        },
+        global: {
+          maxRequests: this.configService.get('DEMO_GLOBAL_MAX_REQUESTS'),
+          maxRequestsTime: this.configService.get(
+            'DEMO_GLOBAL_MAX_REQUESTS_TIME',
+          ),
+        },
+      },
     };
   }
 
@@ -136,6 +156,15 @@ export class CustomConfigService {
 
   get isProd(): boolean {
     return this.configService.get('NODE_ENV') === 'prod';
+  }
+
+  /**
+   * The demo environment is the only state that arms the rate limiters and
+   * the single-hop proxy trust — every `isDemo`-first branch guarantees a
+   * self-hosted hub behaves byte-for-byte as before.
+   */
+  get isDemo(): boolean {
+    return this.configService.get('NODE_ENV') === 'demo';
   }
 
   get errorsDetail(): boolean {

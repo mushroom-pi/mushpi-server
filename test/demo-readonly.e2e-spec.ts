@@ -59,6 +59,12 @@ const ENV_KEYS = [
   'LOGS_LEVEL',
   'MAX_REQUESTS',
   'MAX_REQUESTS_TIME',
+  'DEMO_VISITOR_MAX_REQUESTS',
+  'DEMO_VISITOR_MAX_REQUESTS_TIME',
+  'DEMO_ABUSE_MAX_REQUESTS',
+  'DEMO_ABUSE_MAX_REQUESTS_TIME',
+  'DEMO_GLOBAL_MAX_REQUESTS',
+  'DEMO_GLOBAL_MAX_REQUESTS_TIME',
 ] as const;
 
 const originalEnv: Record<string, string | undefined> = {};
@@ -100,15 +106,26 @@ async function launchDemo(
   // off the real `data/logs` destination and quiet in the test report.
   process.env.LOGS_PATH = DEMO_LOGS_PATH;
   process.env.LOGS_LEVEL = 'silent';
-  // The throttle pair is opt-in: absent means no headers, no 429. Only the
-  // pace-budget boot passes both (Joi `.and()` rejects a lone half).
-  if (extraEnv.MAX_REQUESTS || extraEnv.MAX_REQUESTS_TIME) {
-    process.env.MAX_REQUESTS = extraEnv.MAX_REQUESTS;
-    process.env.MAX_REQUESTS_TIME = extraEnv.MAX_REQUESTS_TIME;
-  } else {
-    delete process.env.MAX_REQUESTS;
-    delete process.env.MAX_REQUESTS_TIME;
+  // The three demo throttle pairs are REQUIRED on a demo boot (Joi
+  // required-when-demo). Generous defaults keep every refusal case below
+  // about the read-only guard, not pacing; only the pace-budget boot
+  // tightens the visitor pair explicitly. The historical MAX_REQUESTS pair
+  // is deliberately IGNORED inside demo — delete it so a stray shell value
+  // cannot confuse the boot, and pin that the visitor definition (which
+  // fills the `default` slot) is what emits the plain X-RateLimit-* headers.
+  const demoLimitDefaults: Record<string, string> = {
+    DEMO_VISITOR_MAX_REQUESTS: '10000',
+    DEMO_VISITOR_MAX_REQUESTS_TIME: '60000',
+    DEMO_ABUSE_MAX_REQUESTS: '10000',
+    DEMO_ABUSE_MAX_REQUESTS_TIME: '60000',
+    DEMO_GLOBAL_MAX_REQUESTS: '100000',
+    DEMO_GLOBAL_MAX_REQUESTS_TIME: '60000',
+  };
+  for (const [key, fallback] of Object.entries(demoLimitDefaults)) {
+    process.env[key] = extraEnv[key] ?? fallback;
   }
+  delete process.env.MAX_REQUESTS;
+  delete process.env.MAX_REQUESTS_TIME;
 
   jest.resetModules();
   // All dynamic imports after the reset share one generation with the app
@@ -475,10 +492,12 @@ describe('Demo read-only guard (e2e)', () => {
     beforeAll(async () => {
       // Throttle-counted-before-refuse ordering: the demo guard is
       // registered AFTER TooManyRequestsGuard, so refused requests still
-      // spend from the window and exhaustion escalates to 429.
+      // spend from the window and exhaustion escalates to 429. Inside demo
+      // the visitor-pair (the unnamed `default` definition) is the pace
+      // budget — the historical MAX_REQUESTS pair is ignored by design.
       launched = await launchDemo({
-        MAX_REQUESTS: '2',
-        MAX_REQUESTS_TIME: '60000',
+        DEMO_VISITOR_MAX_REQUESTS: '2',
+        DEMO_VISITOR_MAX_REQUESTS_TIME: '60000',
       });
     });
 

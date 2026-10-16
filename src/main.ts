@@ -17,6 +17,7 @@ import { createHelmetMiddleware } from './common/middleware/helmet.middleware';
 import { ProtectEventLoopMiddleware } from './common/middleware/protect-event-loop.middleware';
 import { validationPipe } from './common/pipes/validation.pipe';
 import { applyApiVersioning } from './common/utils/api-version';
+import { applyDemoTrustProxy } from './common/utils/trust-proxy';
 import { AppModule } from './modules/app.module';
 import { CustomConfigService } from './modules/config/config.service';
 import { SwaggerModule } from './modules/swagger/swagger.module';
@@ -30,6 +31,10 @@ async function bootstrap() {
   const configService: CustomConfigService = app.get(CustomConfigService);
 
   applyApiVersioning(app);
+
+  // Demo-only single-hop proxy trust — must mirror `test/test-setup.ts`.
+  // Inert on every non-demo boot (self-hosted hubs keep Express's default).
+  applyDemoTrustProxy(app, configService);
 
   // Security libraries
   /** CORS-settings */

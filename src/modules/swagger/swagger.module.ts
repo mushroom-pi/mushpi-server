@@ -166,6 +166,28 @@ export class SwaggerModule {
     }
   }
 
+  /**
+   * Whether the `429 Too many requests` global error is documented on this
+   * boot. Two armed states: the historical opt-in pair (both
+   * `MAX_REQUESTS` and `MAX_REQUESTS_TIME` set), OR a demo boot — whose
+   * three throttler definitions are ALWAYS on, so the served docs of a demo
+   * instance must truthfully advertise 429s.
+   *
+   * The demo arm only affects the SERVED document of a demo instance: the
+   * committed `spec/openapi.{json,yaml}` is generated on a local boot, where
+   * `isDemo` is false and the pair is unset, so the committed spec stays
+   * byte-for-byte unchanged (same reasoning as the unconditional demo 403
+   * injection above).
+   */
+  private documentsTooManyRequests(): boolean {
+    if (this.configService.isDemo) return true;
+
+    return (
+      !!this.configService.security.maxRequests &&
+      !!this.configService.security.maxRequestsTime
+    );
+  }
+
   public buildOpenApiDocument(
     app: INestApplication,
     documentDescriptor?: DocumentDescriptor,
@@ -213,13 +235,12 @@ export class SwaggerModule {
     globalErrors
       .filter((errorResponse) => {
         /**
-         * Display the documentation for the Too many requests response only if rate limiting is active in the platform
+         * Display the documentation for the Too many requests response only
+         * if rate limiting is active in the platform (see
+         * `documentsTooManyRequests()` below).
          */
-        if (
-          !this.configService.security.maxRequests ||
-          !this.configService.security.maxRequestsTime
-        )
-          return errorResponse.statusCode !== HttpStatus.TOO_MANY_REQUESTS;
+        if (errorResponse.statusCode === HttpStatus.TOO_MANY_REQUESTS)
+          return this.documentsTooManyRequests();
 
         return true;
       })
