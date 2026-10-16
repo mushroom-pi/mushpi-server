@@ -320,7 +320,7 @@ describe('Demo rate limiting (e2e)', () => {
     });
   });
 
-  describe('announce survives a whole-demo flood (criterion 7)', () => {
+  describe('announce survives a whole-demo flood', () => {
     let launched: DemoLaunch;
 
     beforeAll(async () => {
@@ -343,12 +343,14 @@ describe('Demo rate limiting (e2e)', () => {
       expectPlainThrottleBody(flood);
 
       // Announcement is skipped from the backstop and the abuse limiter by
-      // NAME — simulated units announce through the flood. The visitor pace
-      // still counts it (this address spent 2 of 10000).
+      // NAME — simulated units announce through the flood. The arrival shape
+      // here is the simulated unit's true one: direct (no forwarded header)
+      // from beside the server — which the demo accepts while it refuses
+      // proxy-carried attempts outright. The visitor pace still counts it
+      // (the socket identity spent 1 of 10000).
       const announced = await http(launched.app)
         .post('/v1/pico-units/announce')
         .set('X-Pico-Secret', DEMO_SECRET)
-        .set('X-Forwarded-For', '10.40.0.1')
         .send({ handle: 'flood-announced-unit', ip: '127.0.0.1', port: 5000 });
       expect(announced.status).toBe(201);
       expect(announced.body.handle).toBe('flood-announced-unit');
