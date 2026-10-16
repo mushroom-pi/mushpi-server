@@ -8747,10 +8747,20 @@
         "type": "object",
         "properties": {
           "os": {
-            "$ref": "#/components/schemas/OsInfoDto"
+            "description": "Omitted on a public-demo instance (NODE_ENV=demo)",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OsInfoDto"
+              }
+            ]
           },
           "cpu": {
-            "$ref": "#/components/schemas/CpuInfoDto"
+            "description": "Omitted on a public-demo instance (NODE_ENV=demo)",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CpuInfoDto"
+              }
+            ]
           },
           "memory": {
             "$ref": "#/components/schemas/SystemMemoryDto"
@@ -8759,15 +8769,17 @@
             "$ref": "#/components/schemas/UpTime"
           },
           "disk": {
-            "$ref": "#/components/schemas/DiskInfoDto"
+            "description": "Omitted on a public-demo instance (NODE_ENV=demo)",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DiskInfoDto"
+              }
+            ]
           }
         },
         "required": [
-          "os",
-          "cpu",
           "memory",
-          "upTime",
-          "disk"
+          "upTime"
         ]
       },
       "TableSizeDto": {
@@ -8806,7 +8818,8 @@
           },
           "path": {
             "type": "string",
-            "example": "./data/app.sqlite"
+            "example": "./data/app.sqlite",
+            "description": "Path to the database file. Omitted on a public-demo instance (NODE_ENV=demo)"
           },
           "tables": {
             "type": "array",
@@ -8823,7 +8836,6 @@
         "required": [
           "totalMb",
           "inMemory",
-          "path",
           "tables",
           "overheadMb"
         ]

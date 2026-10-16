@@ -40,11 +40,11 @@ interface DiskInfo {
 }
 
 export interface SystemInfo {
-  os: OsInfo;
-  cpu: CpuInfo;
+  os?: OsInfo;
+  cpu?: CpuInfo;
   memory: SystemMemory;
   upTime: UpTime;
-  disk: DiskInfo;
+  disk?: DiskInfo;
 }
 
 export interface ServerStatus {
@@ -66,7 +66,7 @@ export interface TableSize {
 export interface DatabaseSizeStatus {
   totalMb: number | null;
   inMemory: boolean;
-  path: string;
+  path?: string;
   tables: TableSize[];
   overheadMb: number | null;
 }

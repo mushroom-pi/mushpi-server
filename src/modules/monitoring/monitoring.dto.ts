@@ -177,8 +177,14 @@ class DatabaseSizeDto {
   @ApiProperty({ type: Boolean, example: false })
   readonly inMemory: boolean;
 
-  @ApiProperty({ type: String, example: './data/app.sqlite' })
-  readonly path: string;
+  @ApiProperty({
+    type: String,
+    example: './data/app.sqlite',
+    required: false,
+    description:
+      'Path to the database file. Omitted on a public-demo instance (NODE_ENV=demo)',
+  })
+  readonly path?: string;
 
   @ApiProperty({ type: [TableSizeDto] })
   readonly tables: TableSizeDto[];
@@ -254,11 +260,19 @@ class DiskInfoDto {
 }
 
 class SystemInfoDto {
-  @ApiProperty({ type: OsInfoDto })
-  readonly os: OsInfoDto;
+  @ApiProperty({
+    type: OsInfoDto,
+    required: false,
+    description: 'Omitted on a public-demo instance (NODE_ENV=demo)',
+  })
+  readonly os?: OsInfoDto;
 
-  @ApiProperty({ type: CpuInfoDto })
-  readonly cpu: CpuInfoDto;
+  @ApiProperty({
+    type: CpuInfoDto,
+    required: false,
+    description: 'Omitted on a public-demo instance (NODE_ENV=demo)',
+  })
+  readonly cpu?: CpuInfoDto;
 
   @ApiProperty({ type: SystemMemoryDto })
   readonly memory: SystemMemoryDto;
@@ -266,8 +280,12 @@ class SystemInfoDto {
   @ApiProperty({ type: UpTime })
   readonly upTime: UpTime;
 
-  @ApiProperty({ type: DiskInfoDto })
-  readonly disk: DiskInfoDto;
+  @ApiProperty({
+    type: DiskInfoDto,
+    required: false,
+    description: 'Omitted on a public-demo instance (NODE_ENV=demo)',
+  })
+  readonly disk?: DiskInfoDto;
 }
 
 export class HealthCheckResponseDto {
