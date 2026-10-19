@@ -34,9 +34,14 @@ export const READONLY_SAFE_METHODS: ReadonlyArray<'GET' | 'HEAD' | 'OPTIONS'> =
  */
 export const READONLY_SPEC_EXTENSION = 'x-demo-readonly';
 
-/** Response body `message` for every demo refusal. */
+/**
+ * Response body `message` for every demo refusal — the maintainer-approved
+ * visitor-facing wording. The single source of truth: the guard, the OpenAPI
+ * `403` example, and the e2e suites all read this constant, so the sentence
+ * can be re-approved by editing it in exactly one place.
+ */
 export const READONLY_FORBIDDEN_MESSAGE =
-  'This demo deployment is read-only. Nothing was changed.';
+  'Sorry: this demo version of Mushroom Pi is read-only';
 
 /** OpenAPI `403` response description — demo-only, self-hosted hubs never return it. */
 export const READONLY_FORBIDDEN_DESCRIPTION =

@@ -4,6 +4,10 @@ import { mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
 import request from 'supertest';
 
+import {
+  RATE_LIMIT_SLOW_DOWN_MESSAGE_TEMPLATE,
+  formatSlowDownMessage,
+} from '../src/common/constants/rate-limit.constants';
 import { READONLY_FORBIDDEN_MESSAGE } from '../src/common/constants/readonly.constants';
 
 /**
@@ -19,6 +23,13 @@ import { READONLY_FORBIDDEN_MESSAGE } from '../src/common/constants/readonly.con
  *   whole instance; suffixed headers);
  * - the named `demo-abuse` limiter (per visitor, enforced ONLY on requests
  *   the demo read-only guard would refuse; suffixed headers).
+ *
+ * The 429 body contract pinned here: `statusCode`/`error`/`emitter` keep the
+ * historical explicit-body shape, and the `message` carries the server's own
+ * slow-down sentence — `formatSlowDownMessage(<the blocking bucket's
+ * Retry-After seconds>)`, the real remaining block window, never a fixed
+ * figure. Non-demo boots keep the historical `message: 'Too many requests'`
+ * body byte-for-byte — pinned in `rate-limit-headers.e2e-spec.ts`.
  *
  * WINDOW-SIZE DISCIPLINE (the library re-sorts definitions by ASCENDING ttl
  * at init): when the test must see the 429 come from a specific definition,
@@ -166,24 +177,32 @@ function expectNoRateLimitHeaders(
 }
 
 /**
- * The 429 contract: plain historical explicit-body shape and NOTHING else —
- * no server-crafted wait message, no pacing advice. Labels and messages are
- * the client's responsibility.
+ * The demo 429 contract: `statusCode`/`error`/`emitter` keep the historical
+ * explicit-body shape, and the `message` is the server's own slow-down
+ * sentence stating THE REAL WAIT — it must equal `formatSlowDownMessage`
+ * applied to the blocking bucket's own `Retry-After` header (`retryAfterName`),
+ * the seconds the guard wrote before throwing. Never a fixed figure
+ * independent of that header.
  */
-function expectPlainThrottleBody(res: request.Response): void {
+function expectSlowDownThrottleBody(
+  res: request.Response,
+  retryAfterName: string,
+): void {
   expect(res.body).toMatchObject({
     statusCode: 429,
     error: 'Too many requests',
-    message: 'Too many requests',
     emitter: 'ThrottlerGuard',
   });
-  const text = JSON.stringify(res.body).toLowerCase();
+  const header = res.headers[retryAfterName];
   expect({
-    'body carries no wait-message wording':
-      /slow|wait|please|later|back|second/.test(text),
+    [`${retryAfterName} is a single value`]: Array.isArray(header),
   }).toEqual({
-    'body carries no wait-message wording': false,
+    [`${retryAfterName} is a single value`]: false,
   });
+  expect(header as string).toMatch(/^\d+$/);
+  const seconds = Number(header);
+  expect(seconds).toBeGreaterThan(0);
+  expect(res.body.message).toBe(formatSlowDownMessage(seconds));
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -205,7 +224,7 @@ describe('Demo rate limiting (e2e)', () => {
     });
     afterAll(async () => await launched?.close());
 
-    it('paces the visitor to a plain integer Retry-After and the plain body', async () => {
+    it('paces the visitor to a plain integer Retry-After and the matching wait sentence', async () => {
       const first = await get(launched, '/ping').expect(200);
       expect(first.headers['x-ratelimit-limit']).toBe('2');
       expect(first.headers['x-ratelimit-remaining']).toBe('1');
@@ -219,7 +238,7 @@ describe('Demo rate limiting (e2e)', () => {
       // the visitor bucket is the unnamed `default` → NO suffixed Retry-After
       expect(blocked.headers['retry-after-demo-global']).toBeUndefined();
       expect(blocked.headers['retry-after-demo-abuse']).toBeUndefined();
-      expectPlainThrottleBody(blocked);
+      expectSlowDownThrottleBody(blocked, 'retry-after');
     });
 
     it('serves the visitor again once the window passes — no restart (criterion: gets served again when their pace drops)', async () => {
@@ -230,6 +249,69 @@ describe('Demo rate limiting (e2e)', () => {
       // the blocked bucket self-heals and counts this request afresh
       expect(recovered.headers['x-ratelimit-remaining']).toBe('1');
       expectWellFormedRateLimitHeaders(recovered.headers);
+    }, 15000);
+  });
+
+  describe('the stated wait scales with the blocking window (never a fixed figure)', () => {
+    let launched: DemoLaunch;
+
+    beforeAll(async () => {
+      // TWO windows, two buckets: visitor browse pace 2000 ms, abuse pace
+      // 8000 ms (global stays permissive). blockDuration defaults to the
+      // window, so each fresh block's Retry-After is its own window's
+      // seconds: 2 for the browse block, 8 for the abuse block.
+      launched = await launchDemo({
+        VISITOR_MAX_REQUESTS: '2',
+        VISITOR_MAX_REQUESTS_TIME: '2000',
+        ABUSE_MAX_REQUESTS: '1',
+        ABUSE_MAX_REQUESTS_TIME: '8000',
+      });
+    });
+    afterAll(async () => await launched?.close());
+
+    it('two different throttling windows produce two different stated waits', async () => {
+      // Browse block: identity A exhausts the 2-per-2000ms visitor pace.
+      await get(launched, '/ping', '10.60.0.1').expect(200);
+      await get(launched, '/ping', '10.60.0.1').expect(200);
+      const browseBlock = await get(launched, '/ping', '10.60.0.1').expect(429);
+      expectSlowDownThrottleBody(browseBlock, 'retry-after');
+
+      // Abuse block: identity B trips the 1-per-8000ms abuse pace with two
+      // refused POSTs (fresh visitor bucket, so the browse pace passes first).
+      const post = () =>
+        http(launched.app)
+          .post('/v1/batches')
+          .set('X-Forwarded-For', '10.60.0.2')
+          .send({});
+      const refused = await post();
+      expect(refused.status).toBe(403);
+      const abuseBlock = await post();
+      expect(abuseBlock.status).toBe(429);
+      expectSlowDownThrottleBody(abuseBlock, 'retry-after-demo-abuse');
+
+      // Each sentence states ITS OWN header's figure — and the two figures
+      // differ (2 vs 8), so nothing is a hard-coded constant dressed up as
+      // a wait. The template is the single approved wording; only the
+      // {seconds} substitution differs between the two blocks.
+      const browseSeconds = browseBlock.headers['retry-after'] as string;
+      const abuseSeconds = abuseBlock.headers[
+        'retry-after-demo-abuse'
+      ] as string;
+      expect(browseBlock.body.message).toBe(
+        RATE_LIMIT_SLOW_DOWN_MESSAGE_TEMPLATE.replace(
+          '{seconds}',
+          browseSeconds,
+        ),
+      );
+      expect(abuseBlock.body.message).toBe(
+        RATE_LIMIT_SLOW_DOWN_MESSAGE_TEMPLATE.replace(
+          '{seconds}',
+          abuseSeconds,
+        ),
+      );
+      expect(browseSeconds).toBe('2');
+      expect(abuseSeconds).toBe('8');
+      expect(browseBlock.body.message).not.toBe(abuseBlock.body.message);
     }, 15000);
   });
 
@@ -299,7 +381,7 @@ describe('Demo rate limiting (e2e)', () => {
       expect(blocked.headers['retry-after-demo-abuse']).toMatch(/^\d+$/);
       // the visitor pace is nowhere near exhausted → no plain Retry-After
       expect(blocked.headers['retry-after']).toBeUndefined();
-      expectPlainThrottleBody(blocked);
+      expectSlowDownThrottleBody(blocked, 'retry-after-demo-abuse');
     });
 
     it('the same visitor keeps browsing — GETs are never counted by the abuse bucket', async () => {
@@ -341,7 +423,7 @@ describe('Demo rate limiting (e2e)', () => {
       expect(flood.headers['retry-after-demo-global']).toMatch(/^\d+$/);
       // the backstop is named → NO plain Retry-After
       expect(flood.headers['retry-after']).toBeUndefined();
-      expectPlainThrottleBody(flood);
+      expectSlowDownThrottleBody(flood, 'retry-after-demo-global');
 
       // Announcement is skipped from the backstop and the abuse limiter by
       // NAME — simulated units announce through the flood. The arrival shape
@@ -452,7 +534,7 @@ describe('Demo rate limiting (e2e)', () => {
         429,
       );
       expect(blocked.headers['retry-after']).toMatch(/^\d+$/);
-      expectPlainThrottleBody(blocked);
+      expectSlowDownThrottleBody(blocked, 'retry-after');
     });
 
     it('visitors behind the same proxy are told apart by their own address', async () => {

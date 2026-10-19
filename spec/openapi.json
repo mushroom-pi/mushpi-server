@@ -354,7 +354,7 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
                       "description": "The sort of error message you can expect"
                     },
                     "emitter": {
@@ -1154,7 +1154,7 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
                       "description": "The sort of error message you can expect"
                     },
                     "emitter": {
@@ -1362,7 +1362,7 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
                       "description": "The sort of error message you can expect"
                     },
                     "emitter": {
@@ -1575,7 +1575,7 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
                       "description": "The sort of error message you can expect"
                     },
                     "emitter": {
@@ -1821,7 +1821,7 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
                       "description": "The sort of error message you can expect"
                     },
                     "emitter": {
@@ -2097,7 +2097,7 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
                       "description": "The sort of error message you can expect"
                     },
                     "emitter": {
@@ -3201,7 +3201,7 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
                       "description": "The sort of error message you can expect"
                     },
                     "emitter": {
@@ -3820,7 +3820,7 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
                       "description": "The sort of error message you can expect"
                     },
                     "emitter": {
@@ -4042,7 +4042,7 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
                       "description": "The sort of error message you can expect"
                     },
                     "emitter": {
@@ -4291,7 +4291,7 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
                       "description": "The sort of error message you can expect"
                     },
                     "emitter": {
@@ -4537,7 +4537,7 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
                       "description": "The sort of error message you can expect"
                     },
                     "emitter": {
@@ -4783,7 +4783,7 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
                       "description": "The sort of error message you can expect"
                     },
                     "emitter": {
@@ -5383,7 +5383,7 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
                       "description": "The sort of error message you can expect"
                     },
                     "emitter": {
@@ -5963,7 +5963,7 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
                       "description": "The sort of error message you can expect"
                     },
                     "emitter": {
@@ -6168,7 +6168,7 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
                       "description": "The sort of error message you can expect"
                     },
                     "emitter": {
@@ -6641,7 +6641,7 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
                       "description": "The sort of error message you can expect"
                     },
                     "emitter": {
@@ -6867,7 +6867,7 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
                       "description": "The sort of error message you can expect"
                     },
                     "emitter": {
@@ -7103,7 +7103,7 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
                       "description": "The sort of error message you can expect"
                     },
                     "emitter": {
@@ -7369,7 +7369,7 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
                       "description": "The sort of error message you can expect"
                     },
                     "emitter": {
@@ -7635,7 +7635,7 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
                       "description": "The sort of error message you can expect"
                     },
                     "emitter": {
@@ -7911,7 +7911,7 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
                       "description": "The sort of error message you can expect"
                     },
                     "emitter": {
@@ -8367,7 +8367,7 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "This demo deployment is read-only. Nothing was changed.",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
                       "description": "The sort of error message you can expect"
                     },
                     "emitter": {

@@ -1,12 +1,13 @@
 /**
  * Rate-limiter identity constants.
  *
- * Deliberately free of numbers and user-facing text: the limit values and
- * window lengths arrive ONLY from the deployment (the `VISITOR_*`,
- * `ABUSE_*` and `GLOBAL_*` limiter pairs, required-when-demo in the config
- * schema), and the server's 429 response body carries just the historical
- * explicit-error shape — no wait message.
- * Labels and messages for a slowed-down visitor are the client's job.
+ * Deliberately free of numbers: the limit values and window lengths arrive
+ * ONLY from the deployment (the `VISITOR_*`, `ABUSE_*` and `GLOBAL_*` limiter
+ * pairs, required-when-demo in the config schema). It does carry the one
+ * visitor-facing sentence a demo boot sends with a 429 — the slow-down
+ * wording below — because the dashboard holds no demo-specific copy. Every
+ * boot outside demo keeps the historical `message: 'Too many requests'` body
+ * byte-for-byte.
  *
  * The throttler names are load-bearing in two places: they key the
  * `@SkipThrottle` metadata (health and announce carry skips by name) and
@@ -29,3 +30,20 @@ export const RATE_LIMIT_ABUSE_THROTTLER_NAME = 'demo-abuse';
  * throttler NAME, and it is tracked by the visitor's own forwarded identity.
  */
 export const RATE_LIMIT_GLOBAL_TRACKER = 'global';
+
+/**
+ * The visitor-facing slow-down sentence a demo boot sends with a 429. The
+ * `{seconds}` figure is filled by `formatSlowDownMessage` with the blocking
+ * bucket's real remaining block window — never a fixed number. This template
+ * is the sole place the maintainer approves or edits the wording.
+ */
+export const RATE_LIMIT_SLOW_DOWN_MESSAGE_TEMPLATE =
+  'You are going too fast for this demo. Please wait about {seconds} seconds before trying again.';
+
+/** Fill the slow-down template with the actual wait, in the library's own seconds. */
+export function formatSlowDownMessage(seconds: number): string {
+  return RATE_LIMIT_SLOW_DOWN_MESSAGE_TEMPLATE.replace(
+    '{seconds}',
+    String(seconds),
+  );
+}

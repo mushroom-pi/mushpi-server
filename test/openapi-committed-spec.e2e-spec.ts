@@ -1,6 +1,8 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
+import { READONLY_FORBIDDEN_MESSAGE } from '../src/common/constants/readonly.constants';
+
 /**
  * Regression guard for the committed OpenAPI contract (`spec/openapi.json`).
  *
@@ -170,9 +172,7 @@ describe('OpenAPI committed spec (e2e)', () => {
       const props = response.content['application/json'].schema.properties;
       expect(props.statusCode.example).toBe(403);
       expect(props.error.example).toBe('Forbidden');
-      expect(props.message.example).toBe(
-        'This demo deployment is read-only. Nothing was changed.',
-      );
+      expect(props.message.example).toBe(READONLY_FORBIDDEN_MESSAGE);
     });
 
     it('documents no 403 on any allowed operation', () => {
