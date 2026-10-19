@@ -36,6 +36,7 @@ spec/generators/ — openapi + bruno generators
 docs/env-vars.generator.ts — → docs/ENVIRONMENT.md
 public/ — /public assets (Swagger favicon)
 test/jest-e2e.json — e2e jest config
+.vscode/ — committed editor settings (vscode-jest wired to e2e, runMode on-save; rationale: REFERENCE.md §E2E Gotchas)
 ```
 
 ## API Versioning
