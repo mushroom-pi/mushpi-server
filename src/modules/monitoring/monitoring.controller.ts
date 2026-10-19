@@ -8,9 +8,9 @@ import {
 import { SkipThrottle } from '@nestjs/throttler';
 
 import {
-  DEMO_ABUSE_THROTTLER_NAME,
-  DEMO_GLOBAL_THROTTLER_NAME,
-} from 'src/common/constants/demo.constants';
+  RATE_LIMIT_ABUSE_THROTTLER_NAME,
+  RATE_LIMIT_GLOBAL_THROTTLER_NAME,
+} from 'src/common/constants/rate-limit.constants';
 
 import { HealthCheckQueryDto, HealthCheckResponseDto } from './monitoring.dto';
 import { MonitoringService } from './monitoring.service';
@@ -48,8 +48,8 @@ export class MonitoringController {
   // historical exemption of the opt-in limiter.
   @SkipThrottle({
     default: true,
-    [DEMO_GLOBAL_THROTTLER_NAME]: true,
-    [DEMO_ABUSE_THROTTLER_NAME]: true,
+    [RATE_LIMIT_GLOBAL_THROTTLER_NAME]: true,
+    [RATE_LIMIT_ABUSE_THROTTLER_NAME]: true,
   })
   @ApiOperation({
     summary:

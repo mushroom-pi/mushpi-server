@@ -21,7 +21,7 @@ import { CustomConfigService } from 'src/modules/config/config.service';
  * - **Everywhere outside demo** — the historical path, byte-for-byte: a
  *   missing or mismatched secret is 401, nothing else is consulted. The
  *   `isDemo`-first check is the same mechanism `DemoReadOnlyGuard` and
- *   `applyDemoTrustProxy` use, so a self-hosted hub is untouched.
+ *   `applySingleHopTrustProxy` use, so a self-hosted hub is untouched.
  * - **On a demo boot** — a demo has no physical Pico units; its only
  *   legitimate announcer is the simulated unit running beside the server.
  *   External announce attempts therefore have no legitimate use, and they
@@ -29,7 +29,7 @@ import { CustomConfigService } from 'src/modules/config/config.service';
  *   `X-Pico-Secret` arriving through a proxy gets an explicit-body 403
  *   (the refusal shape mirrors `DemoReadOnlyGuard`, naming this guard in
  *   `emitter`). Rate-limiting a guess would still leave the guess —
- *   refusing the arrival closes it instead. The `@DemoReadOnlyExempt()`
+ *   refusing the arrival closes it instead. The `@ReadOnlyExempt()`
  *   mark stays on the announce handler for exactly one reason:
  *   `DemoReadOnlyGuard` cannot tell an internal caller from a visitor, so
  *   removing the exemption would refuse the simulated unit too.

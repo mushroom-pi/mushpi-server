@@ -98,27 +98,27 @@ const picoAnnounceSecret = Joi.any()
  *
  * - **Self-hosted profile** — a hub on a trusted local network; the network
  *   is the security boundary. Limits are OPT-IN: the historical
- *   `MAX_REQUESTS` / `MAX_REQUESTS_TIME` pair below. The `DEMO_*` variables
- *   are ignored entirely on this profile.
+ *   `MAX_REQUESTS` / `MAX_REQUESTS_TIME` pair below. The three limiter pairs
+ *   below are ignored entirely on this profile.
  * - **Public-demo profile** (`NODE_ENV=demo`) — an internet-exposed,
  *   unauthenticated demonstration instance behind exactly one reverse
  *   proxy; an unprotected public demo is not an option. Limits are ALWAYS
  *   ON through three all-or-nothing pairs mirroring the opt-in convention:
- *   `DEMO_VISITOR_*` (per-visitor browse pace — keyed on the visitor's own
- *   forwarded address, spanning every endpoint), `DEMO_ABUSE_*` (per-visitor
+ *   `VISITOR_*` (per-visitor browse pace — keyed on the visitor's own
+ *   forwarded address, spanning every endpoint), `ABUSE_*` (per-visitor
  *   pace for refused changes — enforced only on requests the demo read-only
- *   guard would refuse) and `DEMO_GLOBAL_*` (whole-instance backstop on a
+ *   guard would refuse) and `GLOBAL_*` (whole-instance backstop on a
  *   constant tracker key — a flood slows the demo as a whole and recovers
  *   without a restart). Every value arrives from the deployment; none is
  *   hardcoded in the product.
  *
- * WHY THE `DEMO_` PREFIX: it marks PROFILE SCOPE — a value that is
- * mandatory in one profile and inert in every other needs that scope
- * visible at the point of configuration, which is exactly where an operator
- * reads it. The names are load-bearing beyond the prefix: they key the
- * `@SkipThrottle` metadata and the response-header suffixes.
+ * PROFILE SCOPE: the required-when-`demo` rule below carries it — each
+ * limiter pair is mandatory on the public-demo profile and optional (and
+ * read by no throttler definition) on every other profile, which is exactly
+ * where an operator reads it. The throttler NAMES are load-bearing: they key
+ * the `@SkipThrottle` metadata and the response-header suffixes.
  *
- * The prefix also carries a real limit: per-visitor bucketing comes from
+ * These pairs also carry a real limit: per-visitor bucketing comes from
  * the forwarded-header chain and is only sound behind exactly ONE known
  * appending proxy — the demo's topology. An arbitrary hub (no proxy, or a
  * chain of unknown length) gets no per-visitor feature for this reason, so
@@ -133,18 +133,18 @@ const picoAnnounceSecret = Joi.any()
  * matches an ABSENT `NODE_ENV`, which would make the whole set mandatory on
  * a stock boot (see the note on `password()`).
  */
-const DEMO_VISITOR_MAX_REQUESTS_DESCRIPTION =
-  "Public-demo profile (`NODE_ENV=demo`) — always on; ignored on every other boot: maximum requests per visitor per window, the browse pace, spanning all endpoints under the visitor's forwarded identity. Must be set TOGETHER with DEMO_VISITOR_MAX_REQUESTS_TIME. Required when `NODE_ENV` is `demo`; a public-demo boot missing it fails at startup rather than serving an unprotected instance. The `DEMO_` prefix marks this profile scope.";
-const DEMO_VISITOR_MAX_REQUESTS_TIME_DESCRIPTION =
-  'Public-demo profile (`NODE_ENV=demo`): browse-pace window length in MILLISECONDS (e.g. 60000 = 1 minute), must be set TOGETHER with DEMO_VISITOR_MAX_REQUESTS. `Retry-After` and `X-RateLimit-Reset` are emitted in relative SECONDS. Required when `NODE_ENV` is `demo`; ignored on every other boot.';
-const DEMO_ABUSE_MAX_REQUESTS_DESCRIPTION =
-  'Public-demo profile (`NODE_ENV=demo`) — always on; ignored elsewhere: maximum REFUSED-CHANGE requests per visitor per window — requests the demo read-only guard would refuse get a stricter allowance than plain browsing (browsing never spends from this bucket). Must be set TOGETHER with DEMO_ABUSE_MAX_REQUESTS_TIME. Required when `NODE_ENV` is `demo`.';
-const DEMO_ABUSE_MAX_REQUESTS_TIME_DESCRIPTION =
-  'Public-demo profile (`NODE_ENV=demo`): refused-change window length in MILLISECONDS, must be set TOGETHER with DEMO_ABUSE_MAX_REQUESTS. Required when `NODE_ENV` is `demo`; ignored on every other boot.';
-const DEMO_GLOBAL_MAX_REQUESTS_DESCRIPTION =
-  'Public-demo profile (`NODE_ENV=demo`) — always on; ignored elsewhere: whole-instance backstop — maximum requests across ALL visitors per window. A flood overloading the demo slows the whole instance to a safe pace until the window passes; `GET /health` and Pico announcements are exempt. Must be set TOGETHER with DEMO_GLOBAL_MAX_REQUESTS_TIME. Required when `NODE_ENV` is `demo`.';
-const DEMO_GLOBAL_MAX_REQUESTS_TIME_DESCRIPTION =
-  'Public-demo profile (`NODE_ENV=demo`): backstop window length in MILLISECONDS, must be set TOGETHER with DEMO_GLOBAL_MAX_REQUESTS. Required when `NODE_ENV` is `demo`; ignored on every other boot.';
+const VISITOR_MAX_REQUESTS_DESCRIPTION =
+  "Public-demo profile (`NODE_ENV=demo`) — always on; ignored on every other boot: maximum requests per visitor per window, the browse pace, spanning all endpoints under the visitor's forwarded identity. Must be set TOGETHER with VISITOR_MAX_REQUESTS_TIME. Required when `NODE_ENV` is `demo`; a public-demo boot missing it fails at startup rather than serving an unprotected instance.";
+const VISITOR_MAX_REQUESTS_TIME_DESCRIPTION =
+  'Public-demo profile (`NODE_ENV=demo`): browse-pace window length in MILLISECONDS (e.g. 60000 = 1 minute), must be set TOGETHER with VISITOR_MAX_REQUESTS. `Retry-After` and `X-RateLimit-Reset` are emitted in relative SECONDS. Required when `NODE_ENV` is `demo`; ignored on every other boot.';
+const ABUSE_MAX_REQUESTS_DESCRIPTION =
+  'Public-demo profile (`NODE_ENV=demo`) — always on; ignored elsewhere: maximum REFUSED-CHANGE requests per visitor per window — requests the demo read-only guard would refuse get a stricter allowance than plain browsing (browsing never spends from this bucket). Must be set TOGETHER with ABUSE_MAX_REQUESTS_TIME. Required when `NODE_ENV` is `demo`.';
+const ABUSE_MAX_REQUESTS_TIME_DESCRIPTION =
+  'Public-demo profile (`NODE_ENV=demo`): refused-change window length in MILLISECONDS, must be set TOGETHER with ABUSE_MAX_REQUESTS. Required when `NODE_ENV` is `demo`; ignored on every other boot.';
+const GLOBAL_MAX_REQUESTS_DESCRIPTION =
+  'Public-demo profile (`NODE_ENV=demo`) — always on; ignored elsewhere: whole-instance backstop — maximum requests across ALL visitors per window. A flood overloading the demo slows the whole instance to a safe pace until the window passes; `GET /health` and Pico announcements are exempt. Must be set TOGETHER with GLOBAL_MAX_REQUESTS_TIME. Required when `NODE_ENV` is `demo`.';
+const GLOBAL_MAX_REQUESTS_TIME_DESCRIPTION =
+  'Public-demo profile (`NODE_ENV=demo`): backstop window length in MILLISECONDS, must be set TOGETHER with GLOBAL_MAX_REQUESTS. Required when `NODE_ENV` is `demo`; ignored on every other boot.';
 
 const demoLimit = (description: string): Joi.NumberSchema =>
   Joi.number()
@@ -223,32 +223,26 @@ export const validationSchema = Joi.object({
     .min(1)
     .optional()
     .description(
-      'Self-hosted profile — rate limiting is OPT-IN: the maximum number of requests allowed per window, must be set TOGETHER with MAX_REQUESTS_TIME. If either one is absent the app applies no throttling and emits no X-RateLimit-* response headers. Ignored when `NODE_ENV=demo` (the public-demo profile always arms its three `DEMO_*` limiters).',
+      'Self-hosted profile — rate limiting is OPT-IN: the maximum number of requests allowed per window, must be set TOGETHER with MAX_REQUESTS_TIME. If either one is absent the app applies no throttling and emits no X-RateLimit-* response headers. Ignored when `NODE_ENV=demo` (the public-demo profile always arms its three `VISITOR_*`/`ABUSE_*`/`GLOBAL_*` limiter pairs).',
     ),
   MAX_REQUESTS_TIME: Joi.number()
     .integer()
     .min(1)
     .optional()
     .description(
-      'Self-hosted profile: rate-limit window length in MILLISECONDS (e.g. 60000 = 1 minute), must be set TOGETHER with MAX_REQUESTS. If either one is absent the app applies no throttling and emits no X-RateLimit-* response headers. Ignored when `NODE_ENV=demo`.',
+      'Self-hosted profile: rate-limit window length in MILLISECONDS (e.g. 60000 = 1 minute), must be set TOGETHER with MAX_REQUESTS. If either one is absent the app applies no throttling and emits no X-RateLimit-* response headers. Ignored when `NODE_ENV=demo` (the public-demo profile always arms its three `VISITOR_*`/`ABUSE_*`/`GLOBAL_*` limiter pairs).',
     ),
   SQLITE_PATH: Joi.string().default('data/app.sqlite'),
   SQLITE_LOG: Joi.boolean().truthy('true').falsy('false').default(false),
   UPLOAD_DIR: Joi.string().default('data'),
   PICO_ANNOUNCE_SECRET: picoAnnounceSecret,
   READINGS_RETENTION_MONTHS: Joi.number().integer().min(1).default(6),
-  DEMO_VISITOR_MAX_REQUESTS: demoLimit(DEMO_VISITOR_MAX_REQUESTS_DESCRIPTION),
-  DEMO_VISITOR_MAX_REQUESTS_TIME: demoLimit(
-    DEMO_VISITOR_MAX_REQUESTS_TIME_DESCRIPTION,
-  ),
-  DEMO_ABUSE_MAX_REQUESTS: demoLimit(DEMO_ABUSE_MAX_REQUESTS_DESCRIPTION),
-  DEMO_ABUSE_MAX_REQUESTS_TIME: demoLimit(
-    DEMO_ABUSE_MAX_REQUESTS_TIME_DESCRIPTION,
-  ),
-  DEMO_GLOBAL_MAX_REQUESTS: demoLimit(DEMO_GLOBAL_MAX_REQUESTS_DESCRIPTION),
-  DEMO_GLOBAL_MAX_REQUESTS_TIME: demoLimit(
-    DEMO_GLOBAL_MAX_REQUESTS_TIME_DESCRIPTION,
-  ),
+  VISITOR_MAX_REQUESTS: demoLimit(VISITOR_MAX_REQUESTS_DESCRIPTION),
+  VISITOR_MAX_REQUESTS_TIME: demoLimit(VISITOR_MAX_REQUESTS_TIME_DESCRIPTION),
+  ABUSE_MAX_REQUESTS: demoLimit(ABUSE_MAX_REQUESTS_DESCRIPTION),
+  ABUSE_MAX_REQUESTS_TIME: demoLimit(ABUSE_MAX_REQUESTS_TIME_DESCRIPTION),
+  GLOBAL_MAX_REQUESTS: demoLimit(GLOBAL_MAX_REQUESTS_DESCRIPTION),
+  GLOBAL_MAX_REQUESTS_TIME: demoLimit(GLOBAL_MAX_REQUESTS_TIME_DESCRIPTION),
 })
   // Rate limiting is opt-in and needs both halves of the pair: a lone
   // MAX_REQUESTS or MAX_REQUESTS_TIME is a configuration mistake, so it fails
@@ -256,6 +250,6 @@ export const validationSchema = Joi.object({
   // The three demo pairs follow the same all-or-nothing rule; in `demo` they
   // are additionally required (see the comment on the demo limit keys).
   .and('MAX_REQUESTS', 'MAX_REQUESTS_TIME')
-  .and('DEMO_VISITOR_MAX_REQUESTS', 'DEMO_VISITOR_MAX_REQUESTS_TIME')
-  .and('DEMO_ABUSE_MAX_REQUESTS', 'DEMO_ABUSE_MAX_REQUESTS_TIME')
-  .and('DEMO_GLOBAL_MAX_REQUESTS', 'DEMO_GLOBAL_MAX_REQUESTS_TIME');
+  .and('VISITOR_MAX_REQUESTS', 'VISITOR_MAX_REQUESTS_TIME')
+  .and('ABUSE_MAX_REQUESTS', 'ABUSE_MAX_REQUESTS_TIME')
+  .and('GLOBAL_MAX_REQUESTS', 'GLOBAL_MAX_REQUESTS_TIME');

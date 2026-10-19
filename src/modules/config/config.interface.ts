@@ -18,12 +18,12 @@ export interface EnvironmentVariables {
   MAX_EVENT_LOOP_DELAY: number;
   MAX_REQUESTS?: number;
   MAX_REQUESTS_TIME?: number;
-  DEMO_VISITOR_MAX_REQUESTS?: number;
-  DEMO_VISITOR_MAX_REQUESTS_TIME?: number;
-  DEMO_ABUSE_MAX_REQUESTS?: number;
-  DEMO_ABUSE_MAX_REQUESTS_TIME?: number;
-  DEMO_GLOBAL_MAX_REQUESTS?: number;
-  DEMO_GLOBAL_MAX_REQUESTS_TIME?: number;
+  VISITOR_MAX_REQUESTS?: number;
+  VISITOR_MAX_REQUESTS_TIME?: number;
+  ABUSE_MAX_REQUESTS?: number;
+  ABUSE_MAX_REQUESTS_TIME?: number;
+  GLOBAL_MAX_REQUESTS?: number;
+  GLOBAL_MAX_REQUESTS_TIME?: number;
   SQLITE_PATH: string;
   SQLITE_LOG: boolean;
   UPLOAD_DIR: string;
@@ -59,7 +59,7 @@ export interface SecurityConfig {
    * validated (typically `undefined`) but no throttler definition reads
    * them. Details: REFERENCE.md §Guards.
    */
-  demo: DemoRateLimitsConfig;
+  demo: RateLimitsConfig;
 }
 
 /**
@@ -67,15 +67,15 @@ export interface SecurityConfig {
  * (`security.maxRequests` / `maxRequestsTime`) and each demo pair.
  * Windows are milliseconds; `Retry-After`/`X-RateLimit-Reset` are seconds.
  */
-export interface DemoRateLimitPair {
+export interface RateLimitPair {
   maxRequests?: number;
   maxRequestsTime?: number;
 }
 
-export interface DemoRateLimitsConfig {
-  visitor: DemoRateLimitPair;
-  abuse: DemoRateLimitPair;
-  global: DemoRateLimitPair;
+export interface RateLimitsConfig {
+  visitor: RateLimitPair;
+  abuse: RateLimitPair;
+  global: RateLimitPair;
 }
 
 export interface DocsConfig {

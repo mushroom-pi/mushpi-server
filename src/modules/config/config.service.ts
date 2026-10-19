@@ -84,22 +84,16 @@ export class CustomConfigService {
       maxRequestsTime: this.configService.get('MAX_REQUESTS_TIME'),
       demo: {
         visitor: {
-          maxRequests: this.configService.get('DEMO_VISITOR_MAX_REQUESTS'),
-          maxRequestsTime: this.configService.get(
-            'DEMO_VISITOR_MAX_REQUESTS_TIME',
-          ),
+          maxRequests: this.configService.get('VISITOR_MAX_REQUESTS'),
+          maxRequestsTime: this.configService.get('VISITOR_MAX_REQUESTS_TIME'),
         },
         abuse: {
-          maxRequests: this.configService.get('DEMO_ABUSE_MAX_REQUESTS'),
-          maxRequestsTime: this.configService.get(
-            'DEMO_ABUSE_MAX_REQUESTS_TIME',
-          ),
+          maxRequests: this.configService.get('ABUSE_MAX_REQUESTS'),
+          maxRequestsTime: this.configService.get('ABUSE_MAX_REQUESTS_TIME'),
         },
         global: {
-          maxRequests: this.configService.get('DEMO_GLOBAL_MAX_REQUESTS'),
-          maxRequestsTime: this.configService.get(
-            'DEMO_GLOBAL_MAX_REQUESTS_TIME',
-          ),
+          maxRequests: this.configService.get('GLOBAL_MAX_REQUESTS'),
+          maxRequestsTime: this.configService.get('GLOBAL_MAX_REQUESTS_TIME'),
         },
       },
     };

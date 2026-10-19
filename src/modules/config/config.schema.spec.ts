@@ -27,12 +27,12 @@ describe('config validationSchema — demo node environment', () => {
    * 'demo rate limiting' block.
    */
   const demoLimits = {
-    DEMO_VISITOR_MAX_REQUESTS: 100,
-    DEMO_VISITOR_MAX_REQUESTS_TIME: 60000,
-    DEMO_ABUSE_MAX_REQUESTS: 10,
-    DEMO_ABUSE_MAX_REQUESTS_TIME: 60000,
-    DEMO_GLOBAL_MAX_REQUESTS: 1000,
-    DEMO_GLOBAL_MAX_REQUESTS_TIME: 60000,
+    VISITOR_MAX_REQUESTS: 100,
+    VISITOR_MAX_REQUESTS_TIME: 60000,
+    ABUSE_MAX_REQUESTS: 10,
+    ABUSE_MAX_REQUESTS_TIME: 60000,
+    GLOBAL_MAX_REQUESTS: 1000,
+    GLOBAL_MAX_REQUESTS_TIME: 60000,
   };
   const demo = (env: Record<string, unknown> = {}) =>
     validate({ NODE_ENV: 'demo', ...demoLimits, ...env });
@@ -273,12 +273,12 @@ describe('config validationSchema — demo rate limiting', () => {
     validationSchema.validate(env, options);
 
   const allLimits = {
-    DEMO_VISITOR_MAX_REQUESTS: 100,
-    DEMO_VISITOR_MAX_REQUESTS_TIME: 60000,
-    DEMO_ABUSE_MAX_REQUESTS: 10,
-    DEMO_ABUSE_MAX_REQUESTS_TIME: 60000,
-    DEMO_GLOBAL_MAX_REQUESTS: 1000,
-    DEMO_GLOBAL_MAX_REQUESTS_TIME: 60000,
+    VISITOR_MAX_REQUESTS: 100,
+    VISITOR_MAX_REQUESTS_TIME: 60000,
+    ABUSE_MAX_REQUESTS: 10,
+    ABUSE_MAX_REQUESTS_TIME: 60000,
+    GLOBAL_MAX_REQUESTS: 1000,
+    GLOBAL_MAX_REQUESTS_TIME: 60000,
   };
   // A demo boot with the announce secret supplied so every case below
   // controls only the rate-limit keys.
@@ -291,23 +291,23 @@ describe('config validationSchema — demo rate limiting', () => {
 
   it('accepts a demo boot with every pair present and coerces numeric strings', () => {
     const { error, value } = demo({
-      DEMO_VISITOR_MAX_REQUESTS: '100',
-      DEMO_VISITOR_MAX_REQUESTS_TIME: '60000',
-      DEMO_ABUSE_MAX_REQUESTS: '10',
-      DEMO_ABUSE_MAX_REQUESTS_TIME: '60000',
-      DEMO_GLOBAL_MAX_REQUESTS: '1000',
-      DEMO_GLOBAL_MAX_REQUESTS_TIME: '60000',
+      VISITOR_MAX_REQUESTS: '100',
+      VISITOR_MAX_REQUESTS_TIME: '60000',
+      ABUSE_MAX_REQUESTS: '10',
+      ABUSE_MAX_REQUESTS_TIME: '60000',
+      GLOBAL_MAX_REQUESTS: '1000',
+      GLOBAL_MAX_REQUESTS_TIME: '60000',
     });
     expect(error).toBeUndefined();
-    expect(typeof value.DEMO_VISITOR_MAX_REQUESTS).toBe('number');
-    expect(value.DEMO_VISITOR_MAX_REQUESTS).toBe(100);
+    expect(typeof value.VISITOR_MAX_REQUESTS).toBe('number');
+    expect(value.VISITOR_MAX_REQUESTS).toBe(100);
   });
 
   describe('required in demo — one failing case per pair', () => {
     const pairKeys: Array<[string, string]> = [
-      ['DEMO_VISITOR_MAX_REQUESTS', 'DEMO_VISITOR_MAX_REQUESTS_TIME'],
-      ['DEMO_ABUSE_MAX_REQUESTS', 'DEMO_ABUSE_MAX_REQUESTS_TIME'],
-      ['DEMO_GLOBAL_MAX_REQUESTS', 'DEMO_GLOBAL_MAX_REQUESTS_TIME'],
+      ['VISITOR_MAX_REQUESTS', 'VISITOR_MAX_REQUESTS_TIME'],
+      ['ABUSE_MAX_REQUESTS', 'ABUSE_MAX_REQUESTS_TIME'],
+      ['GLOBAL_MAX_REQUESTS', 'GLOBAL_MAX_REQUESTS_TIME'],
     ];
     for (const [limit, ttl] of pairKeys) {
       it(`rejects a demo boot missing the ${limit} pair`, () => {
@@ -347,21 +347,21 @@ describe('config validationSchema — demo rate limiting', () => {
     ])('rejects a %s visitor pair in demo', (_label, limit, ttl) => {
       const { error } = demo({
         ...allLimits,
-        DEMO_VISITOR_MAX_REQUESTS: limit,
-        DEMO_VISITOR_MAX_REQUESTS_TIME: ttl,
+        VISITOR_MAX_REQUESTS: limit,
+        VISITOR_MAX_REQUESTS_TIME: ttl,
       });
       expect(error).toBeDefined();
-      expect(error.message).toContain('DEMO_VISITOR_MAX_REQUESTS');
+      expect(error.message).toContain('VISITOR_MAX_REQUESTS');
     });
 
     it('rejects a valid limit paired with a malformed ttl in demo', () => {
       const { error } = demo({
         ...allLimits,
-        DEMO_GLOBAL_MAX_REQUESTS: 10,
-        DEMO_GLOBAL_MAX_REQUESTS_TIME: 0,
+        GLOBAL_MAX_REQUESTS: 10,
+        GLOBAL_MAX_REQUESTS_TIME: 0,
       });
       expect(error).toBeDefined();
-      expect(error.message).toContain('DEMO_GLOBAL_MAX_REQUESTS_TIME');
+      expect(error.message).toContain('GLOBAL_MAX_REQUESTS_TIME');
     });
   });
 
@@ -377,7 +377,7 @@ describe('config validationSchema — demo rate limiting', () => {
     it('still accepts (and keeps) demo keys on a non-demo boot — the values are ignored, not rejected', () => {
       const { error, value } = validate({ NODE_ENV: 'dev', ...allLimits });
       expect(error).toBeUndefined();
-      expect(value.DEMO_VISITOR_MAX_REQUESTS).toBe(100);
+      expect(value.VISITOR_MAX_REQUESTS).toBe(100);
     });
 
     it.each(['local', 'dev', 'staging', 'test', 'prod'])(
@@ -400,10 +400,10 @@ describe('config validationSchema — demo rate limiting', () => {
     it('enforces the all-or-nothing rule for a partial demo pair outside demo as well', () => {
       const { error } = validate({
         NODE_ENV: 'test',
-        DEMO_ABUSE_MAX_REQUESTS: 10,
+        ABUSE_MAX_REQUESTS: 10,
       });
       expect(error).toBeDefined();
-      expect(error.message).toContain('DEMO_ABUSE_MAX_REQUESTS_TIME');
+      expect(error.message).toContain('ABUSE_MAX_REQUESTS_TIME');
     });
   });
 

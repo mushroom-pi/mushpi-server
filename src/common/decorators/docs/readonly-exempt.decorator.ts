@@ -2,9 +2,9 @@ import { SetMetadata, applyDecorators } from '@nestjs/common';
 import { ApiExtension } from '@nestjs/swagger';
 
 import {
-  DEMO_READONLY_MARK,
-  DEMO_READONLY_SPEC_EXTENSION,
-} from 'src/common/constants/demo-readonly.constants';
+  READONLY_MARK,
+  READONLY_SPEC_EXTENSION,
+} from 'src/common/constants/readonly.constants';
 
 /**
  * Marks a handler as exempt from the demo read-only guard: the request is
@@ -20,9 +20,9 @@ import {
  * announcement carries it (the sole inbound writer on demo, gated by the
  * `X-Pico-Secret` header).
  */
-export function DemoReadOnlyExempt() {
+export function ReadOnlyExempt() {
   return applyDecorators(
-    SetMetadata(DEMO_READONLY_MARK, 'exempt'),
-    ApiExtension(DEMO_READONLY_SPEC_EXTENSION, 'exempt'),
+    SetMetadata(READONLY_MARK, 'exempt'),
+    ApiExtension(READONLY_SPEC_EXTENSION, 'exempt'),
   );
 }

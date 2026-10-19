@@ -142,7 +142,7 @@ Env reference is **generated**, never hand-maintained: `yarn docs:env` → `docs
 |---|---|
 | `server` | port (`APP_PORT`, legacy `PORT` fallback), NODE_ENV, errorsDetail |
 | `logs` | pino level |
-| `security` | APP_SECRET, httpsEnabled (APP_HTTPS_ENABLED), throttler by deployment profile — self-hosted: opt-in `MAX_REQUESTS` + `MAX_REQUESTS_TIME`; public-demo (`NODE_ENV=demo`): always-on `DEMO_{VISITOR,ABUSE,GLOBAL}_MAX_REQUESTS(_TIME)` (prefix = profile scope, inert elsewhere); `isDemo`; REFERENCE.md §Guards | event-loop |
+| `security` | APP_SECRET, httpsEnabled (APP_HTTPS_ENABLED), throttler by deployment profile — self-hosted: opt-in `MAX_REQUESTS` + `MAX_REQUESTS_TIME`; public-demo (`NODE_ENV=demo`): always-on `{VISITOR,ABUSE,GLOBAL}_MAX_REQUESTS(_TIME)` (required-when-demo; ignored elsewhere); `isDemo`; REFERENCE.md §Guards | event-loop |
 | `docs` | Swagger endpoint + auth |
 | `sqlite` | DB path |
 | `upload` | UPLOAD_DIR → imageDir |
@@ -168,9 +168,13 @@ Stored columns use **snake_case property names** matching the DB column — no `
 
 Register every entity in BOTH `data-source.ts` (CLI) and `TypeOrmModule.forFeature()` (runtime). Snapshot/immutable-FK rules: REFERENCE.md §Batch Lifecycle.
 
+### Content-named code
+
+Name files and symbols for what they contain, never for the profile that triggers them: profile branches go at the call site (`config.isDemo`), not in profile-named siblings. Sole exception: a unit that cannot exist outside the profile (`DemoReadOnlyGuard`). Env vars name the capability. Doctrine: `nestjs-backend` skill §Naming and Profile-Scoped Code.
+
 ### Demo read-only contract
 
-On a demo boot (`NODE_ENV=demo`) every non-safe-method request is refused with 403 by the global `DemoReadOnlyGuard`, and the OpenAPI spec documents that 403 on exactly those operations — both from the same handler marks (`@DemoReadOnlyExempt()` / `@DemoReadOnlyRefused()` in `src/common/decorators/docs/`). **A new endpoint needs no demo work**: a non-safe method is refused and documented automatically; a safe-method handler that writes persisted data MUST carry `@DemoReadOnlyRefused()`. Exemptions are deliberate, explicit, and greppable — today only `POST /v1/pico-units/announce`, which is additionally origin-gated in demo (external callers refused before the secret check — REFERENCE.md §Guards). On a demo boot `/health` additionally **withholds host details** (`system.os`/`cpu`/`disk`, database file path) — REFERENCE.md §Demo host-details redaction. Guards are inert on every other boot; the cron/event-handler paths never pass through them. Rate limiting follows the deployment profiles: a self-hosted hub arms nothing unless the opt-in pair is set (`DEMO_*` inert there); the public-demo profile (`NODE_ENV=demo`) always-runs three env-supplied limiters (browse pace, refused-change pace, whole-instance backstop) — the `DEMO_` prefix marks that profile scope. Details: REFERENCE.md §Guards / §Spec Tooling Internals.
+On a demo boot (`NODE_ENV=demo`) every non-safe-method request is refused with 403 by the global `DemoReadOnlyGuard`, and the OpenAPI spec documents that 403 on exactly those operations — both from the same handler marks (`@ReadOnlyExempt()` / `@ReadOnlyRefused()` in `src/common/decorators/docs/`). **A new endpoint needs no demo work**: a non-safe method is refused and documented automatically; a safe-method handler that writes persisted data MUST carry `@ReadOnlyRefused()`. Exemptions are deliberate, explicit, and greppable — today only `POST /v1/pico-units/announce`, which is additionally origin-gated in demo (external callers refused before the secret check — REFERENCE.md §Guards). On a demo boot `/health` additionally **withholds host details** (`system.os`/`cpu`/`disk`, database file path) — REFERENCE.md §Demo host-details redaction. Guards are inert on every other boot; the cron/event-handler paths never pass through them. Rate limiting follows the deployment profiles: a self-hosted hub arms nothing unless the opt-in pair is set (limiter pairs inert there); the public-demo profile (`NODE_ENV=demo`) always-runs three env-supplied limiters (browse pace, refused-change pace, whole-instance backstop) — the required-when-demo rule marks that profile scope. Details: REFERENCE.md §Guards / §Spec Tooling Internals.
 
 ### Versioning
 

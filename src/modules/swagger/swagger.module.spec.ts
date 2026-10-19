@@ -7,10 +7,10 @@ import {
 import { Test, TestingModule } from '@nestjs/testing';
 
 import {
-  DEMO_READONLY_FORBIDDEN_DESCRIPTION,
-  DEMO_READONLY_FORBIDDEN_MESSAGE,
-  DEMO_READONLY_SPEC_EXTENSION,
-} from 'src/common/constants/demo-readonly.constants';
+  READONLY_FORBIDDEN_DESCRIPTION,
+  READONLY_FORBIDDEN_MESSAGE,
+  READONLY_SPEC_EXTENSION,
+} from 'src/common/constants/readonly.constants';
 
 import { CustomConfigService } from '../config/config.service';
 import { globalErrors } from './swagger-global-errors';
@@ -310,7 +310,7 @@ describe('SwaggerModule', () => {
             error: { type: 'string', example: 'Forbidden' },
             message: {
               type: 'string',
-              example: DEMO_READONLY_FORBIDDEN_MESSAGE,
+              example: READONLY_FORBIDDEN_MESSAGE,
               description: 'The sort of error message you can expect',
             },
             emitter: {
@@ -337,7 +337,7 @@ describe('SwaggerModule', () => {
     const operation = (extension?: string) => ({
       tags: [],
       responses: {},
-      ...(extension ? { [DEMO_READONLY_SPEC_EXTENSION]: extension } : null),
+      ...(extension ? { [READONLY_SPEC_EXTENSION]: extension } : null),
     });
 
     function mockDocument(): OpenAPIObject {
@@ -370,10 +370,10 @@ describe('SwaggerModule', () => {
 
     it('injects 403 on an unmarked non-safe operation (the method default)', () => {
       const document = mockDocument();
-      swaggerModule['addDemoReadOnlyResponses'](document);
+      swaggerModule['addReadOnlyResponses'](document);
 
       expect(document.paths['/test'].post.responses['403']).toEqual({
-        description: DEMO_READONLY_FORBIDDEN_DESCRIPTION,
+        description: READONLY_FORBIDDEN_DESCRIPTION,
         content: forbiddenContent,
       });
       expect(document.paths['/test'].delete.responses['403']).toBeDefined();
@@ -381,10 +381,10 @@ describe('SwaggerModule', () => {
 
     it('injects 403 on a refused-marked safe-method operation', () => {
       const document = mockDocument();
-      swaggerModule['addDemoReadOnlyResponses'](document);
+      swaggerModule['addReadOnlyResponses'](document);
 
       expect(document.paths['/marked'].get.responses['403']).toEqual({
-        description: DEMO_READONLY_FORBIDDEN_DESCRIPTION,
+        description: READONLY_FORBIDDEN_DESCRIPTION,
         content: forbiddenContent,
       });
       expect(document.paths['/marked'].options.responses['403']).toBeDefined();
@@ -392,7 +392,7 @@ describe('SwaggerModule', () => {
 
     it('skips an unmarked safe-method operation', () => {
       const document = mockDocument();
-      swaggerModule['addDemoReadOnlyResponses'](document);
+      swaggerModule['addReadOnlyResponses'](document);
 
       expect(document.paths['/test'].get.responses['403']).toBeUndefined();
       expect(document.paths['/views'].get.responses['403']).toBeUndefined();
@@ -401,7 +401,7 @@ describe('SwaggerModule', () => {
 
     it('skips an exempt-marked operation even when its method is not safe', () => {
       const document = mockDocument();
-      swaggerModule['addDemoReadOnlyResponses'](document);
+      swaggerModule['addReadOnlyResponses'](document);
 
       expect(document.paths['/exempt'].post.responses['403']).toBeUndefined();
       expect(document.paths['/exempt'].put.responses['403']).toBeUndefined();
@@ -409,7 +409,7 @@ describe('SwaggerModule', () => {
 
     it('ignores non-method path-item keys', () => {
       const document = mockDocument();
-      swaggerModule['addDemoReadOnlyResponses'](document);
+      swaggerModule['addReadOnlyResponses'](document);
 
       expect(document.paths['/test'].parameters).toEqual([
         { name: 'id', in: 'query' },
@@ -424,7 +424,7 @@ describe('SwaggerModule', () => {
       const existing = { description: 'already documented', content: {} };
       document.paths['/test'].post.responses['403'] = existing;
 
-      swaggerModule['addDemoReadOnlyResponses'](document);
+      swaggerModule['addReadOnlyResponses'](document);
 
       expect(document.paths['/test'].post.responses['403']).toBe(existing);
     });
@@ -433,7 +433,7 @@ describe('SwaggerModule', () => {
       const document = mockDocument();
       (document.paths as any)['/test'].put = { tags: [] };
 
-      swaggerModule['addDemoReadOnlyResponses'](document);
+      swaggerModule['addReadOnlyResponses'](document);
 
       expect(
         (document.paths['/test'].put as any).responses['403'],

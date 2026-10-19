@@ -10,12 +10,12 @@ import {
 import { SkipThrottle } from '@nestjs/throttler';
 
 import {
-  DEMO_ABUSE_THROTTLER_NAME,
-  DEMO_GLOBAL_THROTTLER_NAME,
-} from 'src/common/constants/demo.constants';
+  RATE_LIMIT_ABUSE_THROTTLER_NAME,
+  RATE_LIMIT_GLOBAL_THROTTLER_NAME,
+} from 'src/common/constants/rate-limit.constants';
 import { ApiFailedDependencyResponse } from 'src/common/decorators/docs/api-failed-dependency-response.decorator';
-import { DemoReadOnlyExempt } from 'src/common/decorators/docs/demo-readonly-exempt.decorator';
 import { PicoAnnounceSecret } from 'src/common/decorators/docs/pico-announce-secret.decorator';
+import { ReadOnlyExempt } from 'src/common/decorators/docs/readonly-exempt.decorator';
 import { ErrorDto } from 'src/common/dto/error.dto';
 
 import {
@@ -62,7 +62,7 @@ export class PicoUnitsV1Controller {
   // The complete exemption set for the demo read-only guard: announcement is
   // the only inbound writer left open on a demo boot (PicoAnnounceSecretGuard
   // still enforces X-Pico-Secret — 401 without it).
-  @DemoReadOnlyExempt()
+  @ReadOnlyExempt()
   // Simulated units' announcements must be accepted throughout a whole-demo
   // flood (criterion 7): skip the backstop and the abuse limiter BY NAME.
   // Both skips are inert outside demo, where those throttler names never
@@ -71,8 +71,8 @@ export class PicoUnitsV1Controller {
   // visitor pace (unnamed `default` throttler) still applies here —
   // announce is the one inbound writer a flood must not use as a bypass.
   @SkipThrottle({
-    [DEMO_GLOBAL_THROTTLER_NAME]: true,
-    [DEMO_ABUSE_THROTTLER_NAME]: true,
+    [RATE_LIMIT_GLOBAL_THROTTLER_NAME]: true,
+    [RATE_LIMIT_ABUSE_THROTTLER_NAME]: true,
   })
   @ApiOperation({
     summary: 'Announce a Pico Unit (hardware)',

@@ -41,12 +41,12 @@ const ENV_KEYS = [
   'LOGS_LEVEL',
   'MAX_REQUESTS',
   'MAX_REQUESTS_TIME',
-  'DEMO_VISITOR_MAX_REQUESTS',
-  'DEMO_VISITOR_MAX_REQUESTS_TIME',
-  'DEMO_ABUSE_MAX_REQUESTS',
-  'DEMO_ABUSE_MAX_REQUESTS_TIME',
-  'DEMO_GLOBAL_MAX_REQUESTS',
-  'DEMO_GLOBAL_MAX_REQUESTS_TIME',
+  'VISITOR_MAX_REQUESTS',
+  'VISITOR_MAX_REQUESTS_TIME',
+  'ABUSE_MAX_REQUESTS',
+  'ABUSE_MAX_REQUESTS_TIME',
+  'GLOBAL_MAX_REQUESTS',
+  'GLOBAL_MAX_REQUESTS_TIME',
 ] as const;
 
 const originalEnv: Record<string, string | undefined> = {};
@@ -61,12 +61,12 @@ function applyDemoEnv(): void {
   // off the real `data/logs` destination and quiet in the test report.
   process.env.LOGS_PATH = DEMO_LOGS_PATH;
   process.env.LOGS_LEVEL = 'silent';
-  process.env.DEMO_VISITOR_MAX_REQUESTS = '10000';
-  process.env.DEMO_VISITOR_MAX_REQUESTS_TIME = '60000';
-  process.env.DEMO_ABUSE_MAX_REQUESTS = '10000';
-  process.env.DEMO_ABUSE_MAX_REQUESTS_TIME = '60000';
-  process.env.DEMO_GLOBAL_MAX_REQUESTS = '100000';
-  process.env.DEMO_GLOBAL_MAX_REQUESTS_TIME = '60000';
+  process.env.VISITOR_MAX_REQUESTS = '10000';
+  process.env.VISITOR_MAX_REQUESTS_TIME = '60000';
+  process.env.ABUSE_MAX_REQUESTS = '10000';
+  process.env.ABUSE_MAX_REQUESTS_TIME = '60000';
+  process.env.GLOBAL_MAX_REQUESTS = '100000';
+  process.env.GLOBAL_MAX_REQUESTS_TIME = '60000';
   delete process.env.MAX_REQUESTS;
   delete process.env.MAX_REQUESTS_TIME;
 }

@@ -23,7 +23,7 @@ import { CustomConfigService } from 'src/modules/config/config.service';
  * self-hosted hub keeps the Express default — its opt-in limiter keeps
  * bucketing by socket address, exactly as before.
  */
-export function applyDemoTrustProxy(
+export function applySingleHopTrustProxy(
   app: INestApplication,
   config: CustomConfigService,
 ): void {

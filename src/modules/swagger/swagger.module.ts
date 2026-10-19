@@ -7,11 +7,11 @@ import {
 } from '@nestjs/swagger';
 
 import {
-  DEMO_READONLY_FORBIDDEN_DESCRIPTION,
-  DEMO_READONLY_FORBIDDEN_MESSAGE,
-  DEMO_READONLY_SAFE_METHODS,
-  DEMO_READONLY_SPEC_EXTENSION,
-} from 'src/common/constants/demo-readonly.constants';
+  READONLY_FORBIDDEN_DESCRIPTION,
+  READONLY_FORBIDDEN_MESSAGE,
+  READONLY_SAFE_METHODS,
+  READONLY_SPEC_EXTENSION,
+} from 'src/common/constants/readonly.constants';
 
 import { description, name, version } from '../../../package.json';
 import { CustomConfigService } from '../config/config.service';
@@ -120,9 +120,9 @@ export class SwaggerModule {
    *
    * Pure addition: never mutates or removes existing entries.
    */
-  private addDemoReadOnlyResponses(document: OpenAPIObject) {
+  private addReadOnlyResponses(document: OpenAPIObject) {
     const safeMethodKeys = new Set(
-      DEMO_READONLY_SAFE_METHODS.map((method) => method.toLowerCase()),
+      READONLY_SAFE_METHODS.map((method) => method.toLowerCase()),
     );
     const methodKeys = [
       'get',
@@ -142,7 +142,7 @@ export class SwaggerModule {
         if (!operation) continue;
 
         const mark = (operation as Record<string, unknown>)[
-          DEMO_READONLY_SPEC_EXTENSION
+          READONLY_SPEC_EXTENSION
         ];
         if (mark === 'exempt') continue;
 
@@ -155,11 +155,11 @@ export class SwaggerModule {
         if (operation.responses['403']) continue;
 
         operation.responses['403'] = {
-          description: DEMO_READONLY_FORBIDDEN_DESCRIPTION,
+          description: READONLY_FORBIDDEN_DESCRIPTION,
           content: this.generateContent({
             statusCode: HttpStatus.FORBIDDEN,
             error: 'Forbidden',
-            messageExample: DEMO_READONLY_FORBIDDEN_MESSAGE,
+            messageExample: READONLY_FORBIDDEN_MESSAGE,
           }),
         };
       }
@@ -257,7 +257,7 @@ export class SwaggerModule {
         this.errorResponseFactory(errorResponse)(document),
       );
 
-    this.addDemoReadOnlyResponses(document);
+    this.addReadOnlyResponses(document);
 
     return document;
   }

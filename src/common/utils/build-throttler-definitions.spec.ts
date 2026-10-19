@@ -2,13 +2,13 @@ import { ExecutionContext } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ThrottlerOptions } from '@nestjs/throttler';
 
-import { DEMO_READONLY_MARK } from 'src/common/constants/demo-readonly.constants';
+import { READONLY_MARK } from 'src/common/constants/readonly.constants';
 import { EnvironmentVariables } from 'src/modules/config/config.interface';
 import { CustomConfigService } from 'src/modules/config/config.service';
 
 import {
   buildThrottlerDefinitions,
-  demoFlatKey,
+  flatThrottlerKey,
 } from './build-throttler-definitions';
 
 /**
@@ -21,12 +21,12 @@ import {
  */
 const DEMO_LIMIT_ENV = {
   NODE_ENV: 'demo',
-  DEMO_VISITOR_MAX_REQUESTS: 100,
-  DEMO_VISITOR_MAX_REQUESTS_TIME: 60000,
-  DEMO_ABUSE_MAX_REQUESTS: 10,
-  DEMO_ABUSE_MAX_REQUESTS_TIME: 60000,
-  DEMO_GLOBAL_MAX_REQUESTS: 1000,
-  DEMO_GLOBAL_MAX_REQUESTS_TIME: 60000,
+  VISITOR_MAX_REQUESTS: 100,
+  VISITOR_MAX_REQUESTS_TIME: 60000,
+  ABUSE_MAX_REQUESTS: 10,
+  ABUSE_MAX_REQUESTS_TIME: 60000,
+  GLOBAL_MAX_REQUESTS: 1000,
+  GLOBAL_MAX_REQUESTS_TIME: 60000,
 };
 
 const configWith = (env: Record<string, unknown>): CustomConfigService =>
@@ -80,7 +80,7 @@ describe('buildThrottlerDefinitions', () => {
         ),
       ).toBe('global');
       for (const definition of definitions) {
-        expect(definition.generateKey).toBe(demoFlatKey);
+        expect(definition.generateKey).toBe(flatThrottlerKey);
       }
     });
 
@@ -92,12 +92,12 @@ describe('buildThrottlerDefinitions', () => {
 
     describe('fail loudly on malformed deployment values', () => {
       const badKeys = [
-        'DEMO_VISITOR_MAX_REQUESTS',
-        'DEMO_VISITOR_MAX_REQUESTS_TIME',
-        'DEMO_ABUSE_MAX_REQUESTS',
-        'DEMO_ABUSE_MAX_REQUESTS_TIME',
-        'DEMO_GLOBAL_MAX_REQUESTS',
-        'DEMO_GLOBAL_MAX_REQUESTS_TIME',
+        'VISITOR_MAX_REQUESTS',
+        'VISITOR_MAX_REQUESTS_TIME',
+        'ABUSE_MAX_REQUESTS',
+        'ABUSE_MAX_REQUESTS_TIME',
+        'GLOBAL_MAX_REQUESTS',
+        'GLOBAL_MAX_REQUESTS_TIME',
       ];
 
       for (const key of badKeys) {
@@ -118,31 +118,33 @@ describe('buildThrottlerDefinitions', () => {
     });
   });
 
-  describe('demoFlatKey — flat across endpoints, distinct per bucket', () => {
+  describe('flatThrottlerKey — flat across endpoints, distinct per bucket', () => {
     const handlerA = function list() {};
     const handlerB = function health() {};
 
     it('spans all endpoints: same tracker + throttler name ⇒ same key', () => {
       expect(
-        demoFlatKey(fakeContext(handlerA, 'GET'), '10.0.0.1', 'default'),
-      ).toBe(demoFlatKey(fakeContext(handlerB, 'GET'), '10.0.0.1', 'default'));
+        flatThrottlerKey(fakeContext(handlerA, 'GET'), '10.0.0.1', 'default'),
+      ).toBe(
+        flatThrottlerKey(fakeContext(handlerB, 'GET'), '10.0.0.1', 'default'),
+      );
       expect(
-        demoFlatKey(fakeContext(handlerA, 'GET'), '10.0.0.1', 'default'),
+        flatThrottlerKey(fakeContext(handlerA, 'GET'), '10.0.0.1', 'default'),
       ).toBe('mushpi-demo-default-10.0.0.1');
     });
 
     it('keeps the three buckets distinct through name + tracker', () => {
-      const visitor = demoFlatKey(
+      const visitor = flatThrottlerKey(
         fakeContext(handlerA, 'GET'),
         '10.0.0.1',
         'default',
       );
-      const abuse = demoFlatKey(
+      const abuse = flatThrottlerKey(
         fakeContext(handlerA, 'POST'),
         '10.0.0.1',
         'demo-abuse',
       );
-      const backstop = demoFlatKey(
+      const backstop = flatThrottlerKey(
         fakeContext(handlerA, 'GET'),
         'global',
         'demo-global',
@@ -169,19 +171,19 @@ describe('buildThrottlerDefinitions', () => {
 
     it('skips an exempt-marked handler (announcement is never abuse-limited)', () => {
       const handler = function announce() {};
-      Reflect.defineMetadata(DEMO_READONLY_MARK, 'exempt', handler);
+      Reflect.defineMetadata(READONLY_MARK, 'exempt', handler);
       expect(skipIf(fakeContext(handler, 'POST'))).toBe(true);
     });
 
     it('enforces a refused-marked safe-method handler (the guard would refuse)', () => {
       const handler = function ping() {};
-      Reflect.defineMetadata(DEMO_READONLY_MARK, 'refused', handler);
+      Reflect.defineMetadata(READONLY_MARK, 'refused', handler);
       expect(skipIf(fakeContext(handler, 'GET'))).toBe(false);
     });
   });
 
   describe('non-demo boot — historical behaviour, byte-for-byte', () => {
-    it('ignores DEMO_* entirely when unset: empty definitions (no throttling, no headers)', () => {
+    it('applies no throttling when the opt-in pair is unset: empty definitions (no throttling, no headers)', () => {
       expect(
         buildThrottlerDefinitions(configWith({ NODE_ENV: 'local' })),
       ).toEqual([]);
@@ -211,20 +213,21 @@ describe('buildThrottlerDefinitions', () => {
       ).toEqual([]);
     });
 
-    it('still returns the historical shape when DEMO_* vars are present on a self-hosted hub', () => {
-      // isDemo is checked FIRST: stray DEMO_* values in an env file can
-      // never produce a demo definition — nor throw — outside a demo boot.
+    it('still returns the historical shape when the demo limiter vars are present on a self-hosted hub', () => {
+      // isDemo is checked FIRST: stray `VISITOR_*`/`ABUSE_*`/`GLOBAL_*` values
+      // in an env file can never produce a demo definition — nor throw —
+      // outside a demo boot.
       expect(
         buildThrottlerDefinitions(
           configWith({
             NODE_ENV: 'test',
-            DEMO_VISITOR_MAX_REQUESTS: 100,
-            DEMO_VISITOR_MAX_REQUESTS_TIME: 60000,
-            DEMO_ABUSE_MAX_REQUESTS: 10,
-            DEMO_ABUSE_MAX_REQUESTS_TIME: 60000,
+            VISITOR_MAX_REQUESTS: 100,
+            VISITOR_MAX_REQUESTS_TIME: 60000,
+            ABUSE_MAX_REQUESTS: 10,
+            ABUSE_MAX_REQUESTS_TIME: 60000,
             // deliberately malformed: must be ignored, never throw
-            DEMO_GLOBAL_MAX_REQUESTS: 0,
-            DEMO_GLOBAL_MAX_REQUESTS_TIME: 60000,
+            GLOBAL_MAX_REQUESTS: 0,
+            GLOBAL_MAX_REQUESTS_TIME: 60000,
           }),
         ),
       ).toEqual([]);

@@ -1,7 +1,7 @@
 import {
-  DEMO_READONLY_SAFE_METHODS,
-  DemoReadOnlyMark,
-} from 'src/common/constants/demo-readonly.constants';
+  READONLY_SAFE_METHODS,
+  ReadOnlyMark,
+} from 'src/common/constants/readonly.constants';
 
 /**
  * The single definition of "a request the demo read-only guard would
@@ -22,13 +22,13 @@ import {
  * - no mark → refusal iff the method is not one of the safe methods
  *   (`GET`/`HEAD`/`OPTIONS`).
  */
-export function isDemoReadOnlyRefusal(
-  mark: DemoReadOnlyMark | undefined,
+export function isReadOnlyRefusal(
+  mark: ReadOnlyMark | undefined,
   method: string,
 ): boolean {
   if (mark === 'exempt') return false;
   if (mark === 'refused') return true;
-  return !DEMO_READONLY_SAFE_METHODS.includes(
-    method as (typeof DEMO_READONLY_SAFE_METHODS)[number],
+  return !READONLY_SAFE_METHODS.includes(
+    method as (typeof READONLY_SAFE_METHODS)[number],
   );
 }

@@ -6,7 +6,7 @@
  * traffic and is refused outright, before the secret is compared.
  *
  * Deliberately distinct from the read-only refusal message
- * (`DEMO_READONLY_FORBIDDEN_MESSAGE`): this endpoint is not refusing a
+ * (`READONLY_FORBIDDEN_MESSAGE`): this endpoint is not refusing a
  * change, it is refusing an origin.
  */
 export const PICO_ANNOUNCE_REFUSED_MESSAGE =

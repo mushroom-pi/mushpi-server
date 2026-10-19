@@ -4,11 +4,12 @@ import { mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
 import request from 'supertest';
 
-import { DEMO_READONLY_FORBIDDEN_MESSAGE } from '../src/common/constants/demo-readonly.constants';
+import { READONLY_FORBIDDEN_MESSAGE } from '../src/common/constants/readonly.constants';
 
 /**
  * Demo rate limiting (e2e) — the three always-on throttler definitions of a
- * `NODE_ENV=demo` boot, built from the six `DEMO_*` env pairs:
+ * `NODE_ENV=demo` boot, built from the six rate-limit env pairs
+ * (`VISITOR_*`, `ABUSE_*`, `GLOBAL_*`):
  *
  * - the UNNAMED per-visitor browse pace (fills the `default` slot; plain
  *   `X-RateLimit-*` / `Retry-After` headers; tracker = `req.ip`, i.e. the
@@ -51,12 +52,12 @@ const ENV_KEYS = [
   'LOGS_LEVEL',
   'MAX_REQUESTS',
   'MAX_REQUESTS_TIME',
-  'DEMO_VISITOR_MAX_REQUESTS',
-  'DEMO_VISITOR_MAX_REQUESTS_TIME',
-  'DEMO_ABUSE_MAX_REQUESTS',
-  'DEMO_ABUSE_MAX_REQUESTS_TIME',
-  'DEMO_GLOBAL_MAX_REQUESTS',
-  'DEMO_GLOBAL_MAX_REQUESTS_TIME',
+  'VISITOR_MAX_REQUESTS',
+  'VISITOR_MAX_REQUESTS_TIME',
+  'ABUSE_MAX_REQUESTS',
+  'ABUSE_MAX_REQUESTS_TIME',
+  'GLOBAL_MAX_REQUESTS',
+  'GLOBAL_MAX_REQUESTS_TIME',
 ] as const;
 
 const originalEnv: Record<string, string | undefined> = {};
@@ -70,12 +71,12 @@ for (const key of ENV_KEYS) originalEnv[key] = process.env[key];
  * the demo factory would throw — by design).
  */
 const DEFAULT_LIMITS = {
-  DEMO_VISITOR_MAX_REQUESTS: '10000',
-  DEMO_VISITOR_MAX_REQUESTS_TIME: '60000',
-  DEMO_ABUSE_MAX_REQUESTS: '10000',
-  DEMO_ABUSE_MAX_REQUESTS_TIME: '60000',
-  DEMO_GLOBAL_MAX_REQUESTS: '100000',
-  DEMO_GLOBAL_MAX_REQUESTS_TIME: '60000',
+  VISITOR_MAX_REQUESTS: '10000',
+  VISITOR_MAX_REQUESTS_TIME: '60000',
+  ABUSE_MAX_REQUESTS: '10000',
+  ABUSE_MAX_REQUESTS_TIME: '60000',
+  GLOBAL_MAX_REQUESTS: '100000',
+  GLOBAL_MAX_REQUESTS_TIME: '60000',
 };
 
 interface DemoLaunch {
@@ -198,8 +199,8 @@ describe('Demo rate limiting (e2e)', () => {
 
     beforeAll(async () => {
       launched = await launchDemo({
-        DEMO_VISITOR_MAX_REQUESTS: '2',
-        DEMO_VISITOR_MAX_REQUESTS_TIME: '2000',
+        VISITOR_MAX_REQUESTS: '2',
+        VISITOR_MAX_REQUESTS_TIME: '2000',
       });
     });
     afterAll(async () => await launched?.close());
@@ -237,8 +238,8 @@ describe('Demo rate limiting (e2e)', () => {
 
     beforeAll(async () => {
       launched = await launchDemo({
-        DEMO_VISITOR_MAX_REQUESTS: '2',
-        DEMO_VISITOR_MAX_REQUESTS_TIME: '60000',
+        VISITOR_MAX_REQUESTS: '2',
+        VISITOR_MAX_REQUESTS_TIME: '60000',
       });
     });
     afterAll(async () => await launched?.close());
@@ -263,12 +264,12 @@ describe('Demo rate limiting (e2e)', () => {
       // re-sorts by ascending ttl, so the abuse bucket is evaluated first
       // and its suffixed headers are what a client sees on the block.
       launched = await launchDemo({
-        DEMO_VISITOR_MAX_REQUESTS: '1000',
-        DEMO_VISITOR_MAX_REQUESTS_TIME: '60000',
-        DEMO_ABUSE_MAX_REQUESTS: '2',
-        DEMO_ABUSE_MAX_REQUESTS_TIME: '3000',
-        DEMO_GLOBAL_MAX_REQUESTS: '100000',
-        DEMO_GLOBAL_MAX_REQUESTS_TIME: '60000',
+        VISITOR_MAX_REQUESTS: '1000',
+        VISITOR_MAX_REQUESTS_TIME: '60000',
+        ABUSE_MAX_REQUESTS: '2',
+        ABUSE_MAX_REQUESTS_TIME: '3000',
+        GLOBAL_MAX_REQUESTS: '100000',
+        GLOBAL_MAX_REQUESTS_TIME: '60000',
       });
     });
     afterAll(async () => await launched?.close());
@@ -282,7 +283,7 @@ describe('Demo rate limiting (e2e)', () => {
     it('refused POSTs are 403s carrying rate-limit headers, and the abuse bucket counts down', async () => {
       const first = await postBatch(ABUSER);
       expect(first.status).toBe(403);
-      expect(first.body.message).toBe(DEMO_READONLY_FORBIDDEN_MESSAGE);
+      expect(first.body.message).toBe(READONLY_FORBIDDEN_MESSAGE);
       expect(first.headers['x-ratelimit-limit-demo-abuse']).toBe('2');
       expect(first.headers['x-ratelimit-remaining-demo-abuse']).toBe('1');
       expectWellFormedRateLimitHeaders(first.headers);
@@ -325,8 +326,8 @@ describe('Demo rate limiting (e2e)', () => {
 
     beforeAll(async () => {
       launched = await launchDemo({
-        DEMO_GLOBAL_MAX_REQUESTS: '3',
-        DEMO_GLOBAL_MAX_REQUESTS_TIME: '60000',
+        GLOBAL_MAX_REQUESTS: '3',
+        GLOBAL_MAX_REQUESTS_TIME: '60000',
       });
     });
     afterAll(async () => await launched?.close());
@@ -362,8 +363,8 @@ describe('Demo rate limiting (e2e)', () => {
 
     beforeAll(async () => {
       launched = await launchDemo({
-        DEMO_GLOBAL_MAX_REQUESTS: '2',
-        DEMO_GLOBAL_MAX_REQUESTS_TIME: '2000',
+        GLOBAL_MAX_REQUESTS: '2',
+        GLOBAL_MAX_REQUESTS_TIME: '2000',
       });
     });
     afterAll(async () => await launched?.close());
@@ -387,12 +388,12 @@ describe('Demo rate limiting (e2e)', () => {
     beforeAll(async () => {
       // every limit is tight: two visitor requests, two abuse, three global.
       launched = await launchDemo({
-        DEMO_VISITOR_MAX_REQUESTS: '2',
-        DEMO_VISITOR_MAX_REQUESTS_TIME: '60000',
-        DEMO_ABUSE_MAX_REQUESTS: '2',
-        DEMO_ABUSE_MAX_REQUESTS_TIME: '60000',
-        DEMO_GLOBAL_MAX_REQUESTS: '3',
-        DEMO_GLOBAL_MAX_REQUESTS_TIME: '60000',
+        VISITOR_MAX_REQUESTS: '2',
+        VISITOR_MAX_REQUESTS_TIME: '60000',
+        ABUSE_MAX_REQUESTS: '2',
+        ABUSE_MAX_REQUESTS_TIME: '60000',
+        GLOBAL_MAX_REQUESTS: '3',
+        GLOBAL_MAX_REQUESTS_TIME: '60000',
       });
     });
     afterAll(async () => await launched?.close());
@@ -426,8 +427,8 @@ describe('Demo rate limiting (e2e)', () => {
 
     beforeAll(async () => {
       launched = await launchDemo({
-        DEMO_VISITOR_MAX_REQUESTS: '2',
-        DEMO_VISITOR_MAX_REQUESTS_TIME: '60000',
+        VISITOR_MAX_REQUESTS: '2',
+        VISITOR_MAX_REQUESTS_TIME: '60000',
       });
     });
     afterAll(async () => await launched?.close());

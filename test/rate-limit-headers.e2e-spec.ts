@@ -16,11 +16,12 @@ import request from 'supertest';
  * are throttled when configured.
  *
  * The final two cases pin the demo rate-limiting surface from the OTHER
- * side: `DEMO_*` variables produce no throttler definition on a non-demo
- * boot (no headers, no 429 — a hub without the demo environment has no new
- * limits), and the announce/health `@SkipThrottle` marks keyed on the demo
- * throttler NAMES stay inert here — the owner's historical limiter still
- * counts announcement, per-route keys and all, byte-for-byte unchanged.
+ * side: the `VISITOR_*`/`ABUSE_*`/`GLOBAL_*` limiter vars produce no
+ * throttler definition on a non-demo boot (no headers, no 429 — a hub
+ * without the demo environment has no new limits), and the announce/health
+ * `@SkipThrottle` marks keyed on the demo throttler NAMES stay inert here —
+ * the owner's historical limiter still counts announcement, per-route keys
+ * and all, byte-for-byte unchanged.
  *
  * @nestjs/config runs the Joi validation schema once per module-graph import,
  * so each state sets/deletes the env vars BEFORE jest.resetModules() and then
@@ -40,12 +41,12 @@ describe('Rate-limit headers (e2e)', () => {
   // Restored exactly like the historical pair so a stray shell value survives
   // the suite unchanged.
   const DEMO_LIMIT_KEYS = [
-    'DEMO_VISITOR_MAX_REQUESTS',
-    'DEMO_VISITOR_MAX_REQUESTS_TIME',
-    'DEMO_ABUSE_MAX_REQUESTS',
-    'DEMO_ABUSE_MAX_REQUESTS_TIME',
-    'DEMO_GLOBAL_MAX_REQUESTS',
-    'DEMO_GLOBAL_MAX_REQUESTS_TIME',
+    'VISITOR_MAX_REQUESTS',
+    'VISITOR_MAX_REQUESTS_TIME',
+    'ABUSE_MAX_REQUESTS',
+    'ABUSE_MAX_REQUESTS_TIME',
+    'GLOBAL_MAX_REQUESTS',
+    'GLOBAL_MAX_REQUESTS_TIME',
   ] as const;
   const originalDemoLimits: Record<string, string | undefined> = {};
   for (const key of DEMO_LIMIT_KEYS) originalDemoLimits[key] = process.env[key];
@@ -223,19 +224,19 @@ describe('Rate-limit headers (e2e)', () => {
     });
   });
 
-  describe('non-demo boot — DEMO_* vars are ignored entirely (criterion 10)', () => {
+  describe('non-demo boot — the demo limiter vars are ignored entirely (criterion 10)', () => {
     beforeEach(() => {
       delete process.env.MAX_REQUESTS;
       delete process.env.MAX_REQUESTS_TIME;
       // Valid demo values on a self-hosted hub: they validate (optional
       // outside demo) but must produce NO throttler definition — isDemo is
       // checked first in the factory.
-      process.env.DEMO_VISITOR_MAX_REQUESTS = '2';
-      process.env.DEMO_VISITOR_MAX_REQUESTS_TIME = '60000';
-      process.env.DEMO_ABUSE_MAX_REQUESTS = '1';
-      process.env.DEMO_ABUSE_MAX_REQUESTS_TIME = '60000';
-      process.env.DEMO_GLOBAL_MAX_REQUESTS = '3';
-      process.env.DEMO_GLOBAL_MAX_REQUESTS_TIME = '60000';
+      process.env.VISITOR_MAX_REQUESTS = '2';
+      process.env.VISITOR_MAX_REQUESTS_TIME = '60000';
+      process.env.ABUSE_MAX_REQUESTS = '1';
+      process.env.ABUSE_MAX_REQUESTS_TIME = '60000';
+      process.env.GLOBAL_MAX_REQUESTS = '3';
+      process.env.GLOBAL_MAX_REQUESTS_TIME = '60000';
     });
 
     it('emits no headers and no 429 under hammering — a hub without the demo environment has no new limits', async () => {
@@ -259,12 +260,12 @@ describe('Rate-limit headers (e2e)', () => {
       // Present but inert: the announce @SkipThrottle keys on the DEMO
       // throttler NAMES, and no definition carries those names on a non-demo
       // boot — so announcement stays counted, exactly as before.
-      process.env.DEMO_VISITOR_MAX_REQUESTS = '1000';
-      process.env.DEMO_VISITOR_MAX_REQUESTS_TIME = '60000';
-      process.env.DEMO_ABUSE_MAX_REQUESTS = '1000';
-      process.env.DEMO_ABUSE_MAX_REQUESTS_TIME = '60000';
-      process.env.DEMO_GLOBAL_MAX_REQUESTS = '1000';
-      process.env.DEMO_GLOBAL_MAX_REQUESTS_TIME = '60000';
+      process.env.VISITOR_MAX_REQUESTS = '1000';
+      process.env.VISITOR_MAX_REQUESTS_TIME = '60000';
+      process.env.ABUSE_MAX_REQUESTS = '1000';
+      process.env.ABUSE_MAX_REQUESTS_TIME = '60000';
+      process.env.GLOBAL_MAX_REQUESTS = '1000';
+      process.env.GLOBAL_MAX_REQUESTS_TIME = '60000';
     });
 
     const announce = (app: INestApplication) =>

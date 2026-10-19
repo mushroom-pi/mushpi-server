@@ -2,9 +2,9 @@ import { SetMetadata, applyDecorators } from '@nestjs/common';
 import { ApiExtension } from '@nestjs/swagger';
 
 import {
-  DEMO_READONLY_MARK,
-  DEMO_READONLY_SPEC_EXTENSION,
-} from 'src/common/constants/demo-readonly.constants';
+  READONLY_MARK,
+  READONLY_SPEC_EXTENSION,
+} from 'src/common/constants/readonly.constants';
 
 /**
  * Marks a safe-method handler (`GET`/`HEAD`/`OPTIONS`) that nevertheless
@@ -16,9 +16,9 @@ import {
  * `SetMetadata` key drives the runtime guard, the `x-demo-readonly`
  * extension drives the spec injection, and the two can never drift.
  */
-export function DemoReadOnlyRefused() {
+export function ReadOnlyRefused() {
   return applyDecorators(
-    SetMetadata(DEMO_READONLY_MARK, 'refused'),
-    ApiExtension(DEMO_READONLY_SPEC_EXTENSION, 'refused'),
+    SetMetadata(READONLY_MARK, 'refused'),
+    ApiExtension(READONLY_SPEC_EXTENSION, 'refused'),
   );
 }

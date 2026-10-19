@@ -7,7 +7,7 @@ import { join } from 'path';
 import request from 'supertest';
 import { Repository } from 'typeorm';
 
-import { DEMO_READONLY_FORBIDDEN_MESSAGE } from '../src/common/constants/demo-readonly.constants';
+import { READONLY_FORBIDDEN_MESSAGE } from '../src/common/constants/readonly.constants';
 import { Batch } from '../src/modules/batches/batches.entity';
 import { PicoUnit } from '../src/modules/pico-units/pico-unit.entity';
 import { Readings } from '../src/modules/readings/readings.entity';
@@ -22,8 +22,8 @@ import { clearRecipes, seedRecipe } from './fixtures/recipes.fixtures';
  *
  * On a `NODE_ENV=demo` boot every request whose method is not safe
  * (GET/HEAD/OPTIONS) is refused with 403 unless the handler carries
- * `@DemoReadOnlyExempt()`; a safe-method handler that writes persisted data
- * carries `@DemoReadOnlyRefused()` and is refused too. On every other boot
+ * `@ReadOnlyExempt()`; a safe-method handler that writes persisted data
+ * carries `@ReadOnlyRefused()` and is refused too. On every other boot
  * the guard is inert.
  *
  * @nestjs/config runs the Joi validation once per module-graph import, so
@@ -59,12 +59,12 @@ const ENV_KEYS = [
   'LOGS_LEVEL',
   'MAX_REQUESTS',
   'MAX_REQUESTS_TIME',
-  'DEMO_VISITOR_MAX_REQUESTS',
-  'DEMO_VISITOR_MAX_REQUESTS_TIME',
-  'DEMO_ABUSE_MAX_REQUESTS',
-  'DEMO_ABUSE_MAX_REQUESTS_TIME',
-  'DEMO_GLOBAL_MAX_REQUESTS',
-  'DEMO_GLOBAL_MAX_REQUESTS_TIME',
+  'VISITOR_MAX_REQUESTS',
+  'VISITOR_MAX_REQUESTS_TIME',
+  'ABUSE_MAX_REQUESTS',
+  'ABUSE_MAX_REQUESTS_TIME',
+  'GLOBAL_MAX_REQUESTS',
+  'GLOBAL_MAX_REQUESTS_TIME',
 ] as const;
 
 const originalEnv: Record<string, string | undefined> = {};
@@ -114,12 +114,12 @@ async function launchDemo(
   // cannot confuse the boot, and pin that the visitor definition (which
   // fills the `default` slot) is what emits the plain X-RateLimit-* headers.
   const demoLimitDefaults: Record<string, string> = {
-    DEMO_VISITOR_MAX_REQUESTS: '10000',
-    DEMO_VISITOR_MAX_REQUESTS_TIME: '60000',
-    DEMO_ABUSE_MAX_REQUESTS: '10000',
-    DEMO_ABUSE_MAX_REQUESTS_TIME: '60000',
-    DEMO_GLOBAL_MAX_REQUESTS: '100000',
-    DEMO_GLOBAL_MAX_REQUESTS_TIME: '60000',
+    VISITOR_MAX_REQUESTS: '10000',
+    VISITOR_MAX_REQUESTS_TIME: '60000',
+    ABUSE_MAX_REQUESTS: '10000',
+    ABUSE_MAX_REQUESTS_TIME: '60000',
+    GLOBAL_MAX_REQUESTS: '100000',
+    GLOBAL_MAX_REQUESTS_TIME: '60000',
   };
   for (const [key, fallback] of Object.entries(demoLimitDefaults)) {
     process.env[key] = extraEnv[key] ?? fallback;
@@ -168,7 +168,7 @@ function expectReadOnlyRefusal(res: request.Response): void {
   expect(res.body).toMatchObject({
     statusCode: 403,
     error: 'Forbidden',
-    message: DEMO_READONLY_FORBIDDEN_MESSAGE,
+    message: READONLY_FORBIDDEN_MESSAGE,
     emitter: 'DemoReadOnlyGuard',
   });
 }
@@ -496,8 +496,8 @@ describe('Demo read-only guard (e2e)', () => {
       // the visitor-pair (the unnamed `default` definition) is the pace
       // budget — the historical MAX_REQUESTS pair is ignored by design.
       launched = await launchDemo({
-        DEMO_VISITOR_MAX_REQUESTS: '2',
-        DEMO_VISITOR_MAX_REQUESTS_TIME: '60000',
+        VISITOR_MAX_REQUESTS: '2',
+        VISITOR_MAX_REQUESTS_TIME: '60000',
       });
     });
 

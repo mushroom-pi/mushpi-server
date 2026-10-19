@@ -1,10 +1,11 @@
 /**
- * Demo rate-limiting identity constants.
+ * Rate-limiter identity constants.
  *
  * Deliberately free of numbers and user-facing text: the limit values and
- * window lengths arrive ONLY from the deployment (`DEMO_*` env vars,
- * required-when-demo in the config schema), and the server's 429 response
- * body carries just the historical explicit-error shape — no wait message.
+ * window lengths arrive ONLY from the deployment (the `VISITOR_*`,
+ * `ABUSE_*` and `GLOBAL_*` limiter pairs, required-when-demo in the config
+ * schema), and the server's 429 response body carries just the historical
+ * explicit-error shape — no wait message.
  * Labels and messages for a slowed-down visitor are the client's job.
  *
  * The throttler names are load-bearing in two places: they key the
@@ -16,10 +17,10 @@
  */
 
 /** Throttler name of the named backstop definition (whole-instance flood). */
-export const DEMO_GLOBAL_THROTTLER_NAME = 'demo-global';
+export const RATE_LIMIT_GLOBAL_THROTTLER_NAME = 'demo-global';
 
 /** Throttler name of the named abuse definition (refused changes only). */
-export const DEMO_ABUSE_THROTTLER_NAME = 'demo-abuse';
+export const RATE_LIMIT_ABUSE_THROTTLER_NAME = 'demo-abuse';
 
 /**
  * The backstop's tracker key: a single constant identity for ALL visitors,
@@ -27,4 +28,4 @@ export const DEMO_ABUSE_THROTTLER_NAME = 'demo-abuse';
  * one. The abuse bucket stays distinct because its key embeds the
  * throttler NAME, and it is tracked by the visitor's own forwarded identity.
  */
-export const DEMO_GLOBAL_TRACKER = 'global';
+export const RATE_LIMIT_GLOBAL_TRACKER = 'global';

@@ -10,11 +10,11 @@ import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
 
 import {
-  DEMO_READONLY_FORBIDDEN_MESSAGE,
-  DEMO_READONLY_MARK,
-  DemoReadOnlyMark,
-} from 'src/common/constants/demo-readonly.constants';
-import { isDemoReadOnlyRefusal } from 'src/common/utils/demo-readonly-refusal.util';
+  READONLY_FORBIDDEN_MESSAGE,
+  READONLY_MARK,
+  ReadOnlyMark,
+} from 'src/common/constants/readonly.constants';
+import { isReadOnlyRefusal } from 'src/common/utils/readonly-refusal.util';
 import { CustomConfigService } from 'src/modules/config/config.service';
 
 /**
@@ -22,8 +22,8 @@ import { CustomConfigService } from 'src/modules/config/config.service';
  *
  * On a demo boot (`NODE_ENV=demo`), every request whose method is not safe
  * (`GET`/`HEAD`/`OPTIONS`) is refused with 403 unless the handler carries
- * `@DemoReadOnlyExempt()`; a safe-method handler that nevertheless writes
- * persisted data carries `@DemoReadOnlyRefused()` and is refused too. On
+ * `@ReadOnlyExempt()`; a safe-method handler that nevertheless writes
+ * persisted data carries `@ReadOnlyRefused()` and is refused too. On
  * every non-demo boot the guard returns true immediately — self-hosted hubs
  * behave exactly as before.
  *
@@ -43,12 +43,12 @@ export class DemoReadOnlyGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     if (!this.config.is('demo')) return true;
 
-    const mark = this.reflector.get<DemoReadOnlyMark | undefined>(
-      DEMO_READONLY_MARK,
+    const mark = this.reflector.get<ReadOnlyMark | undefined>(
+      READONLY_MARK,
       context.getHandler(),
     );
     const req = context.switchToHttp().getRequest<Request>();
-    if (isDemoReadOnlyRefusal(mark, req.method)) throw this.refusal();
+    if (isReadOnlyRefusal(mark, req.method)) throw this.refusal();
     return true;
   }
 
@@ -61,7 +61,7 @@ export class DemoReadOnlyGuard implements CanActivate {
     return new HttpException(
       {
         statusCode: HttpStatus.FORBIDDEN,
-        message: DEMO_READONLY_FORBIDDEN_MESSAGE,
+        message: READONLY_FORBIDDEN_MESSAGE,
         error: 'Forbidden',
         emitter: 'DemoReadOnlyGuard',
       },
