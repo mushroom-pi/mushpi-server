@@ -20,6 +20,10 @@ import {
   generateAndInsertReadings,
   seededReadingCount,
 } from './readings-history.generator';
+import {
+  composeHarvestImageAttribution,
+  harvestImageForSpecies,
+} from './seed-data/batch-images';
 import { SEED_BATCHES } from './seed-data/batches';
 import { SEED_RECIPES } from './seed-data/recipes';
 import { SEED_UNITS } from './seed-data/units';
@@ -243,8 +247,12 @@ export class SeedService implements OnApplicationBootstrap {
           species: recipe.species,
           temperature_target: recipe.temperature_target,
           humidity_target: recipe.humidity_target,
-          notes: 'Seeded for the demonstration catalogue.',
+          notes: this.batchNotes(recipe.species),
           description: entry.description,
+          // External harvest-photo URLs from the committed dataset —
+          // the upload endpoint's files-only rule does not bind this
+          // direct-repository write (asymmetry documented in REFERENCE.md).
+          images: entry.images ?? null,
           pico_unit_id: unit.id,
           recipe_id: recipe.id,
         }),
@@ -282,6 +290,19 @@ export class SeedService implements OnApplicationBootstrap {
         ? null
         : new Date(now + entry.finishOffsetDays * DAY_MS);
     return { start_at: start, finish_at: finish };
+  }
+
+  /**
+   * Batch notes: the seeded base line plus the one-line image attribution
+   * the dataset dictates (`Batch` has no per-image licence column). Never
+   * duplicated: an already-present `Image:` line is left as is.
+   */
+  private batchNotes(species: string | null): string {
+    const base = 'Seeded for the demonstration catalogue.';
+    const img = harvestImageForSpecies(species);
+    if (!img) return base;
+    const line = composeHarvestImageAttribution(img);
+    return base.includes('\nImage: ') ? base : `${base}${line}`;
   }
 
   /**

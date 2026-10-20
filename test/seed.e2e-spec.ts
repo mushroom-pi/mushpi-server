@@ -11,6 +11,9 @@ import { CustomConfigService } from '../src/modules/config/config.service';
 import { PicoUnit } from '../src/modules/pico-units/pico-unit.entity';
 import { Readings } from '../src/modules/readings/readings.entity';
 import { Recipe } from '../src/modules/recipes/recipes.entity';
+import harvestDataset from '../src/modules/seed/provenance/batch-harvest-images.json';
+import { HARVEST_IMAGE_MISSING_SPECIES } from '../src/modules/seed/seed-data/batch-images';
+import { SEED_BATCHES } from '../src/modules/seed/seed-data/batches';
 import {
   SEED_CONTINUITY_TOLERANCE,
   SEED_READINGS_CADENCE_MS,
@@ -255,6 +258,45 @@ describe('Demo seeding (e2e)', () => {
       expect(Math.max(...perSpecies.values())).toBeLessThanOrEqual(2);
     });
 
+    it('attaches a harvest photo to exactly the batches whose species has one', async () => {
+      const all = await launched.batchRepo().find();
+      const expected = SEED_BATCHES.filter((e) => e.images?.length).length;
+      expect(all.filter((b) => b.images && b.images.length > 0)).toHaveLength(
+        expected,
+      );
+      expect(all.filter((b) => b.images === null)).toHaveLength(
+        all.length - expected,
+      );
+    });
+
+    it('leaves the three missing species image-free, with no attribution line', async () => {
+      const all = await launched.batchRepo().find();
+      for (const species of HARVEST_IMAGE_MISSING_SPECIES) {
+        const rows = all.filter((b) => b.species === species);
+        expect(rows.length).toBeGreaterThan(0);
+        for (const r of rows) {
+          expect(r.images).toBeNull();
+          expect(r.notes).not.toContain('Image:');
+        }
+      }
+    });
+
+    it('stores the exact dataset URL, exposes it through images_url, and carries the attribution line', async () => {
+      const all = await launched.batchRepo().find();
+      const entry = harvestDataset.images.find(
+        (i) => i.species === 'Pleurotus ostreatus',
+      );
+      const row = all.find((b) => b.species === 'Pleurotus ostreatus');
+      expect(row.images).toEqual([entry.imageUrl]);
+      expect(row.notes).toContain(
+        `Image: ${entry.title} by ${entry.author}, ${entry.license} — ${entry.pageUrl}`,
+      );
+      // The computed images_url passes external URLs through unchanged.
+      const res = await http(app).get(`/v1/batches/${row.id}`);
+      expect(res.status).toBe(200);
+      expect(res.body.images_url).toEqual([entry.imageUrl]);
+    });
+
     it('backdates 60 s-spaced history for the 5 live units and none for tent-six', async () => {
       const six = await byHandle('tent-six');
       expect(
@@ -390,6 +432,14 @@ describe('Demo seeding (e2e)', () => {
         batches: await first.batchRepo().count(),
         readings: await first.readingsRepo().count(),
       };
+      // A user edit on a seeded row — the second boot must PRESERVE it:
+      // the batch phase no-ops while rows exist and the seeder is
+      // insert-only (never restores its own values over user content).
+      const edited = (await first.batchRepo().find())[0];
+      edited.images = ['user-upload.jpg'];
+      edited.notes = 'user kept notes';
+      await first.batchRepo().save(edited);
+
       await first.close();
 
       second = await launch(file);
@@ -415,6 +465,13 @@ describe('Demo seeding (e2e)', () => {
       expect(unitRows).toHaveLength(2 * 1440);
       const tsSet = new Set(unitRows.map((r) => r.ts.getTime()));
       expect(tsSet.size).toBe(unitRows.length);
+
+      // The edited batch kept the user's image list and notes untouched.
+      const preserved = await second.batchRepo().findOne({
+        where: { id: edited.id },
+      });
+      expect(preserved.images).toEqual(['user-upload.jpg']);
+      expect(preserved.notes).toBe('user kept notes');
       await second.close();
     }, 60_000);
   });

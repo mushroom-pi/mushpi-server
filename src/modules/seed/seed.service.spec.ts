@@ -9,6 +9,9 @@ import { OFFLINE_FAILED_CALLS_THRESHOLD } from 'src/modules/pico-units/pico-unit
 import { Readings } from 'src/modules/readings/readings.entity';
 import { Recipe } from 'src/modules/recipes/recipes.entity';
 
+import harvestDataset from './provenance/batch-harvest-images.json';
+import { HARVEST_IMAGE_MISSING_SPECIES } from './seed-data/batch-images';
+import { SEED_BATCHES } from './seed-data/batches';
 import { SEED_INSERT_CHUNK } from './seed.constant';
 import { SeedService } from './seed.service';
 
@@ -278,6 +281,58 @@ describe('SeedService', () => {
           (!b.finish_at || b.finish_at.getTime() > now),
       ),
     ).toHaveLength(0);
+  });
+
+  it('attaches the harvest image to exactly the batches whose species has one — count computed, never hardcoded', async () => {
+    await service.onApplicationBootstrap();
+    const expected = SEED_BATCHES.filter((e) => e.images?.length).length;
+    expect(
+      batchSaves.filter((b) => b.images && b.images.length > 0),
+    ).toHaveLength(expected);
+    expect(batchSaves.filter((b) => b.images === null)).toHaveLength(
+      batchSaves.length - expected,
+    );
+  });
+
+  it('leaves every batch of a missing species image-free, with no attribution line', async () => {
+    await service.onApplicationBootstrap();
+    for (const species of HARVEST_IMAGE_MISSING_SPECIES) {
+      const rows = batchSaves.filter((b) => b.species === species);
+      expect(rows.length).toBeGreaterThan(0); // the roster covers each species
+      for (const r of rows) {
+        expect(r.images).toBeNull();
+        expect(r.notes).not.toContain('Image:');
+      }
+    }
+  });
+
+  it('stores the exact dataset imageUrl and carries the one-line attribution in notes', async () => {
+    await service.onApplicationBootstrap();
+    const entry = (harvestDataset as any).images.find(
+      (i: any) => i.species === 'Pleurotus ostreatus',
+    );
+    const row = batchSaves.find((b) => b.species === 'Pleurotus ostreatus');
+    expect(row.images).toEqual([entry.imageUrl]);
+    expect(row.notes).toContain(
+      `Image: ${entry.title} by ${entry.author}, ${entry.license} — ${entry.pageUrl}`,
+    );
+    // one line only, appended after the seeded base note
+    expect(
+      row.notes.split('\n').filter((l: string) => l.startsWith('Image:')),
+    ).toHaveLength(1);
+  });
+
+  it('never mutates an existing batch row on a second run (images stay user-owned)', async () => {
+    savedBatches.push({
+      id: 777,
+      images: ['user-upload.jpg'],
+      notes: 'user kept notes',
+      species: 'Pleurotus ostreatus',
+    });
+    await service.onApplicationBootstrap();
+    expect(batchSaves).toHaveLength(0); // phase no-ops while any row exists
+    expect(savedBatches[0].images).toEqual(['user-upload.jpg']);
+    expect(savedBatches[0].notes).toBe('user kept notes');
   });
 
   it('skips the whole batch phase when any batch row exists', async () => {

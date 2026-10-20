@@ -81,4 +81,11 @@ export interface BatchSeedEntry {
   description: string;
   startOffsetDays?: number;
   finishOffsetDays?: number | null;
+  /**
+   * External harvest-photo URLs attached at module load from the species
+   * lookup in `batch-images.ts` (derived from
+   * `../provenance/batch-harvest-images.json` — never retyped here).
+   * Absent for species the dataset lists as `missing` — no substitution.
+   */
+  images?: string[];
 }

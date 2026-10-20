@@ -33,7 +33,7 @@ cron/ — 60s polling sweeps + retention cleanup
 dashboard/ — aggregated summary
 settings/ — timezone + TimezoneInterceptor
 seed/ — insert-only demo seeding (gated by SEED_ENABLED; refused on prod; REFERENCE.md §Seed join contract)
-seed/provenance/ — researched dataset + gate + provenance report
+seed/provenance/ — recipe + harvest-image datasets, gate + provenance report
 spec/generators/ — openapi + bruno generators
 docs/env-vars.generator.ts — → docs/ENVIRONMENT.md
 public/ — /public assets (Swagger favicon)

@@ -67,3 +67,17 @@ charts collapses and `test/seed.e2e-spec.ts` fails loudly rather than
 shipping an empty-looking demo. Adding sourced entries restores headroom;
 loosening the gate to admit unverifiable data does not (that is the gate
 doing its job, as it did for Nameko and Black Poplar).
+
+## Harvest images — the second committed dataset
+
+`batch-harvest-images.json` (committed here alongside `dataset.json`)
+attaches one open-licensed **harvest-context** photo to each seeded batch
+whose species has a verified entry: 11 species, covering 13 of the 17
+batches; the URL and licence are derived through `seed-data/batch-images.ts`
+and never retyped. Three species are recorded `missing` and get **no**
+image — no portrait or other-species substitution — because no allowed-
+licence photo shows them harvested (only packaged retail shots, wild
+in-situ fruitings, or illustrations): *Flammulina filiformis* (enoki),
+*Pholiota adiposa* (chestnut), *Trametes versicolor* (turkey tail).
+Attribution rides each attached batch's notes as
+`Image: <title> by <author>, <license> — <pageUrl>`.

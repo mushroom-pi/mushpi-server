@@ -1,4 +1,6 @@
 import { BatchSeedEntry } from '../seed.types';
+import { harvestImageForSpecies } from './batch-images';
+import { SEED_RECIPES } from './recipes';
 
 /**
  * Demo batch roster — 17 batches (10 finished / 4 in-progress / 3 planned).
@@ -17,7 +19,7 @@ import { BatchSeedEntry } from '../seed.types';
  * executes on the offline `tent-six`. Species stay spread so no single
  * species dominates (max two batches per species).
  */
-export const SEED_BATCHES: BatchSeedEntry[] = [
+const RAW_SEED_BATCHES: BatchSeedEntry[] = [
   // ── finished — two per live unit ────────────────────────────────────────
   {
     unitHandle: 'tent-one',
@@ -148,3 +150,18 @@ export const SEED_BATCHES: BatchSeedEntry[] = [
     description: 'Demo plan — autumn maitake attempt.',
   },
 ];
+
+/** Species of the linked recipe — the harvest-image set keys on species. */
+const speciesOfRecipe = (recipeName: string): string | undefined =>
+  SEED_RECIPES.find((r) => r.name === recipeName)?.species;
+
+/**
+ * Attach the dataset's harvest photo to every batch whose species has a
+ * verified entry; the three `missing` species (Flammulina filiformis,
+ * Pholiota adiposa, Trametes versicolor) keep no image — no portrait or
+ * other-species substitution.
+ */
+export const SEED_BATCHES: BatchSeedEntry[] = RAW_SEED_BATCHES.map((entry) => {
+  const img = harvestImageForSpecies(speciesOfRecipe(entry.recipeName));
+  return img ? { ...entry, images: [img.imageUrl] } : entry;
+});
