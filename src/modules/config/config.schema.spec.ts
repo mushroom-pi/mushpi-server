@@ -639,3 +639,90 @@ describe('config validationSchema — unknown keys stay tolerated', () => {
     expect(error.message).toContain('APP_HOST');
   });
 });
+
+/**
+ * Demo seeding is profile-scoped through the schema, never through a
+ * `DEMO_`-prefixed variable name: `SEED_ENABLED` defaults ON in `demo`
+ * and OFF everywhere else, with an explicit value always winning. The
+ * definedness trap is pinned below — a NON-`.required()` `is` schema would
+ * match an ABSENT `NODE_ENV` and arm seeding on a stock boot (the failure
+ * `docs:env` cannot surface, so this spec is the only net).
+ */
+describe('validationSchema — demo seeding gate', () => {
+  const options = { allowUnknown: true, abortEarly: false };
+  const demoLimits = {
+    VISITOR_MAX_REQUESTS: 100,
+    VISITOR_MAX_REQUESTS_TIME: 60000,
+    ABUSE_MAX_REQUESTS: 10,
+    ABUSE_MAX_REQUESTS_TIME: 60000,
+    GLOBAL_MAX_REQUESTS: 1000,
+    GLOBAL_MAX_REQUESTS_TIME: 60000,
+  };
+  const demo = (env: Record<string, unknown> = {}) =>
+    validationSchema.validate(
+      {
+        NODE_ENV: 'demo',
+        PICO_ANNOUNCE_SECRET: 'e2e-demo-secret',
+        ...demoLimits,
+        ...env,
+      },
+      options,
+    );
+  const testEnv = (env: Record<string, unknown> = {}) =>
+    validationSchema.validate({ NODE_ENV: 'test', ...env }, options);
+
+  it('defaults SEED_ENABLED on in a demo boot without the variable', () => {
+    const { error, value } = demo();
+    expect(error).toBeUndefined();
+    expect(value.SEED_ENABLED).toBe(true);
+  });
+
+  it('lets an explicit false win over the demo default', () => {
+    const { value } = demo({ SEED_ENABLED: 'false' });
+    expect(value.SEED_ENABLED).toBe(false);
+  });
+
+  it('defaults SEED_ENABLED off outside demo and lets explicit true arm it', () => {
+    expect(testEnv().value.SEED_ENABLED).toBe(false);
+    expect(testEnv({ SEED_ENABLED: 'true' }).value.SEED_ENABLED).toBe(true);
+  });
+
+  it('an ABSENT NODE_ENV never selects the demo branch (definedness trap)', () => {
+    // NODE_ENV defaults to `local`; the `is` schema carries `.required()`
+    // so absence cannot match `demo` — seeding must be off on a stock boot.
+    const { error, value } = validationSchema.validate(
+      { CLIENT_URL: 'http://localhost:5173' },
+      options,
+    );
+    expect(error).toBeUndefined();
+    expect(value.NODE_ENV).toBe('local');
+    expect(value.SEED_ENABLED).toBe(false);
+  });
+
+  it('SEED_READINGS_DAYS defaults to 14 and accepts integer overrides', () => {
+    expect(demo().value.SEED_READINGS_DAYS).toBe(14);
+    expect(demo({ SEED_READINGS_DAYS: '3' }).value.SEED_READINGS_DAYS).toBe(3);
+  });
+
+  it('prod ACCEPTS SEED_ENABLED=true at validation — the refusal is the runtime gate, never a boot failure', () => {
+    // The hard rule lives in SeedService (warn + return). The schema must
+    // stay permissive so a stray flag cannot crash a production boot.
+    const { error, value } = validationSchema.validate(
+      {
+        NODE_ENV: 'prod',
+        PICO_ANNOUNCE_SECRET: 'secret-long',
+        CLIENT_DIST_DIR: '/srv/client',
+        SEED_ENABLED: 'true',
+      },
+      options,
+    );
+    expect(error).toBeUndefined();
+    expect(value.SEED_ENABLED).toBe(true);
+  });
+
+  it('rejects malformed seeding values at boot', () => {
+    expect(demo({ SEED_READINGS_DAYS: '0' }).error).toBeDefined();
+    expect(demo({ SEED_READINGS_DAYS: '2.5' }).error).toBeDefined();
+    expect(demo({ SEED_ENABLED: 'maybe' }).error).toBeDefined();
+  });
+});

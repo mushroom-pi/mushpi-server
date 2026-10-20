@@ -1,0 +1,412 @@
+import { RecipeSeedEntry } from '../seed.types';
+
+/**
+ * Demo recipe catalogue — the researched, sourced dataset. Faithful to
+ * `../provenance/dataset.json` (names, binomial species,
+ * integer climate targets, durations, notes, attribution, and each entry's
+ * image hotlink + licence). Entries that fail `recipePassesProvenance` are
+ * STILL kept here with their original verdict/values — the gate excludes
+ * them at seed time and `../provenance/report.md` names them. Never edit the
+ * values to pass the gate.
+ *
+ * The photo is stored as the external Wikimedia URL in `image` (the column
+ * supports external URLs; the CSP allows 'https:') — nothing is bundled or
+ * downloaded.
+ */
+export const SEED_RECIPES: RecipeSeedEntry[] = [
+  {
+    name: 'Grey Oyster on Straw',
+    species: 'Pleurotus ostreatus',
+    temperatureTarget: 20,
+    humidityTarget: 90,
+    durationDays: 14,
+    notes:
+      'Pasteurised wheat straw or cottonseed hulls colonise in 12-14 days at 23-25 C; shift to 18-20 C and 90 % RH with strong fresh air for fruiting. Grey oysters need high FAE or they develop long stems and small caps. Expect 3-4 flushes at roughly 25-50 % biological efficiency, picking clusters as the cap margins flatten.',
+    origin: 'existing' as const,
+    provenance: {
+      sourceTitle:
+        'D.I.Y. FunGuide: Grow Your Own Oyster Mushrooms at Home (UF/IFAS SS662)',
+      sourceUrl: 'https://ask.ifas.ufl.edu/publication/SS662',
+      accessedAt: '2026-10-19',
+      license: 'unknown',
+      verified: true,
+      verificationNote:
+        'Checked the 24 C / 85 % targets against UF/IFAS, which specifies 20 C and 90 % RH for fruiting initiation; 24 C matches the spawn-run range instead, so the fruiting values were corrected.',
+      image: {
+        sourceUrl:
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Gewone_oesterzwam_%28Pleurotus_ostreatus%29_25-12-2020_%28d.j.b.%29_01.jpg/1280px-Gewone_oesterzwam_%28Pleurotus_ostreatus%29_25-12-2020_%28d.j.b.%29_01.jpg',
+        license: 'CC BY-SA 4.0',
+      },
+    },
+  },
+  {
+    name: 'Shiitake on Sawdust Blocks',
+    species: 'Lentinula edodes',
+    temperatureTarget: 18,
+    humidityTarget: 85,
+    durationDays: 10,
+    notes:
+      'Supplemented hardwood sawdust (oak plus 10-20 % bran) colonised at 22-25 C for 3-4 weeks, then browned. Soak or cold-shock the block at 12-15 C for 3-4 hours and fruit at 13-18 C with 85-90 % RH. Pins appear in about a week and harvest follows 7-10 days later; blocks usually give 2-3 flushes.',
+    origin: 'existing' as const,
+    provenance: {
+      sourceTitle:
+        'Shiitake Mushroom Production: Fruiting, Harvesting, and Storage (Ohio State University Extension)',
+      sourceUrl:
+        'https://cfaes.osu.edu/fact-sheet/shiitake-mushroom-production-fruiting-harvesting-and-storage',
+      accessedAt: '2026-10-19',
+      license: 'unknown',
+      verified: true,
+      verificationNote:
+        'Confirmed the 22 C target was a spawn-run temperature; OSU Extension gives 55-65 F (13-18 C) and at least 85 % RH for pinning with a 7-10 day harvest window, so the fruiting target was corrected to 18 C.',
+      image: {
+        sourceUrl:
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Lentinula_edodes_20101113_a.jpg/1280px-Lentinula_edodes_20101113_a.jpg',
+        license: 'Public domain',
+      },
+    },
+  },
+  {
+    name: 'Lion’s Mane on Hardwood',
+    species: 'Hericium erinaceus',
+    temperatureTarget: 20,
+    humidityTarget: 90,
+    durationDays: 12,
+    notes:
+      'Hardwood sawdust or supplemented masters mix; colonise near 22-24 C, then fruit at 15-20 C and 90-95 % RH. The species is very CO2-sensitive: keeping CO2 below roughly 800 ppm holds the fruitbody compact, while stale air produces coral-like branching. Harvest when the spines are still white and 5-10 mm long, before yellowing; expect two flushes.',
+    origin: 'existing' as const,
+    provenance: {
+      sourceTitle: 'Introduction to Fruiting — Redwood Mushroom Supply',
+      sourceUrl:
+        'https://www.redwoodmushroomsupply.com/blogs/news/introduction-to-fruiting',
+      accessedAt: '2026-10-19',
+      license: 'unknown',
+      verified: true,
+      verificationNote:
+        'The 20 C / 90 % targets sit inside the published 13-24 C fruiting range and 85-95 % RH band, and the 7-14 day maturation window supports a 12-day cycle.',
+      image: {
+        sourceUrl:
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Hericium_erinaceus_102127376.jpg/1280px-Hericium_erinaceus_102127376.jpg',
+        license: 'CC0',
+      },
+    },
+  },
+  {
+    name: 'Reishi Antler/Conk',
+    species: 'Ganoderma lucidum',
+    temperatureTarget: 27,
+    humidityTarget: 88,
+    durationDays: 30,
+    notes:
+      'Hardwood sawdust blocks or logs; spawn run near 25-27 C, then primordia at 21-27 C and 90-95 % RH. Antler form is induced by elevated CO2 (above roughly 0.1 %), while a flat conk needs generous fresh air and light. Maturation takes 4-8 weeks; harvest when the white growth margin turns red, and dry thoroughly.',
+    origin: 'existing' as const,
+    provenance: {
+      sourceTitle: 'How To Grow Reishi Mushrooms — Redwood Mushroom Supply',
+      sourceUrl:
+        'https://www.redwoodmushroomsupply.com/blogs/mushroom-cultivation/how-to-grow-reishi-mushrooms',
+      accessedAt: '2026-10-19',
+      license: 'unknown',
+      verified: true,
+      verificationNote:
+        'Verified 21-27 C fruiting, 85-90 % RH for development and 90-95 % at primordia, plus a 3-8 week maturation window that contains the 30-day setting.',
+      image: {
+        sourceUrl:
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Ganoderma_lucidum_98892122.jpg/1280px-Ganoderma_lucidum_98892122.jpg',
+        license: 'CC BY 4.0',
+      },
+    },
+  },
+  {
+    name: 'Enoki in Bottles',
+    species: 'Flammulina filiformis',
+    temperatureTarget: 15,
+    humidityTarget: 90,
+    durationDays: 10,
+    notes:
+      'Commercial enoki is grown in bottles on sawdust and rice bran (4:1), colonised at 18-20 C. Fruiting drops to 10-12 C, then 3-8 C for elongation, with a collar around the neck and deliberate CO2 enrichment to keep stems long and caps small. Ready in about 10 days; only one flush per bottle.',
+    origin: 'existing' as const,
+    provenance: {
+      sourceTitle: 'How to Grow Enoki Mushrooms at Home — Mushroom Grow Lab',
+      sourceUrl: 'https://mushroomgrowlab.com/species/enoki',
+      accessedAt: '2026-10-19',
+      license: 'unknown',
+      verified: true,
+      verificationNote:
+        'Cross-checked 10-18 C fruiting, 85-95 % RH and a 7-14 day harvest window against the Penn State spawn-lab protocol, which drops bottles to 10-12 C then 3-8 C.',
+      image: {
+        sourceUrl:
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/Flammulina_filiformis_254199892.jpg/1280px-Flammulina_filiformis_254199892.jpg',
+        license: 'CC BY 4.0',
+      },
+    },
+  },
+  {
+    name: 'King Trumpet on Masters Mix',
+    species: 'Pleurotus eryngii',
+    temperatureTarget: 18,
+    humidityTarget: 85,
+    durationDays: 14,
+    notes:
+      'Supplemented hardwood sawdust or masters mix in bottles or bags; colonise at 20-23 C, then cold-shock at 10 C and fruit at 13-18 C. Humidity around 85-90 % is enough — free water on stems invites bacterial blotch. Scratch the surface for even pins; harvest when caps are still slightly convex. Usually one good flush.',
+    origin: 'existing' as const,
+    provenance: {
+      sourceTitle: 'Mushroom Production — Irish Gourmet Mushrooms',
+      sourceUrl: 'https://www.irishgourmetmushrooms.ie/mushroom-production',
+      accessedAt: '2026-10-19',
+      license: 'unknown',
+      verified: true,
+      verificationNote:
+        'Confirmed 10-18 C fruiting, 90-95 % RH and a 10-15 day fruiting period; the stored 18 C / 85 % / 14 day values are within those bands.',
+      image: {
+        sourceUrl:
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Pleurotus_eryngii_%281%29.jpg/1280px-Pleurotus_eryngii_%281%29.jpg',
+        license: 'CC0',
+      },
+    },
+  },
+  {
+    name: 'Pioppino on Supplemented Sawdust',
+    species: 'Agrocybe aegerita',
+    temperatureTarget: 18,
+    humidityTarget: 90,
+    durationDays: 12,
+    notes:
+      'Supplemented hardwood sawdust with a casing layer once colonised. Fruit at 15-20 C and 85-95 % RH with light; a 3-7 day cool period improves pinning. Caps are best picked while still rounded, before the veil opens and the gills darken. Expect two or three flushes, with the first the heaviest.',
+    origin: 'existing' as const,
+    provenance: {
+      sourceTitle: 'How To Grow Pioppino Mushrooms — Redwood Mushroom Supply',
+      sourceUrl:
+        'https://www.redwoodmushroomsupply.com/blogs/mushroom-cultivation/how-to-grow-pioppino-mushrooms',
+      accessedAt: '2026-10-19',
+      license: 'unknown',
+      verified: true,
+      verificationNote:
+        'The 23 C setting matched colonisation rather than fruiting; sources give 15-20 C and 80-95 % RH with harvest about 7-10 days after pins, so the target was corrected.',
+      image: {
+        sourceUrl:
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Agrocybe_aegerita.jpg/1280px-Agrocybe_aegerita.jpg',
+        license: 'CC BY-SA 3.0',
+      },
+    },
+  },
+  {
+    name: 'Black Poplar on Straw',
+    species: 'Agrocybe aegerita',
+    temperatureTarget: 18,
+    humidityTarget: 90,
+    durationDays: 18,
+    notes:
+      'Agrocybe cylindracea is a later synonym of A. aegerita, so this is the same species as pioppino grown with a straw-based method. Aggressive on pasteurised straw; a 3-4 hour cold soak after colonisation helps synchronise pins. Fruit at 15-20 C with 85-90 % RH and good light. Harvest young; straw crops tend to be lighter but faster than sawdust.',
+    origin: 'existing' as const,
+    provenance: {
+      sourceTitle: 'How To Grow Pioppino Mushrooms — Redwood Mushroom Supply',
+      sourceUrl:
+        'https://www.redwoodmushroomsupply.com/blogs/mushroom-cultivation/how-to-grow-pioppino-mushrooms',
+      accessedAt: '2026-10-19',
+      license: 'unknown',
+      verified: false,
+      verificationNote:
+        'Taxonomy and climate were corrected (A. cylindracea is a synonym; fruiting is 15-20 C at 80-90 % RH), but the 18-day straw-cycle duration was not independently sourced, so the entry is not fully verified.',
+      image: {
+        sourceUrl:
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bb/Agrocybe_aegerita_2212.jpg/1280px-Agrocybe_aegerita_2212.jpg',
+        license: 'CC BY-SA 4.0',
+      },
+    },
+  },
+  {
+    name: 'Chestnut on Sawdust',
+    species: 'Pholiota adiposa',
+    temperatureTarget: 18,
+    humidityTarget: 90,
+    durationDays: 14,
+    notes:
+      'Supplemented hardwood sawdust, often with a casing layer, colonised at 18-21 C. Fruiting needs a genuine cool shift to 13-18 C with 90-95 % RH and light for the golden scaly caps. Pins take about a week after the temperature drop and mature in 2-3 weeks. Pick before the veil breaks; expect two or three flushes.',
+    origin: 'existing' as const,
+    provenance: {
+      sourceTitle: 'Chestnut — Pholiota adiposa (Mushroom Mountain)',
+      sourceUrl: 'http://mushroommountain.com/chestnut-fungus-pholiota-adiposa',
+      accessedAt: '2026-10-19',
+      license: 'unknown',
+      verified: true,
+      verificationNote:
+        'Mushroom Mountain gives 50-70 F (10-21 C) and 2-3 weeks from primordia to maturity; the 21 C / 9-day setting was at the warm edge and too short, so it was corrected to 18 C / 14 days.',
+      image: {
+        sourceUrl:
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/Pholiota_adiposa_59767938.jpg/1280px-Pholiota_adiposa_59767938.jpg',
+        license: 'CC0',
+      },
+    },
+  },
+  {
+    name: 'Pink Oyster on Pasteurized Straw',
+    species: 'Pleurotus djamor',
+    temperatureTarget: 28,
+    humidityTarget: 90,
+    durationDays: 10,
+    notes:
+      'Pasteurised straw, cardboard or coffee grounds; extremely fast, colonising in 7-12 days at 25-30 C. Fruiting needs 24-30 C and 85-95 % RH — below about 20 C it stalls, and colour fades with age or low light. Harvest young for best colour; 2-3 flushes in as little as three weeks.',
+    origin: 'existing' as const,
+    provenance: {
+      sourceTitle: 'Pink Oyster — Pleurotus djamor (Mushroom Mountain)',
+      sourceUrl:
+        'https://mushroommountain.com/pink-oyster-pleurotus-djamor-main',
+      accessedAt: '2026-10-19',
+      license: 'unknown',
+      verified: true,
+      verificationNote:
+        'Confirmed a 24-35 C fruiting range and 7-10 day fruiting at the warm end; independent culture work also puts the optimum near 28 C, matching the stored target.',
+      image: {
+        sourceUrl:
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Pleurotus_djamor_crop.jpg/1280px-Pleurotus_djamor_crop.jpg',
+        license: 'CC BY-SA 3.0',
+      },
+    },
+  },
+  {
+    name: 'Maitake on Hardwood Blocks',
+    species: 'Grifola frondosa',
+    temperatureTarget: 16,
+    humidityTarget: 90,
+    durationDays: 14,
+    notes:
+      'Hardwood sawdust with bran (oak, wheat bran, millet, rye) colonises slowly, 4-8 weeks at 21-24 C. A drop to 15-20 C plus 85-90 % RH and 500-1000 lux triggers the frond clusters. Primordia take 10-14 days and the head matures over 2-3 weeks; one to two flushes, and the whole cycle runs about 12 weeks.',
+    origin: 'new' as const,
+    provenance: {
+      sourceTitle: 'Grifola frondosa cultivation guide — Unicorn Bags',
+      sourceUrl: 'https://unicornbags.com/cultivation/grifola-frondosa',
+      accessedAt: '2026-10-19',
+      license: 'unknown',
+      verified: true,
+      verificationNote:
+        'Confirmed a 15-20 C optimum for fruitbody development at 85-90 % RH, with anlage formation at 10-16 C; the 10-14 day primordia-to-harvest window matches the supplier charts.',
+      image: {
+        sourceUrl:
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Grifola_frondosa_2014_G3.jpg/1280px-Grifola_frondosa_2014_G3.jpg',
+        license: 'Public domain',
+      },
+    },
+  },
+  {
+    name: 'Buna-shimeji in Bottles',
+    species: 'Hypsizygus tessellatus',
+    temperatureTarget: 15,
+    humidityTarget: 90,
+    durationDays: 10,
+    notes:
+      'Supplemented hardwood sawdust in bottles or bags; colonisation is slow, roughly 3-4 weeks at 20-24 C. Fruit at 13-18 C with 85-90 % RH and low light, keeping CO2 modest so stems stay short and caps firm. Clusters are ready 5-10 days after pinning; typically one or two flushes per block.',
+    origin: 'new' as const,
+    provenance: {
+      sourceTitle: 'The Complete Guide to Shimeji Mushrooms — GroCycle',
+      sourceUrl: 'https://grocycle.com/shimeji-mushrooms',
+      accessedAt: '2026-10-19',
+      license: 'unknown',
+      verified: true,
+      verificationNote:
+        'Checked 13-18 C fruiting and 85-90 % RH, and a 5-10 day cluster maturation window, against GroCycle and the Penn State Hypsizygus protocol.',
+      image: {
+        sourceUrl:
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Hypsizygus_tessellatus-389421.jpg/1280px-Hypsizygus_tessellatus-389421.jpg',
+        license: 'CC0',
+      },
+    },
+  },
+  {
+    name: 'Nameko in Bottles',
+    species: 'Pholiota nameko',
+    temperatureTarget: 14,
+    humidityTarget: 95,
+    durationDays: 12,
+    notes:
+      'Broadleaf sawdust with 10 % rice bran (15 % for conifer sawdust); colonise at 20-22 C. Unlike shiitake, do not cold-shock — step the temperature down gradually to 10-16 C and raise RH to 90-95 %. The gelatinous cap layer forms only in high humidity. Pins in 7-14 days and harvest 10-14 days later.',
+    origin: 'new' as const,
+    provenance: {
+      sourceTitle: 'Pholiota nameko cultivation guide — Unicorn Bags',
+      sourceUrl: 'https://unicornbags.com/cultivation/pholiota-nameko',
+      accessedAt: '2026-10-19',
+      license: 'unknown',
+      verified: true,
+      verificationNote:
+        'Confirmed fruitbody growth from 5-20 C and about 90 % RH, with 10-14 days from initiation to harvest matching the stored 12-day window.',
+      image: {
+        sourceUrl:
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/Pholiota_microspora_1.JPG/1280px-Pholiota_microspora_1.JPG',
+        license: 'CC0',
+      },
+    },
+  },
+  {
+    name: 'Paddy Straw Mushroom in Beds',
+    species: 'Volvariella volvacea',
+    temperatureTarget: 32,
+    humidityTarget: 90,
+    durationDays: 12,
+    notes:
+      'A true tropical species: colonise and fruit at 30-35 C with 85-95 % RH; below 25 C growth stalls and below 20 C the mycelium can die. Grow on pasteurised paddy straw or cotton waste in beds or baskets, with only moderate fresh air. First harvest comes 9-14 days after spawning; shelf life is very short, so chill immediately.',
+    origin: 'new' as const,
+    provenance: {
+      sourceTitle: 'How to Grow Paddy Straw Mushroom (Volvariella volvacea)',
+      sourceUrl: 'https://mushroomalmanac.com/mushrooms/paddy-straw',
+      accessedAt: '2026-10-19',
+      license: 'unknown',
+      verified: true,
+      verificationNote:
+        'Confirmed the 30-35 C optimum, 85-95 % RH and 10-14 days from spawning to first harvest; the Penn State specialty-mushroom page corroborates the tropical temperature requirement.',
+      image: {
+        sourceUrl:
+          'https://upload.wikimedia.org/wikipedia/commons/f/fc/StrawMushroom.jpg',
+        license: 'Public domain',
+      },
+    },
+  },
+  {
+    name: 'Button Mushroom on Compost',
+    species: 'Agaricus bisporus',
+    temperatureTarget: 17,
+    humidityTarget: 88,
+    durationDays: 21,
+    notes:
+      'Grown on phase-II composted straw and manure, spawned at 24-25 C, then cased with peat and limestone. Airing down to 16-18 C and 85-90 % RH with CO2 under about 1000 ppm triggers pins. Harvest 15-21 days after casing, over three flushes roughly a week apart — do not let free water sit on the casing.',
+    origin: 'new' as const,
+    provenance: {
+      sourceTitle:
+        'Basic Procedures for Agaricus Mushroom Growing (Penn State Extension)',
+      sourceUrl:
+        'https://extension.psu.edu/basic-procedures-for-agaricus-mushroom-growing',
+      accessedAt: '2026-10-19',
+      license: 'unknown',
+      verified: true,
+      verificationNote:
+        'Confirmed harvest begins 15-21 days after casing and that cropping runs at roughly 16-18 C with 85-90 % RH, supporting the stored 17 C / 88 % / 21 day values.',
+      image: {
+        sourceUrl:
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/2016-01_Agaricus_bisporus_01.jpg/1280px-2016-01_Agaricus_bisporus_01.jpg',
+        license: 'CC BY-SA 4.0',
+      },
+    },
+  },
+  {
+    name: 'Turkey Tail on Sawdust Blocks',
+    species: 'Trametes versicolor',
+    temperatureTarget: 20,
+    humidityTarget: 90,
+    durationDays: 21,
+    notes:
+      'Hardwood sawdust supplemented with bran is the reliable substrate; colonise at 24-25 C for 2-4 weeks. Fruiting needs 15-21 C, 85-95 % RH, bright indirect light and strong fresh air — low oxygen produces lumpy white antlers instead of brackets. Expect a 2-4 week fruiting period; harvest the fan-shaped brackets and dry them for tea or extract.',
+    origin: 'new' as const,
+    provenance: {
+      sourceTitle:
+        'How to Grow Turkey Tail Mushrooms: A Canadian Cultivation Guide — Nature Lion',
+      sourceUrl: 'https://naturelion.ca/blog/how-to-grow-turkey-tail-mushrooms',
+      accessedAt: '2026-10-19',
+      license: 'unknown',
+      verified: true,
+      verificationNote:
+        'Confirmed 15-21 C fruiting at 85-95 % RH with a roughly two-week pin-to-bracket window; the 2-4 week total fruiting period supports the 21-day setting.',
+      image: {
+        sourceUrl:
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Trametes_versicolor_2025_G1.jpg/1280px-Trametes_versicolor_2025_G1.jpg',
+        license: 'CC BY 4.0',
+      },
+    },
+  },
+];

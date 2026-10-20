@@ -32,6 +32,8 @@ control/ — setpoints/outputs/setup/loop proxies (+poll)
 cron/ — 60s polling sweeps + retention cleanup
 dashboard/ — aggregated summary
 settings/ — timezone + TimezoneInterceptor
+seed/ — insert-only demo seeding (gated by SEED_ENABLED; refused on prod; REFERENCE.md §Seed join contract)
+seed/provenance/ — researched dataset + gate + provenance report
 spec/generators/ — openapi + bruno generators
 docs/env-vars.generator.ts — → docs/ENVIRONMENT.md
 public/ — /public assets (Swagger favicon)
@@ -149,6 +151,7 @@ Env reference is **generated**, never hand-maintained: `yarn docs:env` → `docs
 | `upload` | UPLOAD_DIR → imageDir |
 | `pico` | PICO_ANNOUNCE_SECRET |
 | `readings` | retention only |
+| `seed` | SEED_ENABLED (schema default: on in `demo`, off elsewhere) + SEED_READINGS_DAYS |
 | `client` | clientUrl (CORS) + distDir (SPA) |
 
 ## Top Conventions

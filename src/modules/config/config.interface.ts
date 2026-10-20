@@ -30,6 +30,8 @@ export interface EnvironmentVariables {
   PICO_ANNOUNCE_SECRET?: string;
   READINGS_RETENTION_MONTHS: number;
   CLIENT_DIST_DIR?: string;
+  SEED_ENABLED: boolean;
+  SEED_READINGS_DAYS: number;
 }
 
 export interface ServerConfig {
@@ -110,6 +112,16 @@ export interface PicoConfig {
 
 export interface ReadingsConfig {
   retentionMonths: number;
+}
+
+/**
+ * Server-owned demo seeding — catalogue (recipes + batches), the unit
+ * roster, and backdated readings history. The env keys name the capability;
+ * the profile scope (default-on only in `demo`) lives in the Joi rule.
+ */
+export interface SeedConfig {
+  enabled: EnvironmentVariables['SEED_ENABLED'];
+  readingsDays: EnvironmentVariables['SEED_READINGS_DAYS'];
 }
 
 export interface ClientConfig {

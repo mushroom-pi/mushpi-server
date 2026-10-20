@@ -39,6 +39,7 @@ const ENV_KEYS = [
   'UPLOAD_DIR',
   'LOGS_PATH',
   'LOGS_LEVEL',
+  'SEED_ENABLED',
   'MAX_REQUESTS',
   'MAX_REQUESTS_TIME',
   'VISITOR_MAX_REQUESTS',
@@ -61,6 +62,10 @@ function applyDemoEnv(): void {
   // off the real `data/logs` destination and quiet in the test report.
   process.env.LOGS_PATH = DEMO_LOGS_PATH;
   process.env.LOGS_LEVEL = 'silent';
+  // Demo seeding defaults ON in the demo profile; this suite's subject is
+  // `/health` host-details redaction, not the catalogue — force seeding off
+  // so boots stay lean. Coverage: `seed.e2e-spec.ts`.
+  process.env.SEED_ENABLED = 'false';
   process.env.VISITOR_MAX_REQUESTS = '10000';
   process.env.VISITOR_MAX_REQUESTS_TIME = '60000';
   process.env.ABUSE_MAX_REQUESTS = '10000';

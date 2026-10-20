@@ -3,6 +3,7 @@
  */
 import * as Joi from 'joi';
 
+import { SEED_READINGS_DEFAULT_DAYS } from '../seed/seed.constant';
 import { logLevels, nodeEnvironments } from './config.constants';
 import { Services } from './config.types';
 
@@ -157,6 +158,29 @@ const demoLimit = (description: string): Joi.NumberSchema =>
     })
     .description(description);
 
+/**
+ * Server-owned demo seeding gate. The env key names the capability; the
+ * profile scope lives here: `NODE_ENV=demo` defaults the flag ON, every
+ * other profile defaults it OFF, and an explicit value always wins —
+ * EXCEPT `prod`, where the value is accepted at validation (refusing it
+ * would block the boot, which the rule forbids) but hard-refused at
+ * runtime by `SeedService`, which warns and touches nothing. The
+ * `is` schema carries `.required()` deliberately — the definedness trap: a
+ * non-required `is` schema also matches an ABSENT `NODE_ENV`, which would
+ * arm seeding on a stock boot (see the note on `password()`).
+ */
+const seedEnabled = Joi.boolean()
+  .truthy('true')
+  .falsy('false')
+  .when('NODE_ENV', {
+    is: Joi.string().valid('demo').required(),
+    then: Joi.boolean().truthy('true').falsy('false').default(true),
+    otherwise: Joi.boolean().truthy('true').falsy('false').default(false),
+  })
+  .description(
+    'Server-owned demo seeding: catalogue (recipes + batches), the simulated unit roster, and backdated readings history. Defaults to `true` when `NODE_ENV` is `demo` and to `false` on every other boot; set explicitly to force either state — EXCEPT on `NODE_ENV=prod`, where seeding is always refused at runtime (the flag is ignored with a warning, the database is untouched, boot never fails). Seeding is insert-only and idempotent — existing rows are never rewritten or removed.',
+  );
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const generateServiceSchema = (serviceName: Services) => {
   const handle = serviceName.replaceAll('-', '_').toUpperCase();
@@ -237,6 +261,14 @@ export const validationSchema = Joi.object({
   UPLOAD_DIR: Joi.string().default('data'),
   PICO_ANNOUNCE_SECRET: picoAnnounceSecret,
   READINGS_RETENTION_MONTHS: Joi.number().integer().min(1).default(6),
+  SEED_ENABLED: seedEnabled,
+  SEED_READINGS_DAYS: Joi.number()
+    .integer()
+    .min(1)
+    .default(SEED_READINGS_DEFAULT_DAYS)
+    .description(
+      'Days of backdated 60-second-spaced readings the demo seeder generates per live unit. Applies only when `SEED_ENABLED` is on; a non-positive or fractional value fails at boot.',
+    ),
   VISITOR_MAX_REQUESTS: demoLimit(VISITOR_MAX_REQUESTS_DESCRIPTION),
   VISITOR_MAX_REQUESTS_TIME: demoLimit(VISITOR_MAX_REQUESTS_TIME_DESCRIPTION),
   ABUSE_MAX_REQUESTS: demoLimit(ABUSE_MAX_REQUESTS_DESCRIPTION),

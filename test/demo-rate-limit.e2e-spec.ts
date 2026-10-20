@@ -61,6 +61,7 @@ const ENV_KEYS = [
   'UPLOAD_DIR',
   'LOGS_PATH',
   'LOGS_LEVEL',
+  'SEED_ENABLED',
   'MAX_REQUESTS',
   'MAX_REQUESTS_TIME',
   'VISITOR_MAX_REQUESTS',
@@ -104,6 +105,10 @@ async function launchDemo(
   process.env.UPLOAD_DIR = join(OPENCODE_TMP, 'uploads');
   process.env.LOGS_PATH = LOGS_PATH;
   process.env.LOGS_LEVEL = 'silent';
+  // Demo seeding defaults ON in the demo profile; this suite's subject is
+  // the limiter wiring, not the catalogue — force seeding off so the
+  // several demo boots stay lean. Coverage: `seed.e2e-spec.ts`.
+  process.env.SEED_ENABLED = 'false';
   // The historical opt-in pair is deliberately IGNORED inside demo (the
   // visitor definition fills the `default` slot) — a stray shell value must
   // not confuse the boot.

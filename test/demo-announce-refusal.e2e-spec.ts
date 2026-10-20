@@ -38,6 +38,7 @@ const ENV_KEYS = [
   'UPLOAD_DIR',
   'LOGS_PATH',
   'LOGS_LEVEL',
+  'SEED_ENABLED',
   'MAX_REQUESTS',
   'MAX_REQUESTS_TIME',
   'VISITOR_MAX_REQUESTS',
@@ -79,6 +80,10 @@ function applyBaseEnv(sqlitePath: string): void {
   process.env.UPLOAD_DIR = join(OPENCODE_TMP, 'uploads');
   process.env.LOGS_PATH = LOGS_PATH;
   process.env.LOGS_LEVEL = 'silent';
+  // Demo seeding defaults ON in the demo profile; this suite's subject is
+  // the announce origin gate — force seeding off (explicitly false equals
+  // the non-demo default on the hub boot). Coverage: `seed.e2e-spec.ts`.
+  process.env.SEED_ENABLED = 'false';
   // The historical opt-in pair is ignored inside demo and unopted for the
   // hub — delete so a stray shell value cannot confuse any boot here.
   delete process.env.MAX_REQUESTS;

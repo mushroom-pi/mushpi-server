@@ -57,6 +57,7 @@ const ENV_KEYS = [
   'UPLOAD_DIR',
   'LOGS_PATH',
   'LOGS_LEVEL',
+  'SEED_ENABLED',
   'MAX_REQUESTS',
   'MAX_REQUESTS_TIME',
   'VISITOR_MAX_REQUESTS',
@@ -106,6 +107,11 @@ async function launchDemo(
   // off the real `data/logs` destination and quiet in the test report.
   process.env.LOGS_PATH = DEMO_LOGS_PATH;
   process.env.LOGS_LEVEL = 'silent';
+  // Demo seeding defaults ON in the demo profile — this suite asserts an
+  // EMPTY catalogue (every refusal test counts rows it expects to be zero),
+  // so the capability is forced off. Full coverage lives in
+  // `seed.e2e-spec.ts`.
+  process.env.SEED_ENABLED = 'false';
   // The three demo throttle pairs are REQUIRED on a demo boot (Joi
   // required-when-demo). Generous defaults keep every refusal case below
   // about the read-only guard, not pacing; only the pace-budget boot

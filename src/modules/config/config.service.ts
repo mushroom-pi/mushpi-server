@@ -12,6 +12,7 @@ import {
   ReadingsConfig,
   SQLiteConfig,
   SecurityConfig,
+  SeedConfig,
   ServerConfig,
   ServiceConfig,
   UploadConfig,
@@ -134,6 +135,13 @@ export class CustomConfigService {
   get readings(): ReadingsConfig {
     return {
       retentionMonths: this.configService.get('READINGS_RETENTION_MONTHS'),
+    };
+  }
+
+  get seed(): SeedConfig {
+    return {
+      enabled: this.configService.get('SEED_ENABLED'),
+      readingsDays: this.configService.get('SEED_READINGS_DAYS'),
     };
   }
 

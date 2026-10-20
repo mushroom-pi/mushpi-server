@@ -31,6 +31,7 @@ import { PicoUnitsModule } from './pico-units/pico-units.module';
 import { PinoLoggerModule } from './pino-logger.module';
 import { ReadingsModule } from './readings/readings.module';
 import { RecipesModule } from './recipes/recipes.module';
+import { SeedModule } from './seed/seed.module';
 import { SettingsModule } from './settings/settings.module';
 import { SQLiteModule } from './sqlite/sqlite.module';
 import { SwaggerModule } from './swagger/swagger.module';
@@ -143,6 +144,9 @@ import { SwaggerModule } from './swagger/swagger.module';
     RecipesModule,
     DashboardModule,
     SettingsModule,
+    // Server-owned demo seeding — inert unless SEED_ENABLED (on by default
+    // in demo only); runs at bootstrap and never touches the request path.
+    SeedModule,
   ],
   providers: [
     {

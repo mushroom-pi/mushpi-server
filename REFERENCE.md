@@ -13,6 +13,7 @@ Long-tail gotchas and detailed conventions. **Load only when the task touches th
 - [Spec Tooling Internals](#spec-tooling-internals) — generated artifacts table, Husky git hooks, runtime-vs-export title, generation from compiled output (swagger CLI plugin `_OPENAPI_METADATA_FACTORY`), served-vs-committed reconciliation checks, ts-node script conventions, generator-version churn of committed `spec/`
 - [Release Versioning](#release-versioning) — package-version bump policy, post-bump spec regeneration, `mushpi-ops/release.json`/tags prohibition (moved from core)
 - [Cron Polling](#cron-polling) — sweep overlap/parallelism, readings ingestion funnel & quality gates, MAC/version/ip refresh, time-windowed state changes, proxy-vs-batch poll visibility split
+- [Seed join contract](#seed-join-contract) — demo seeding ⇄ live-poll seam: prod refusal, frozen `seedEndTs`, per-unit watermark guard (never a row-count guard), seeded⇔live boundary, continuity tail-blend, direct-repo batch writes, class-token × `jest.resetModules` e2e gotcha
 - [Pass-Through & Response Shape](#pass-through--response-shape) — non-persisted response fields, `@ApiProperty` coverage rule, validation-pipe safety, `forbidNonWhitelisted`, GPIO pin validation
 - [Timezone](#timezone) — UTC storage, Settings module, TimezoneInterceptor
 - [Logging](#logging) — error-vs-warn policy, `formatPollError`, pino-http duplicate suppression
@@ -303,6 +304,19 @@ Control-proxy endpoints (`setpoints`, `outputs`, `setup`, `control`) use `callPo
 ### PUT-on-server → POST-to-Pico verb mismatch
 
 Every control proxy endpoint (`setpoints`, `outputs`, `setup`, `control`, `reboot`) uses `postWithFallback` (axios POST) to communicate with the Pico, regardless of the server's HTTP method. The server endpoint may be `PUT /v1/pico-units/:id/control/setup`, but the underlying call to the Pico is always `POST /setup`. Do **not** assume the server's HTTP method carries through to the Pico — `control.service.ts` calls `postWithFallback` unconditionally.
+
+## Seed join contract
+
+`SeedModule` bootstraps the server-owned demo catalogue, unit roster and backdated readings (gated by `SEED_ENABLED`; per-entry verdicts in `seed/provenance/report.md`, researched dataset at `seed/provenance/dataset.json`, gate at `seed/provenance/provenance.check.ts`). The seeded series must join seamlessly with live cron polls into one continuous chart — this contract locks that seam.
+
+- **Production refusal (hard rule)**: `NODE_ENV=prod` refuses seeding regardless of `SEED_ENABLED` — the seeder logs a warning naming the ignored flag and returns without touching the database. Single-sourced in `SeedService.onApplicationBootstrap` (the `config.isProd` call-site branch), not duplicated in the getter or schema. The flag keeps its profile defaults (off generally, on in `demo`); local development seeds with an explicit `SEED_ENABLED=true`.
+- **Readings seeding is boot-time only — no CLI**: the developer-facing backdated-readings knob stays with `mushpi-mock` for local development; the server seeds readings only through `SeedService` on the demo profile.
+- **Frozen boundary**: `seedEndTs` = the last whole minute at least 60 s before `now`, computed ONCE at seed start and never advanced. Seeded ⇔ `ts <= seedEndTs`; live ⇔ `ts > seedEndTs`. No column marks the split — the timestamp boundary is the whole contract.
+- **Watermark guard, never a row-count guard**: a unit's readings phase is skipped iff `COUNT(*) WHERE pico_unit_id = :id AND ts <= :seedEndTs > 0` (bind via the `LessThanOrEqual` find operator — safe per [Raw SQL](#raw-sql)). Skipping on a *total* row count would truncate the series and block the live continuation once any poll has landed.
+- **Regenerate without duplication**: a re-run inserts only the seeded range and no-ops while it is populated; live rows above the boundary are never touched or copied. The seeder is insert-only end to end (it never updates or deletes a row's user-visible content) and is order-independent against the cron startup sweep — the frozen `seedEndTs` is the belt-and-braces against a poll landing mid-seed.
+- **Continuity tail-blend**: `readings-history.generator.ts` walks a mean-reverting 60 s grid and linearly blends its final ~20 rows onto the unit's *active-batch* setpoints (queried from the DB, so it holds even when the batch phase skipped), guaranteeing the series terminates inside `SEED_CONTINUITY_TOLERANCE` (±1 °C / ±5 %RH — the worst-case step one real poll interval can traverse). The first live poll therefore continues inside the hysteresis band, landing ~exactly one interval after the boundary.
+- **Batches are written directly through the repository**, never `BatchesService.create` — that would fire a synchronous `BATCH_EVENTS.STARTED` at unreachable units and trip the active-batch conflict check. The batch phase no-ops while the batch table is non-empty.
+- **E2E gotcha — class tokens do not survive `jest.resetModules()`**: demo-seeding specs boot the app after a module-registry reset (the `demo-readonly` pattern); `app.get(CustomConfigService)` against the *statically imported* class fails with "Nest could not find … element" because the app registered the same class from the NEW generation. Resolve class-token providers by dynamically importing them inside the launch helper alongside `./test-setup` (see `seedService`/`config` in `test/seed.e2e-spec.ts`); name-based `getRepositoryToken` strings are generation-safe.
 
 ## Pass-Through & Response Shape
 
