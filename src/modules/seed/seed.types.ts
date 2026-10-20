@@ -4,6 +4,8 @@
  * database; the roster entries describe how a simulated demo deployment
  * should look on first boot.
  */
+import type { BatchStatus } from 'src/modules/batches/batches.type';
+import type { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
 
 /**
  * Attribution record for a cultivated source. `verified` is a human
@@ -36,36 +38,44 @@ export interface RecipeSeedEntry {
 }
 
 /**
- * A simulated unit in the demo roster. `offline` marks the deliberately
- * unreachable unit (renders via the existing status derivation; never
- * gets readings); `drift` selects the wandering walk profile for the
- * readings history.
+ * A simulated unit in the demo roster. Entity-backed fields derive from
+ * `PicoUnit` (type-only, erased at compile time) so an entity rename or
+ * type change breaks the seed build instead of drifting silently.
+ * `handle`, `name` and `description` are required at seed-authoring time
+ * even where the entity allows them to be absent. `offline` marks the
+ * deliberately unreachable unit (renders via the existing status
+ * derivation; never gets readings); `drift` selects the wandering walk
+ * profile for the readings history.
  */
-export interface UnitSeedEntry {
-  handle: string;
-  name: string;
-  description: string;
-  face_color?: string | null;
-  mac?: string;
-  ip?: string;
-  micropython_version?: string;
-  /** Strict SemVer (`MAJOR.MINOR.PATCH`) — the announce DTO bound. */
-  firmware_version?: string;
-  api_version?: number;
-  board?: string;
-  board_total_mem_byte?: number;
-  board_total_fs_byte?: number;
-  board_cpu_freq_mhz?: number;
-  offline?: boolean;
-  drift?: boolean;
-  /**
-   * Setpoints for the readings walk when the unit has no in-progress
-   * batch at seed time; otherwise the active batch's targets are used.
-   */
-  fallbackSetpoint?: { temperature: number; humidity: number };
-}
+export type UnitSeedEntry = Required<
+  Pick<PicoUnit, 'handle' | 'name' | 'description'>
+> &
+  // Entity-reported metadata. `firmware_version` is strict SemVer
+  // (`MAJOR.MINOR.PATCH`) — the announce DTO bound.
+  Pick<
+    PicoUnit,
+    | 'face_color'
+    | 'mac'
+    | 'ip'
+    | 'micropython_version'
+    | 'firmware_version'
+    | 'api_version'
+    | 'board'
+    | 'board_total_mem_byte'
+    | 'board_total_fs_byte'
+    | 'board_cpu_freq_mhz'
+  > & {
+    offline?: boolean;
+    drift?: boolean;
+    /**
+     * Setpoints for the readings walk when the unit has no in-progress
+     * batch at seed time; otherwise the active batch's targets are used.
+     */
+    fallbackSetpoint?: { temperature: number; humidity: number };
+  };
 
-export type BatchSeedStatus = 'finished' | 'in-progress' | 'planned';
+/** Alias of the canonical `BatchStatus` — one source of truth for the status vocabulary. */
+export type BatchSeedStatus = BatchStatus;
 
 /**
  * Batch offsets are relative to seed time so statuses stay correct after
