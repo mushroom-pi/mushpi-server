@@ -70,17 +70,40 @@ export type BatchSeedStatus = 'finished' | 'in-progress' | 'planned';
 /**
  * Batch offsets are relative to seed time so statuses stay correct after
  * any reset: `finished` supplies `finishOffsetDays` (negative; start is
- * derived as finish − recipe duration), `in-progress` supplies both
+ * derived as finish − duration), `in-progress` supplies both
  * (start negative, finish positive or null = open-ended), `planned`
  * supplies `startOffsetDays` (positive; finish is derived).
+ *
+ * Entries carrying a `recipeName` snapshot the species and both climate
+ * targets from the linked recipe and derive window duration from its
+ * `duration_days`. Recipe-less (hand-authored) entries omit it — then
+ * `species`, `temperatureTarget` and `humidityTarget` MUST be supplied by
+ * the entry itself (integer targets within the shared climate bounds),
+ * and `durationDays` is required whenever a window edge is derived from
+ * duration (finished / planned; both offsets are explicit for in-progress).
+ * Recipe-less entries persist with `recipe_id = null` — the settled rule is
+ * that no hand-authored entry may masquerade as recipe-derived provenance.
  */
 export interface BatchSeedEntry {
   unitHandle: string;
-  recipeName: string;
+  /** Absent on hand-authored entries — the batch then has no linked recipe. */
+  recipeName?: string;
   status: BatchSeedStatus;
+  /**
+   * Rendered by the client as the batch title (`Batch` has no `title`
+   * column) — distinctive human wording per entry, never a shared prefix.
+   */
   description: string;
   startOffsetDays?: number;
   finishOffsetDays?: number | null;
+  /** Species for recipe-less entries — binomial, already in the catalogue. */
+  species?: string;
+  /** Integer °C target within [TEMPERATURE_MIN, TEMPERATURE_MAX] (recipe-less). */
+  temperatureTarget?: number;
+  /** Integer % RH target within [HUMIDITY_MIN, HUMIDITY_MAX] (recipe-less). */
+  humidityTarget?: number;
+  /** Window length in days for recipe-less entries (no recipe `duration_days`). */
+  durationDays?: number;
   /**
    * External harvest-photo URLs attached at module load from the species
    * lookup in `batch-images.ts` (derived from

@@ -76,6 +76,53 @@ export function findActiveBatchForUnit(
   });
 }
 
+/**
+ * The unit's earliest STARTED batch at or below the frozen boundary
+ * (finished + in-progress). Planned batches start in the future and never
+ * contribute — the readings phase must not fabricate future timestamps or
+ * extend history for a run that has not begun.
+ */
+export function findEarliestStartedBatchStart(
+  repo: Repository<Batch>,
+  picoUnitId: number,
+  seedEndTs: Date,
+): Promise<Date | null> {
+  return repo
+    .findOne({
+      where: { pico_unit_id: picoUnitId, start_at: LessThanOrEqual(seedEndTs) },
+      order: { start_at: 'ASC' },
+      select: ['start_at'],
+    })
+    .then((batch) => batch?.start_at ?? null);
+}
+
+/**
+ * First timestamp of a unit's seeded grid. The earlier of two bounds wins:
+ * - configured history: `rowCount` cadence steps back from the boundary
+ *   (`SEED_READINGS_DAYS`);
+ * - batch coverage: one cadence step before the unit's earliest started
+ *   batch, so every started batch's `[start_at, finish_at]` window holds at
+ *   least one grid reading (windows span days; the grid steps by minutes).
+ * The coverage bound is floored onto the boundary-anchored 60 s grid so the
+ * series still terminates exactly at the frozen `seedEndTs`.
+ */
+export function computeSeededStartTs(
+  seedEndTs: Date,
+  rowCount: number,
+  earliestStartedBatchStart: Date | null,
+): Date {
+  const defaultStartMs =
+    seedEndTs.getTime() - (rowCount - 1) * SEED_READINGS_CADENCE_MS;
+  if (!earliestStartedBatchStart) return new Date(defaultStartMs);
+  const coverageMs =
+    earliestStartedBatchStart.getTime() - SEED_READINGS_CADENCE_MS;
+  if (coverageMs >= defaultStartMs) return new Date(defaultStartMs);
+  const intervals = Math.ceil(
+    (seedEndTs.getTime() - coverageMs) / SEED_READINGS_CADENCE_MS,
+  );
+  return new Date(seedEndTs.getTime() - intervals * SEED_READINGS_CADENCE_MS);
+}
+
 export interface ReadingsWalkRequest {
   picoUnitId: number;
   /** First seeded timestamp. */

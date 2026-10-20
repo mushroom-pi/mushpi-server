@@ -16,7 +16,9 @@ import {
 } from './provenance/provenance.check';
 import {
   computeSeedEndTs,
+  computeSeededStartTs,
   findActiveBatchForUnit,
+  findEarliestStartedBatchStart,
   generateAndInsertReadings,
   seededReadingCount,
 } from './readings-history.generator';
@@ -200,7 +202,12 @@ export class SeedService implements OnApplicationBootstrap {
   /**
    * Directly through the repository — `BatchesService.create` is
    * deliberately bypassed (event fan-out + active-batch conflict). The
-   * whole phase no-ops when any batch row already exists.
+   * whole phase no-ops when any batch row already exists, on both roster
+   * branches: recipe-backed entries snapshot species/targets from the
+   * linked recipe and take the window duration from its `duration_days`;
+   * hand-authored (recipe-less) entries carry their own species and integer
+   * targets, derive the window from their own `durationDays`, and persist
+   * with `recipe_id = null`.
    */
   private async seedBatches(): Promise<void> {
     if ((await this.batchRepo.count()) > 0) {
@@ -226,35 +233,49 @@ export class SeedService implements OnApplicationBootstrap {
     }
 
     for (const entry of SEED_BATCHES) {
-      const recipe = await this.recipeRepo.findOne({
-        where: { name: entry.recipeName },
-      });
       const unit = await this.unitRepo.findOne({
         where: { handle: entry.unitHandle },
       });
-      if (!recipe || !unit) {
+      if (!unit) {
         this.logger.warn(
-          `Skipping demo batch "${entry.description}" — missing recipe "${entry.recipeName}" or unit "${entry.unitHandle}"`,
+          `Skipping demo batch "${entry.description}" — missing unit "${entry.unitHandle}"`,
         );
         continue;
       }
+      // Hand-authored entries (no `recipeName`) skip the lookup entirely and
+      // persist with `recipe_id = null` — a null FK is their whole point.
+      const recipe = entry.recipeName
+        ? await this.recipeRepo.findOne({
+            where: { name: entry.recipeName },
+          })
+        : null;
+      if (entry.recipeName && !recipe) {
+        this.logger.warn(
+          `Skipping demo batch "${entry.description}" — missing recipe "${entry.recipeName}"`,
+        );
+        continue;
+      }
+      // Snapshot from the linked recipe (immutable-FK template); recipe-less
+      // entries supply their own species and integer targets (types doc).
+      const species = recipe?.species ?? entry.species ?? null;
       const { start_at, finish_at } = this.batchWindow(entry, recipe);
       await this.batchRepo.save(
         this.batchRepo.create({
           start_at,
           finish_at,
-          // Snapshot copied from the linked recipe (immutable-FK template).
-          species: recipe.species,
-          temperature_target: recipe.temperature_target,
-          humidity_target: recipe.humidity_target,
-          notes: this.batchNotes(recipe.species),
+          species,
+          temperature_target:
+            recipe?.temperature_target ?? entry.temperatureTarget ?? null,
+          humidity_target:
+            recipe?.humidity_target ?? entry.humidityTarget ?? null,
+          notes: this.batchNotes(species),
           description: entry.description,
           // External harvest-photo URLs from the committed dataset —
           // the upload endpoint's files-only rule does not bind this
           // direct-repository write (asymmetry documented in REFERENCE.md).
           images: entry.images ?? null,
           pico_unit_id: unit.id,
-          recipe_id: recipe.id,
+          recipe_id: recipe?.id ?? null,
         }),
       );
     }
@@ -263,10 +284,11 @@ export class SeedService implements OnApplicationBootstrap {
   /** Relative offsets → absolute dates. Statuses derive from these. */
   private batchWindow(
     entry: BatchSeedEntry,
-    recipe: Recipe,
+    recipe: Recipe | null,
   ): { start_at: Date; finish_at: Date | null } {
     const now = Date.now();
-    const durationMs = (recipe.duration_days || 1) * DAY_MS;
+    const durationMs =
+      ((recipe?.duration_days ?? entry.durationDays) || 1) * DAY_MS;
 
     if (entry.status === 'finished') {
       // finish = now + k (k negative); start derived from recipe duration.
@@ -309,7 +331,10 @@ export class SeedService implements OnApplicationBootstrap {
    * Backdate readings for every unit in the seeded roster that is not the
    * offline one. Per-unit watermark guard: skip only when rows already
    * exist at or below the frozen boundary (never a total count — live rows
-   * above the boundary must not block the seeded series).
+   * above the boundary must not block the seeded series). The grid extends
+   * past the configured history length to cover the unit's earliest started
+   * batch, so every finished / in-progress batch shows readings inside its
+   * own window; planned batches start in the future and get none.
    */
   private async seedReadings(
     seedEndTs: Date,
@@ -344,8 +369,15 @@ export class SeedService implements OnApplicationBootstrap {
       const humiditySet =
         active?.humidity_target ?? entry?.fallbackSetpoint?.humidity ?? 85;
 
-      const startTs = new Date(
-        seedEndTs.getTime() - (rowCount - 1) * SEED_READINGS_CADENCE_MS,
+      const earliestStarted = await findEarliestStartedBatchStart(
+        this.batchRepo,
+        unit.id,
+        seedEndTs,
+      );
+      const startTs = computeSeededStartTs(
+        seedEndTs,
+        rowCount,
+        earliestStarted,
       );
       inserted += await generateAndInsertReadings(this.readingsRepo, {
         picoUnitId: unit.id,

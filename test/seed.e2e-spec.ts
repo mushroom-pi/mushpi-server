@@ -4,14 +4,16 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { mkdirSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import request from 'supertest';
-import { LessThanOrEqual, MoreThan, Repository } from 'typeorm';
+import { Between, LessThanOrEqual, Repository } from 'typeorm';
 
+import { DESCRIPTION_MAX_LENGTH } from '../src/common/constants/validation.constants';
 import { Batch } from '../src/modules/batches/batches.entity';
 import { CustomConfigService } from '../src/modules/config/config.service';
 import { PicoUnit } from '../src/modules/pico-units/pico-unit.entity';
 import { Readings } from '../src/modules/readings/readings.entity';
 import { Recipe } from '../src/modules/recipes/recipes.entity';
 import harvestDataset from '../src/modules/seed/provenance/batch-harvest-images.json';
+import { readingsRowCount } from '../src/modules/seed/readings-history.generator';
 import { HARVEST_IMAGE_MISSING_SPECIES } from '../src/modules/seed/seed-data/batch-images';
 import { SEED_BATCHES } from '../src/modules/seed/seed-data/batches';
 import {
@@ -239,14 +241,25 @@ describe('Demo seeding (e2e)', () => {
       expect(handles).not.toContain('tent-six');
     });
 
-    it('keeps every batch off the offline unit and links all batches to seeded recipes', async () => {
+    it('keeps every batch off the offline unit — 15 recipe-linked, 2 hand-authored with recipe_id null', async () => {
       const six = await byHandle('tent-six');
       expect(
         await launched.batchRepo().count({ where: { pico_unit_id: six.id } }),
       ).toBe(0);
       const all = await launched.batchRepo().find();
-      // All 17 batches carry a recipe_id (snapshot template).
-      expect(all.filter((b) => b.recipe_id != null)).toHaveLength(17);
+      // 15 batches snapshot a seeded recipe; the two hand-authored runs
+      // persist with a null FK, their own species and integer targets.
+      expect(all.filter((b) => b.recipe_id != null)).toHaveLength(15);
+      const hand = all.filter((b) => b.recipe_id == null);
+      expect(hand).toHaveLength(2);
+      expect(hand.map((b) => b.species).sort()).toEqual([
+        'Hypsizygus tessellatus',
+        'Volvariella volvacea',
+      ]);
+      for (const b of hand) {
+        expect(Number.isInteger(b.temperature_target)).toBe(true);
+        expect(Number.isInteger(b.humidity_target)).toBe(true);
+      }
     });
 
     it('spreads species so no single species dominates the batch set', async () => {
@@ -256,6 +269,20 @@ describe('Demo seeding (e2e)', () => {
         perSpecies.set(b.species, (perSpecies.get(b.species) ?? 0) + 1);
       expect(perSpecies.size).toBeGreaterThanOrEqual(12);
       expect(Math.max(...perSpecies.values())).toBeLessThanOrEqual(2);
+    });
+
+    it('gives every batch a distinct human description, with the demo signal in notes', async () => {
+      const all = await launched.batchRepo().find();
+      const descriptions = all.map((b) => b.description);
+      // Uniqueness comes from authorship — the column has no DB index.
+      expect(new Set(descriptions).size).toBe(all.length);
+      for (const d of descriptions) {
+        expect(d).not.toMatch(/Demo (run|plan)/);
+        expect(d.length).toBeLessThanOrEqual(DESCRIPTION_MAX_LENGTH);
+      }
+      for (const b of all) {
+        expect(b.notes).toContain('Seeded for the demonstration catalogue.');
+      }
     });
 
     it('attaches a harvest photo to exactly the batches whose species has one', async () => {
@@ -319,8 +346,65 @@ describe('Demo seeding (e2e)', () => {
           .where('r.pico_unit_id = :id', { id: unit.id })
           .getCount();
         expect(seeded).toBeGreaterThan(0);
-        // 2 days × 1440 minutes = the exact grid count.
-        expect(seeded).toBe(2 * 1440);
+        const oldest = await launched.readingsRepo().findOne({
+          where: { pico_unit_id: unit.id },
+          order: { ts: 'ASC' },
+        });
+        const newest = await seededBoundary(launched, unit.id);
+        // The started-batch coverage extension stretches the per-unit
+        // window past the configured 2 days, so the exact count is
+        // roster-derived — regularity of the 60 s grid is what is pinned:
+        // first row to frozen boundary, one reading per interval.
+        expect(seeded).toBe(readingsRowCount(oldest.ts, newest));
+        // Never less than the configured history window.
+        expect(seeded).toBeGreaterThanOrEqual(2 * 1440);
+      }
+    });
+
+    it('backs every started batch with at least one reading inside its own window', async () => {
+      const batches = await launched.batchRepo().find();
+      const boundary = await seededBoundary(
+        launched,
+        (await byHandle('tent-one')).id,
+      );
+      const started = batches.filter(
+        (b) => b.start_at.getTime() <= boundary.getTime(),
+      );
+      // 10 finished + 4 in-progress; planned starts stay future.
+      expect(started).toHaveLength(14);
+      for (const b of started) {
+        // The batch-readings endpoint clamps to [start_at, finish_at] —
+        // the grid must hold at least one row inside that window.
+        const inside = await launched.readingsRepo().count({
+          where: {
+            pico_unit_id: b.pico_unit_id,
+            ts: Between(b.start_at, b.finish_at ?? boundary),
+          },
+        });
+        expect(inside).toBeGreaterThanOrEqual(1);
+      }
+    });
+
+    it('leaves the planned batches without readings', async () => {
+      const batches = await launched.batchRepo().find();
+      const boundary = await seededBoundary(
+        launched,
+        (await byHandle('tent-one')).id,
+      );
+      const planned = batches.filter(
+        (b) => b.start_at.getTime() > boundary.getTime(),
+      );
+      expect(planned).toHaveLength(3);
+      for (const b of planned) {
+        // Future windows: seeding fabricates no timestamps past the
+        // frozen boundary, so a planned batch shows an empty history.
+        const inside = await launched.readingsRepo().count({
+          where: {
+            pico_unit_id: b.pico_unit_id,
+            ts: Between(b.start_at, b.finish_at ?? new Date()),
+          },
+        });
+        expect(inside).toBe(0);
       }
     });
 
@@ -432,6 +516,15 @@ describe('Demo seeding (e2e)', () => {
         batches: await first.batchRepo().count(),
         readings: await first.readingsRepo().count(),
       };
+      // Per-unit coverage-extended row count from the first boot — the
+      // exact number is roster-derived (grid + started-batch windows), so
+      // it is captured, not computed from the days config.
+      const tentOneFirst = await first.unitRepo().findOne({
+        where: { handle: 'tent-one' },
+      });
+      const tentOneRowsFirst = await first.readingsRepo().count({
+        where: { pico_unit_id: tentOneFirst.id },
+      });
       // A user edit on a seeded row — the second boot must PRESERVE it:
       // the batch phase no-ops while rows exist and the seeder is
       // insert-only (never restores its own values over user content).
@@ -462,7 +555,7 @@ describe('Demo seeding (e2e)', () => {
       const unitRows = await second
         .readingsRepo()
         .find({ where: { pico_unit_id: tentOne.id }, select: ['ts'] });
-      expect(unitRows).toHaveLength(2 * 1440);
+      expect(unitRows).toHaveLength(tentOneRowsFirst);
       const tsSet = new Set(unitRows.map((r) => r.ts.getTime()));
       expect(tsSet.size).toBe(unitRows.length);
 
@@ -489,6 +582,12 @@ describe('Demo seeding (e2e)', () => {
         where: { handle: 'tent-one' },
       });
       const boundary1 = await seededBoundary(launched, unit.id);
+      // Fresh boot: every row for this unit sits at or below boundary1 —
+      // the coverage-extended grid, whose exact length is roster-derived
+      // and therefore captured here rather than computed from days=1.
+      const seededBefore = await launched
+        .readingsRepo()
+        .count({ where: { pico_unit_id: unit.id } });
 
       // Simulate live polls: rows clearly ABOVE the first boundary.
       const live1 = new Date(
@@ -529,29 +628,22 @@ describe('Demo seeding (e2e)', () => {
       // (boundary1 + 5/6 intervals) can never trip the watermark.
       await launched.seedService().onApplicationBootstrap();
 
-      // A days=1 boot inserts exactly 1440 grid rows per live unit. The
-      // regenerated range must be whole again and the two live rows must
-      // survive untouched — never duplicated, never deleted.
-      const total = await launched
-        .readingsRepo()
-        .count({ where: { pico_unit_id: unit.id } });
-      expect(total).toBe(1440 + 2);
-      expect(
-        await launched
-          .readingsRepo()
-          .count({ where: { pico_unit_id: unit.id, ts: MoreThan(boundary1) } }),
-      ).toBe(2); // seeded range regenerated BELOW the boundary only
-      const liveKept = await launched.readingsRepo().find({
-        where: [{ pico_unit_id: unit.id, ts: MoreThan(live2) }],
-      });
-      expect(liveKept).toHaveLength(0); // no rows invented above the live pair
+      // The regenerated grid restores every seeded row up to boundary1 —
+      // a boundary shift only ADDS rows above it (never loses or duplicates
+      // rows below it), so exact totals are boundary-shift dependent and
+      // are not asserted.
       const allRows = await launched.readingsRepo().find({
         where: { pico_unit_id: unit.id },
       });
-      const liveTs = allRows
-        .map((r) => r.ts.getTime())
-        .filter((t) => t >= live1.getTime())
-        .sort();
+      const tsValues = allRows.map((r) => r.ts.getTime());
+      expect(tsValues.filter((t) => t <= boundary1.getTime())).toHaveLength(
+        seededBefore,
+      );
+      // No doubled grid from a re-run: timestamps stay unique per unit.
+      expect(new Set(tsValues).size).toBe(tsValues.length);
+      // The two live rows survive untouched — and nothing was invented
+      // above them.
+      const liveTs = tsValues.filter((t) => t >= live1.getTime()).sort();
       expect(liveTs).toEqual([live1.getTime(), live2.getTime()]);
     }, 60_000);
   });

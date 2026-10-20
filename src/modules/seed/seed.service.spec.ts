@@ -2,6 +2,7 @@ import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
+import { DESCRIPTION_MAX_LENGTH } from 'src/common/constants/validation.constants';
 import { Batch } from 'src/modules/batches/batches.entity';
 import { CustomConfigService } from 'src/modules/config/config.service';
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
@@ -12,17 +13,19 @@ import { Recipe } from 'src/modules/recipes/recipes.entity';
 import harvestDataset from './provenance/batch-harvest-images.json';
 import { HARVEST_IMAGE_MISSING_SPECIES } from './seed-data/batch-images';
 import { SEED_BATCHES } from './seed-data/batches';
-import { SEED_INSERT_CHUNK } from './seed.constant';
+import { SEED_INSERT_CHUNK, SEED_READINGS_CADENCE_MS } from './seed.constant';
 import { SeedService } from './seed.service';
 
 /**
  * Unit-level coverage of the seeder's gates and idempotency decisions with
  * in-memory repository fakes. The walk itself is exercised against a real
  * DB in `test/seed.e2e-spec.ts`; here we pin the skip rules, roster
- * shapes, provenance exclusion, the watermark guard, and boot survival.
+ * shapes, provenance exclusion, the watermark guard, the started-batch
+ * grid extension, and boot survival.
  */
 const DAYS = 2;
 const GRID_PER_UNIT = DAYS * 1440;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 describe('SeedService', () => {
   let service: SeedService;
@@ -41,6 +44,14 @@ describe('SeedService', () => {
   let insertCalls: [any[]][];
   let countCalls: any[];
   let rejectUnitSave: boolean;
+  /**
+   * Coverage finder stand-in: when set, `findEarliestStartedBatchStart`
+   * resolves this start (the fake keys off the query shape — the
+   * active-batch finder passes an array `where`, the coverage finder an
+   * object). Null (default) = no started batch visible, so the grid stays
+   * at the configured `DAYS` window.
+   */
+  let coverageStart: Date | null;
   let idSeq = 1;
 
   jest.spyOn(Logger.prototype, 'log').mockImplementation();
@@ -99,8 +110,16 @@ describe('SeedService', () => {
       return row;
     });
     batchRepo.count.mockImplementation(async () => savedBatches.length);
-    // No active-batch lookup resolution at this level — the readings walk
-    // then uses roster fallbacks (the e2e covers DB-resolved setpoints).
+    // findOne backs two lookups of different shape: the active-batch finder
+    // passes an array `where` (unresolved at this level — the readings walk
+    // uses roster fallbacks; the e2e covers DB-resolved setpoints), the
+    // started-batch coverage finder an object `where`, resolved from
+    // `coverageStart`.
+    batchRepo.findOne.mockImplementation(async (query: any) => {
+      const where = query?.where;
+      if (Array.isArray(where)) return null;
+      return coverageStart ? { start_at: coverageStart } : null;
+    });
   };
 
   const wireReadingsRepo = () => {
@@ -128,6 +147,7 @@ describe('SeedService', () => {
     insertCalls = [];
     countCalls = [];
     rejectUnitSave = false;
+    coverageStart = null;
     config = { seed: { enabled: true, readingsDays: DAYS }, isProd: false };
 
     recipeRepo = makeRepo();
@@ -243,7 +263,7 @@ describe('SeedService', () => {
     }
   });
 
-  it('writes 17 batches through the repository with recipe snapshots', async () => {
+  it('writes 17 batches through the repository — recipe snapshots for linked entries, null FK for hand-authored ones', async () => {
     await service.onApplicationBootstrap();
     expect(batchSaves).toHaveLength(17);
     const now = Date.now();
@@ -261,9 +281,11 @@ describe('SeedService', () => {
           b.finish_at.getTime() > now,
       ),
     ).toHaveLength(4);
-    expect(batchSaves.every((b) => b.recipe_id != null)).toBe(true);
-    // Snapshot fields copied from the linked recipe row.
-    for (const b of batchSaves) {
+    expect(batchSaves.filter((b) => b.recipe_id != null)).toHaveLength(15);
+    expect(batchSaves.filter((b) => b.recipe_id == null)).toHaveLength(2);
+    // Snapshot fields copied from the linked recipe row — only the
+    // recipe-linked entries participate (hand-authored rows have no recipe).
+    for (const b of batchSaves.filter((x) => x.recipe_id != null)) {
       const recipe = savedRecipes.get(
         [...savedRecipes.values()].find((r) => r.id === b.recipe_id)!.name,
       );
@@ -281,6 +303,49 @@ describe('SeedService', () => {
           (!b.finish_at || b.finish_at.getTime() > now),
       ),
     ).toHaveLength(0);
+  });
+
+  it('persists the two hand-authored batches with recipe_id null, own species and integer targets', async () => {
+    const handEntries = SEED_BATCHES.filter((e) => e.recipeName == null);
+    expect(handEntries).toHaveLength(2);
+    await service.onApplicationBootstrap();
+    const handSaves = batchSaves.filter((b) => b.recipe_id == null);
+    expect(handSaves).toHaveLength(2);
+    for (const b of handSaves) {
+      const entry = handEntries.find((e) => e.description === b.description)!;
+      expect(entry).toBeDefined();
+      expect(b.species).toBe(entry.species);
+      expect(b.temperature_target).toBe(entry.temperatureTarget);
+      expect(b.humidity_target).toBe(entry.humidityTarget);
+      expect(Number.isInteger(b.temperature_target)).toBe(true);
+      expect(Number.isInteger(b.humidity_target)).toBe(true);
+      // Finished hand-authored windows derive from the entry's OWN
+      // durationDays (no recipe duration behind them).
+      expect(b.finish_at.getTime() - b.start_at.getTime()).toBe(
+        entry.durationDays * DAY_MS,
+      );
+      // The no-recipe path must not request a recipe lookup for its entry.
+      expect(entry.recipeName).toBeUndefined();
+    }
+  });
+
+  it('authors every description distinctly — no shared demo prefix, within the length bound', async () => {
+    await service.onApplicationBootstrap();
+    expect(batchSaves).toHaveLength(17);
+    const descriptions = batchSaves.map((b) => b.description);
+    // Uniqueness comes from authorship (no DB uniqueness index on the column).
+    expect(new Set(descriptions).size).toBe(descriptions.length);
+    for (const d of descriptions) {
+      expect(d).not.toMatch(/^Demo (run|plan) — /);
+      expect(d.length).toBeLessThanOrEqual(DESCRIPTION_MAX_LENGTH);
+    }
+  });
+
+  it('keeps the demo signal in notes on every seeded batch', async () => {
+    await service.onApplicationBootstrap();
+    for (const b of batchSaves) {
+      expect(b.notes).toContain('Seeded for the demonstration catalogue.');
+    }
   });
 
   it('attaches the harvest image to exactly the batches whose species has one — count computed, never hardcoded', async () => {
@@ -344,6 +409,8 @@ describe('SeedService', () => {
   });
 
   it('backdates the 60 s grid for the 5 live units only, in ≤500-row chunks', async () => {
+    // Default fakes resolve no started batch (coverage finder null), so the
+    // grid equals the configured window — extension is pinned next.
     await service.onApplicationBootstrap();
     const rows = insertedRows();
     expect(rows).toHaveLength(GRID_PER_UNIT * 5);
@@ -364,6 +431,44 @@ describe('SeedService', () => {
     expect(new Set(maxes).size).toBe(1);
     expect(maxes[0] % 60_000).toBe(0);
     expect(maxes[0]).toBeLessThanOrEqual(Date.now() - 59_000);
+  });
+
+  it('extends the grid back to one cadence step before the earliest started batch', async () => {
+    // A started batch 30 days old reaches far past the 2-day configured
+    // window — coverage must stretch the grid to it, planned (future)
+    // starts must not, and the frozen boundary contract must survive.
+    const earliest = new Date(Date.now() - 30 * DAY_MS);
+    coverageStart = earliest;
+    await service.onApplicationBootstrap();
+    const rows = insertedRows();
+    const tentOneId = savedUnits.get('tent-one').id;
+    const tsList = rows
+      .filter((r) => r.pico_unit_id === tentOneId)
+      .map((r) => r.ts.getTime());
+    const minTs = tsList.reduce(
+      (a, b) => Math.min(a, b),
+      Number.MAX_SAFE_INTEGER,
+    );
+    const maxTs = tsList.reduce((a, b) => Math.max(a, b), 0);
+    // Reaches at least one cadence step before the earliest start...
+    expect(minTs).toBeLessThanOrEqual(
+      earliest.getTime() - SEED_READINGS_CADENCE_MS,
+    );
+    // ...and no farther than a step past it — extended, never padded.
+    expect(minTs).toBeGreaterThan(
+      earliest.getTime() - 2 * SEED_READINGS_CADENCE_MS,
+    );
+    // Frozen boundary intact: terminates on one aligned minute.
+    expect(maxTs % SEED_READINGS_CADENCE_MS).toBe(0);
+    expect(maxTs).toBeLessThanOrEqual(Date.now() - 59_000);
+    // Perfect 60 s grid over the extended range — cadence never thins.
+    expect(tsList).toHaveLength(
+      Math.round((maxTs - minTs) / SEED_READINGS_CADENCE_MS) + 1,
+    );
+    expect(tsList.length).toBeGreaterThan(GRID_PER_UNIT);
+    // Offline unit still gets nothing, even with the extended window.
+    const sixId = savedUnits.get('tent-six').id;
+    expect(rows.filter((r) => r.pico_unit_id === sixId)).toHaveLength(0);
   });
 
   it('skips a unit whose seeded range already exists (per-unit watermark guard, never a total count)', async () => {
