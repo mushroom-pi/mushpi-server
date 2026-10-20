@@ -10,6 +10,7 @@ import basicAuth from 'express-basic-auth';
 import hpp from 'hpp';
 import { Logger } from 'nestjs-pino';
 import toobusy from 'toobusy-js';
+import { DataSource } from 'typeorm';
 
 import { ExceptionsFilter } from './common/filters/exceptions.filter';
 import { AppSecretBearerMiddleware } from './common/middleware/app-secret-bearer.middleware';
@@ -17,6 +18,7 @@ import { createHelmetMiddleware } from './common/middleware/helmet.middleware';
 import { ProtectEventLoopMiddleware } from './common/middleware/protect-event-loop.middleware';
 import { validationPipe } from './common/pipes/validation.pipe';
 import { applyApiVersioning } from './common/utils/api-version';
+import { cleanStart } from './common/utils/clean-start';
 import { applySingleHopTrustProxy } from './common/utils/trust-proxy';
 import { AppModule } from './modules/app.module';
 import { CustomConfigService } from './modules/config/config.service';
@@ -29,6 +31,20 @@ async function bootstrap() {
   const httpAdapterHost = app.get(HttpAdapterHost);
 
   const configService: CustomConfigService = app.get(CustomConfigService);
+
+  /**
+   * Database connect window. `manualInitialization: true` (`sqlite.module.ts`)
+   * defers TypeORM's `DataSource.initialize()` past `NestFactory.create()` —
+   * create() only instantiates providers — so the clean-start decision below
+   * sees the TRUE on-disk state: nothing has created or opened the database
+   * file yet, and an unlink removes a file with no open handle. Then every
+   * profile connects explicitly here, before `listen()` runs the lifecycle
+   * hooks (image directories, cron startup sweep, demo seeding) that need a
+   * live connection. The demo profile alone performs the clean start.
+   */
+  const dataSource = app.get(DataSource);
+  if (configService.isDemo) cleanStart(configService);
+  await dataSource.initialize();
 
   applyApiVersioning(app);
 

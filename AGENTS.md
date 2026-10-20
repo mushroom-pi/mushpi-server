@@ -13,7 +13,7 @@ Run after every feature delivery, no need to ask — all must exit 0: `yarn buil
 Feature modules live in `src/modules/`; **the DB module is `sqlite/`** (there is no `database/`):
 
 ```
-src/main.ts — bootstrap: versioning, security, docs auth, Swagger, globals
+src/main.ts — bootstrap: deferred DB connect (clean start, demo-gated), versioning, security, docs auth, Swagger, globals
 src/common/ — constants, decorators, dto, exceptions, filters, guards, interceptors, middleware, pipes, utils, validators
 src/common/middleware/helmet.middleware.ts — shared Helmet factory
 app.module.ts — root module (APP_GUARD, global middleware)

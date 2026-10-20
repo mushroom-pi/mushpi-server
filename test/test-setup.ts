@@ -4,6 +4,8 @@ import { SchedulerRegistry } from '@nestjs/schedule';
 import { AbstractLoader, ExpressLoader } from '@nestjs/serve-static';
 import { Test, TestingModule, TestingModuleBuilder } from '@nestjs/testing';
 
+import { DataSource } from 'typeorm';
+
 import { ExceptionsFilter } from '../src/common/filters/exceptions.filter';
 import { AppSecretBearerMiddleware } from '../src/common/middleware/app-secret-bearer.middleware';
 import { createHelmetMiddleware } from '../src/common/middleware/helmet.middleware';
@@ -98,6 +100,14 @@ export async function createTestApp(
   app.useGlobalFilters(new ExceptionsFilter(httpAdapterHost, configService));
   app.useGlobalPipes(validationPipe);
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+
+  // Mirror of the `main.ts` connect window: `manualInitialization: true`
+  // (sqlite.module.ts) defers TypeORM's connect past provider instantiation,
+  // so `app.init()` — which runs the `onApplicationBootstrap` hooks (cron
+  // startup sweep, demo seeding) — needs this explicit connect for a live
+  // connection. Tests never call `cleanStart` here: it is destructive and
+  // these databases are not demo-owned.
+  await app.get(DataSource).initialize();
 
   return app;
 }
