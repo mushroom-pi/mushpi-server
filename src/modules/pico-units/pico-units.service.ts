@@ -8,7 +8,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import axios from 'axios';
-import { ILike, MoreThanOrEqual, Repository } from 'typeorm';
+import { ILike, IsNull, MoreThanOrEqual, Repository } from 'typeorm';
 
 import { PORT_DEFAULT } from 'src/common/constants/hardware.constants';
 import { FailedDependencyException } from 'src/common/exceptions/failed-dependency.exception';
@@ -231,9 +231,19 @@ export class PicoUnitsService {
     }
   }
 
+  /**
+   * Refreshes `last_seen` as a partial update. Must NOT `save(unit)`: callers
+   * pass the cycle-start snapshot, and a full-entity save would rewrite every
+   * column from it — silently reverting identity (`ip`, `mac`, `port`,
+   * versions) to pre-announce values whenever a touch races an announce.
+   */
   async touch(unit: PicoUnit): Promise<PicoUnit> {
     unit.last_seen = new Date();
-    return this.picoUnitRepo.save(unit);
+    await this.picoUnitRepo.update(
+      { id: unit.id },
+      { last_seen: unit.last_seen },
+    );
+    return unit;
   }
 
   async ping(unit: PicoUnit): Promise<string> {
@@ -263,36 +273,65 @@ export class PicoUnitsService {
     return { message: 'Reboot initiated', type: dto.type };
   }
 
+  // Counter/status mutators persist ONLY their own column (increment /
+  // targeted update). The cycle-start snapshot these callers pass may be
+  // stale for identity columns — a concurrent announce can have written
+  // `ip`/`mac`/`port`/`firmware_version` after the snapshot was loaded — so
+  // a full-entity `save(unit)` here would revert identity from that stale
+  // snapshot (the boot race that left polled units with `ip = NULL`).
+  // The in-memory mutation on the passed object is kept for callers that
+  // read the counter afterwards (e.g. the empty-reading log line in the
+  // poll path).
+
   async addFailedCall(unit: PicoUnit): Promise<PicoUnit> {
     unit.failed_calls++;
-    return this.picoUnitRepo.save(unit);
+    await this.picoUnitRepo.increment({ id: unit.id }, 'failed_calls', 1);
+    return unit;
   }
 
   async addFailedReading(unit: PicoUnit): Promise<PicoUnit> {
     unit.failed_readings++;
-    return this.picoUnitRepo.save(unit);
+    await this.picoUnitRepo.increment({ id: unit.id }, 'failed_readings', 1);
+    return unit;
   }
 
   async resetFailedReadings(unit: PicoUnit): Promise<PicoUnit> {
     unit.failed_readings = 0;
-    return this.picoUnitRepo.save(unit);
+    await this.picoUnitRepo.update({ id: unit.id }, { failed_readings: 0 });
+    return unit;
   }
 
   async addEmptyReading(unit: PicoUnit): Promise<PicoUnit> {
     unit.consecutive_empty_readings =
       (unit.consecutive_empty_readings ?? 0) + 1;
-    return this.picoUnitRepo.save(unit);
+    await this.picoUnitRepo.increment(
+      { id: unit.id },
+      'consecutive_empty_readings',
+      1,
+    );
+    return unit;
   }
 
   async resetEmptyReadings(unit: PicoUnit): Promise<PicoUnit> {
     unit.consecutive_empty_readings = 0;
-    return this.picoUnitRepo.save(unit);
+    await this.picoUnitRepo.update(
+      { id: unit.id },
+      { consecutive_empty_readings: 0 },
+    );
+    return unit;
   }
 
   /**
    * Called on every successful poll: refreshes `last_seen`, resets
    * `failed_calls`, and ingests the unit-reported metadata (`mac`, plus the
    * `reported` object carrying `firmware_version`, `api_version`, and `ip`).
+   *
+   * Persists as a partial update of exactly the columns this method owns —
+   * never `save(unit)`. The caller hands us the cycle-start snapshot; saving
+   * it wholesale would rewrite every other column (identity included) from
+   * values that may already be stale — a concurrent announce landing between
+   * the snapshot load and this write would be reverted. Same rule as the
+   * counter mutators above.
    */
   async touchAndResetFailedCalls(
     unit: PicoUnit,
@@ -303,8 +342,15 @@ export class PicoUnitsService {
       ip?: string | null;
     },
   ): Promise<PicoUnit> {
-    unit.last_seen = new Date();
+    const patch: Partial<PicoUnit> = {
+      last_seen: new Date(),
+      failed_calls: 0,
+    };
+    unit.last_seen = patch.last_seen;
     unit.failed_calls = 0;
+    // In-memory mirror of the historical set-once check (snapshot-based, for
+    // callers that read `unit.mac` back). Persistence is decided atomically
+    // against the live row below, not from this possibly-stale snapshot.
     if (mac && !unit.mac) unit.mac = mac;
     // Firmware-reported versions self-heal from the poll response, but ONLY
     // when the unit actually sent a USABLE value: `undefined`/`null` (older
@@ -318,15 +364,19 @@ export class PicoUnitsService {
     if (
       reported?.firmware_version != null &&
       isValidPicoFirmwareVersion(reported.firmware_version)
-    )
+    ) {
       unit.firmware_version = reported.firmware_version;
+      patch.firmware_version = reported.firmware_version;
+    }
     const apiVersion = Number(reported?.api_version);
     if (
       reported?.api_version != null &&
       Number.isInteger(apiVersion) &&
       apiVersion >= PICO_API_VERSION_MIN
-    )
+    ) {
       unit.api_version = apiVersion;
+      patch.api_version = apiVersion;
+    }
     // `ip` follows the version refresh rule (overwrite when the unit actually
     // reports it), NOT the mac set-once rule — the Pico's DHCP address can
     // change, so the last reported value is the freshest fallback target.
@@ -334,8 +384,20 @@ export class PicoUnitsService {
     // created unit (ip NULL) self-heals at its first poll reporting
     // `system.wifi.ip`, which arms the mDNS→IP fallback in getWithFallback
     // for every later cycle.
-    if (typeof reported?.ip === 'string' && reported.ip !== '')
+    if (typeof reported?.ip === 'string' && reported.ip !== '') {
       unit.ip = reported.ip;
-    return this.picoUnitRepo.save(unit);
+      patch.ip = reported.ip;
+    }
+    await this.picoUnitRepo.update({ id: unit.id }, patch);
+    // MAC is immutable hardware identity — set-once, judged ATOMICALLY against
+    // the live row (`mac IS NULL`), not against the snapshot: a concurrent
+    // announce may already have stored the real MAC after the snapshot loaded,
+    // and overwriting it from a stale "not yet announced" view is exactly the
+    // identity-erasure race this partial-write conversion eliminates. When
+    // the row already carries a MAC the update matches no row and is a no-op.
+    if (mac) {
+      await this.picoUnitRepo.update({ id: unit.id, mac: IsNull() }, { mac });
+    }
+    return unit;
   }
 }
