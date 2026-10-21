@@ -6,6 +6,7 @@ import { tmpdir } from 'os';
 import request from 'supertest';
 import { Between, LessThanOrEqual, Repository } from 'typeorm';
 
+import { HUMIDITY_MAX } from '../src/common/constants/climate.constants';
 import { DESCRIPTION_MAX_LENGTH } from '../src/common/constants/validation.constants';
 import { Batch } from '../src/modules/batches/batches.entity';
 import { CustomConfigService } from '../src/modules/config/config.service';
@@ -17,6 +18,7 @@ import { readingsRowCount } from '../src/modules/seed/readings-history.generator
 import { HARVEST_IMAGE_MISSING_SPECIES } from '../src/modules/seed/seed-data/batch-images';
 import { SEED_BATCHES } from '../src/modules/seed/seed-data/batches';
 import {
+  SEED_CLIMATE_BAND,
   SEED_CONTINUITY_TOLERANCE,
   SEED_READINGS_CADENCE_MS,
 } from '../src/modules/seed/seed.constant';
@@ -166,6 +168,50 @@ describe('Demo seeding (e2e)', () => {
 
     const byHandle = async (handle: string): Promise<PicoUnit> =>
       launched.unitRepo().findOne({ where: { handle } });
+
+    /**
+     * One grouped SQL aggregate over the whole seeded series, per unit —
+     * ~100 k-row series never cross the driver as JS objects. This boot is
+     * fresh: `CronService` is stubbed by the e2e fixture and nothing has
+     * polled, so every readings row of every live unit is a seeded row (the
+     * live-range case owns its own suite below), and the offline unit has
+     * no group at all. SQLite's integer test is `value <> CAST(value AS
+     * INTEGER)` — the SQL form of `Number.isInteger`, comparing by value so
+     * a stored `22.0` reads as whole.
+     */
+    const seededSeriesByUnit = async (): Promise<
+      Map<number, Record<string, number | null>>
+    > => {
+      const raw = await launched
+        .readingsRepo()
+        .createQueryBuilder('r')
+        .select('r.pico_unit_id', 'unit_id')
+        .addSelect('COUNT(*)', 'rows')
+        .addSelect(
+          'SUM(CASE WHEN r.temperature <> CAST(r.temperature AS INTEGER) THEN 1 ELSE 0 END)',
+          'non_integer_temperature',
+        )
+        .addSelect(
+          'SUM(CASE WHEN r.humidity <> CAST(r.humidity AS INTEGER) THEN 1 ELSE 0 END)',
+          'non_integer_humidity',
+        )
+        .addSelect(
+          'SUM(CASE WHEN r.temperature IS NULL OR r.humidity IS NULL THEN 1 ELSE 0 END)',
+          'null_reads',
+        )
+        .addSelect('MIN(r.temperature)', 'temperature_min')
+        .addSelect('MAX(r.temperature)', 'temperature_max')
+        .addSelect('MIN(r.humidity)', 'humidity_min')
+        .addSelect('MAX(r.humidity)', 'humidity_max')
+        .addSelect('MIN(r.temperature_set)', 'temperature_target_min')
+        .addSelect('MAX(r.temperature_set)', 'temperature_target_max')
+        .addSelect('MIN(r.humidity_set)', 'humidity_target_min')
+        .addSelect('MAX(r.humidity_set)', 'humidity_target_max')
+        .groupBy('r.pico_unit_id')
+        .orderBy('r.pico_unit_id', 'ASC')
+        .getRawMany<Record<string, number | null>>();
+      return new Map(raw.map((row) => [Number(row.unit_id), row]));
+    };
 
     it('seeds the 14 provenance-passing recipes (≥ 10) with attribution and external images', async () => {
       const res = await http(app).get('/v1/recipes?limit=50');
@@ -483,6 +529,94 @@ describe('Demo seeding (e2e)', () => {
           expect(hMin).toBeLessThan(active.humidity_target - 3);
         }
       }
+    });
+
+    it('seeds whole-number temperature and humidity on every live unit', async () => {
+      const series = await seededSeriesByUnit();
+      for (const handle of [
+        'tent-one',
+        'tent-two',
+        'tent-three',
+        'tent-four',
+        'tent-five',
+      ]) {
+        const unit = await byHandle(handle);
+        const row = series.get(unit.id);
+        expect(row).toBeDefined();
+        expect(Number(row.rows)).toBeGreaterThan(0);
+        expect(Number(row.non_integer_temperature)).toBe(0);
+        expect(Number(row.non_integer_humidity)).toBe(0);
+        expect(Number(row.null_reads)).toBe(0);
+      }
+      // The offline unit never enters the readings phase at all.
+      const six = await byHandle('tent-six');
+      expect(series.has(six.id)).toBe(false);
+    });
+
+    it('spans the climate band in both directions around each stable unit target', async () => {
+      // The four non-drift live units; the drifting tent-three is pinned
+      // comparatively in the next test instead.
+      const series = await seededSeriesByUnit();
+      for (const handle of ['tent-one', 'tent-two', 'tent-four', 'tent-five']) {
+        const unit = await byHandle(handle);
+        const row = series.get(unit.id);
+        expect(row).toBeDefined();
+        // One walk per unit — every row carries the same setpoint snapshot,
+        // so each row's own temperature_set / humidity_set IS the target.
+        expect(Number(row.temperature_target_min)).toBe(
+          Number(row.temperature_target_max),
+        );
+        expect(Number(row.humidity_target_min)).toBe(
+          Number(row.humidity_target_max),
+        );
+        const temperatureTarget = Number(row.temperature_target_min);
+        const humidityTarget = Number(row.humidity_target_min);
+        // Downward: the series must reach at least one full band below the
+        // target it walks around.
+        expect(Number(row.temperature_min)).toBeLessThanOrEqual(
+          temperatureTarget - SEED_CLIMATE_BAND.temperatureC,
+        );
+        expect(Number(row.humidity_min)).toBeLessThanOrEqual(
+          humidityTarget - SEED_CLIMATE_BAND.humidityPct,
+        );
+        // Upward: likewise above — except where the target sits against the
+        // sensor's saturation ceiling, where the band legitimately clips at
+        // HUMIDITY_MAX and nothing more is demanded (the seeded targets are
+        // never lowered to dodge this).
+        expect(Number(row.temperature_max)).toBeGreaterThanOrEqual(
+          temperatureTarget + SEED_CLIMATE_BAND.temperatureC,
+        );
+        expect(Number(row.humidity_max)).toBeGreaterThanOrEqual(
+          Math.min(
+            humidityTarget + SEED_CLIMATE_BAND.humidityPct,
+            HUMIDITY_MAX,
+          ),
+        );
+      }
+    });
+
+    it('keeps the drifting unit humidity floor visibly below the stable unit floor', async () => {
+      const series = await seededSeriesByUnit();
+      const drifting = series.get((await byHandle('tent-three')).id);
+      const stable = series.get((await byHandle('tent-four')).id);
+      expect(drifting).toBeDefined();
+      expect(stable).toBeDefined();
+      // Same target (90 %RH, read from each series' own snapshots) — so the
+      // gap between the two floors isolates the drift excursion.
+      expect(Number(drifting.humidity_target_min)).toBe(
+        Number(stable.humidity_target_min),
+      );
+      // Margin: the measured separation is 19 %RH (stable floor sits 16–18
+      // under target, the drifting floor ~36 under, per SEED_DRIFT_EXCURSION
+      // ± SEED_CLIMATE_BAND). The threshold is deliberately far below the
+      // measurement — one humidity continuity-tolerance step — yet large
+      // enough that if the drift excursion were dropped, two independent
+      // 90 %-target stable walks would land within a few %RH of each other
+      // and the assertion would fail. The drift is what the demo shows;
+      // this pins that it stays visible above the widened stable band.
+      expect(
+        Number(stable.humidity_min) - Number(drifting.humidity_min),
+      ).toBeGreaterThanOrEqual(SEED_CONTINUITY_TOLERANCE.humidityPct);
     });
   });
 

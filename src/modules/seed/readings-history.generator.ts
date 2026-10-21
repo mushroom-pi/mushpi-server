@@ -9,7 +9,12 @@ import {
 import { Batch } from 'src/modules/batches/batches.entity';
 import { Readings } from 'src/modules/readings/readings.entity';
 
-import { SEED_INSERT_CHUNK, SEED_READINGS_CADENCE_MS } from './seed.constant';
+import {
+  SEED_DRIFT_EXCURSION,
+  SEED_INSERT_CHUNK,
+  SEED_NOISE_AMPLITUDE,
+  SEED_READINGS_CADENCE_MS,
+} from './seed.constant';
 
 /**
  * Self-contained demo readings generator — deliberately NOT a port of the
@@ -18,6 +23,14 @@ import { SEED_INSERT_CHUNK, SEED_READINGS_CADENCE_MS } from './seed.constant';
  * satisfies the seed ⇄ live-poll join contract:
  *
  * - cadence 60 s over [startTs, endTs], one row per interval;
+ * - temperature and humidity are whole numbers — DHT11 precision is ±1 °C,
+ *   so a seeded read never carries a decimal (the mock rounds the same way).
+ *   The `Readings.temperature` column stays a float; only the values are
+ *   whole. Quantisation happens on the emitted row, never on the walk state,
+ *   so it cannot feed back into the mean-reversion term;
+ * - a stable unit fluctuates at least `SEED_CLIMATE_BAND` around its target,
+ *   clipped only by the climate bounds — whose `HUMIDITY_MAX` is the DHT11's
+ *   real saturation ceiling and the one legitimate bound here;
  * - the walk TERMINATES on the unit's active-batch setpoints (tail blend),
  *   so the first live poll continues inside the hysteresis band;
  * - the series ends at `seedEndTs`, never advancing past it.
@@ -131,7 +144,10 @@ export interface ReadingsWalkRequest {
   endTs: Date;
   temperatureSet: number;
   humiditySet: number;
-  /** Wandering profile (tent-three): mid-series excursion returning to the setpoints. */
+  /**
+   * Wandering profile (tent-three): a `SEED_DRIFT_EXCURSION` mid-series
+   * excursion layered on top of the noise band, returning to the setpoints.
+   */
   drift?: boolean;
 }
 
@@ -174,8 +190,10 @@ export function buildReadingsWalk(
   // Start near the band with a small initial offset.
   let temperature = tSet + (rand() - 0.5) * 3;
   let humidity = hSet + (rand() - 0.5) * 8;
+  // Relay states are seeded against the same whole-number thresholds the loop
+  // below uses (see the integer-offset comment there).
   let humidifierOn = humidity < hSet - 3;
-  let heaterOn = temperature < tSet - 0.8;
+  let heaterOn = temperature < tSet - 1;
   let fanOn = false;
   let boardTemp = 36 + rand() * 2;
 
@@ -188,15 +206,27 @@ export function buildReadingsWalk(
   for (let i = 0; i < count; i++) {
     const ts = new Date(req.startTs.getTime() + i * SEED_READINGS_CADENCE_MS);
 
-    // Gentle bounded excursions for the drifting unit — zero at both ends.
+    // The drifting unit's excursion, layered on top of the noise band — a
+    // slow sine that is zero at both ends, so the tail blend and the
+    // continuity envelope are untouched. Humidity drifts one-directionally
+    // DOWN (a drifting sensor reads dry); temperature swings both ways.
     const phase = i / (count - 1 || 1);
-    const driftHum = req.drift ? -4 * Math.sin(Math.PI * phase) : 0;
-    const driftTemp = req.drift ? 1.5 * Math.sin(2 * Math.PI * phase) : 0;
+    const driftHum = req.drift
+      ? SEED_DRIFT_EXCURSION.humidityPct * Math.sin(Math.PI * phase)
+      : 0;
+    const driftTemp = req.drift
+      ? SEED_DRIFT_EXCURSION.temperatureC * Math.sin(2 * Math.PI * phase)
+      : 0;
 
-    // Mean-reverting random walk toward (setpoint + excursion).
+    // Mean-reverting random walk toward (setpoint + excursion). The walk
+    // state stays float — quantising it here would feed rounding error back
+    // into the reversion term and collapse the band.
     temperature +=
-      (tSet + driftTemp - temperature) * 0.05 + (rand() - 0.5) * 0.3;
-    humidity += (hSet + driftHum - humidity) * 0.05 + (rand() - 0.5) * 1.6;
+      (tSet + driftTemp - temperature) * 0.05 +
+      (rand() - 0.5) * SEED_NOISE_AMPLITUDE.temperatureC;
+    humidity +=
+      (hSet + driftHum - humidity) * 0.05 +
+      (rand() - 0.5) * SEED_NOISE_AMPLITUDE.humidityPct;
 
     let rowTemp = temperature;
     let rowHum = humidity;
@@ -209,24 +239,30 @@ export function buildReadingsWalk(
     rowTemp = Math.min(TEMPERATURE_MAX, Math.max(TEMPERATURE_MIN, rowTemp));
     rowHum = Math.min(HUMIDITY_MAX, Math.max(HUMIDITY_MIN, rowHum));
 
-    const temp1 = Math.round(rowTemp * 10) / 10;
-    const hum = Math.round(rowHum);
+    // DHT11-class precision: whole-number reads, the mock's int(round(...)).
+    const tempRead = Math.round(rowTemp);
+    const humRead = Math.round(rowHum);
 
     // Latching relays with hysteresis so they flicker at a believable pace.
-    if (!humidifierOn && hum <= hSet - 3) humidifierOn = true;
-    else if (humidifierOn && hum >= hSet + 1) humidifierOn = false;
-    if (!heaterOn && temp1 <= tSet - 0.8) heaterOn = true;
-    else if (heaterOn && temp1 >= tSet + 0.4) heaterOn = false;
-    if (!fanOn && (temp1 >= tSet + 1.2 || hum >= hSet + 5)) fanOn = true;
-    else if (fanOn && temp1 <= tSet + 0.4 && hum <= hSet + 3) fanOn = false;
+    // Every temperature threshold is a WHOLE-number offset of the setpoint,
+    // because the values compared against are now whole: fractional offsets
+    // would make the cosmetic flags disagree with the sensor read they claim
+    // to explain (e.g. `<= tSet - 0.8` and `<= tSet - 1` select the same
+    // integers, but only the second one reads as a real deadband).
+    if (!humidifierOn && humRead <= hSet - 3) humidifierOn = true;
+    else if (humidifierOn && humRead >= hSet + 1) humidifierOn = false;
+    if (!heaterOn && tempRead <= tSet - 1) heaterOn = true;
+    else if (heaterOn && tempRead >= tSet + 1) heaterOn = false;
+    if (!fanOn && (tempRead >= tSet + 2 || humRead >= hSet + 5)) fanOn = true;
+    else if (fanOn && tempRead <= tSet && humRead <= hSet + 3) fanOn = false;
 
     boardTemp +=
       (37.5 + ((i % 240) / 240) * 2 - boardTemp) * 0.02 + (rand() - 0.5) * 0.3;
 
     rows.push({
       ts,
-      temperature: temp1,
-      humidity: hum,
+      temperature: tempRead,
+      humidity: humRead,
       fan_on: fanOn,
       humidifier_on: humidifierOn,
       heater_on: heaterOn,
