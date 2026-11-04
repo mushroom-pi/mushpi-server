@@ -38,14 +38,15 @@ coverage
 # dotenv environment variable files
 .env
 .env.prod
-.env.development.local
-.env.test.local
-.env.production.local
 .env.local
+.env.*.local
 
 # temp directory
 .temp
 .tmp
+
+# Accidental `husky --version` artifact (husky treats args as the install dir)
+--version/
 
 # Runtime data
 pids
@@ -65,3 +66,11 @@ data
 
 # Bruno collection (regenerated from OpenAPI spec)
 /spec/bruno
+
+# Yarn 4 — track configuration/patches, ignore regenerable caches
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions

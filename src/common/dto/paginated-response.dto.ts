@@ -1,7 +1,7 @@
 import { Type } from '@nestjs/common';
 import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
 
-export interface Paginated<T> {
+interface Paginated<T> {
   items: T[];
   page: number;
   limit: number;

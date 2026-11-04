@@ -1,11 +1,24 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  ApiHideProperty,
+  ApiProperty,
+  ApiPropertyOptional,
+} from '@nestjs/swagger';
 
 import { Expose, Transform } from 'class-transformer';
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 
 import { Readings } from '../readings/readings.entity';
-import { PICO_UNIT_STATUSES, PicoUnitStatus } from './pico-unit.type';
-import { OFFLINE_FAILED_CALLS_THRESHOLD } from './pico-units.constant';
+import { getPicoApiCompatibility } from './pico-unit-compatibility.util';
+import {
+  PICO_API_COMPATIBILITIES,
+  PICO_UNIT_STATUSES,
+  PicoApiCompatibility,
+  PicoUnitStatus,
+} from './pico-unit.type';
+import {
+  OFFLINE_FAILED_CALLS_THRESHOLD,
+  PICO_API_VERSION_MIN,
+} from './pico-units.constant';
 
 @Entity('pico_unit')
 export class PicoUnit {
@@ -115,7 +128,18 @@ export class PicoUnit {
     example: '1.2.0',
   })
   @Column({ type: 'text', nullable: true })
-  software_version?: string;
+  firmware_version?: string;
+
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    minimum: PICO_API_VERSION_MIN,
+    example: 1,
+    description:
+      'Pico REST API contract generation implemented by the firmware. Null/absent means the unit has never reported it — it predates the field and needs a firmware update.',
+  })
+  @Column({ type: 'integer', nullable: true })
+  api_version?: number;
 
   @ApiPropertyOptional({
     nullable: true,
@@ -217,6 +241,26 @@ export class PicoUnit {
     return 'healthy';
   }
 
+  // Intentionally snake_case despite the camelCase-getters convention — the
+  // field name `api_compatibility` is a locked API-contract decision matching
+  // the stored-column naming clients already read (`api_version`,
+  // `firmware_version`). Computed, NOT stored; no @Column.
+  // Independent from `status`: a unit can be `healthy` AND `incompatible`.
+  @Expose()
+  @ApiProperty({
+    enum: PICO_API_COMPATIBILITIES,
+    description:
+      'Computed (not stored) verdict on the Pico↔Server `api_version` contract generation ONLY: compatible (reported version within the supported range), incompatible (reported version outside the range, or the unit has contact evidence but never reported a version — firmware predates the handshake and needs an update), unknown (never reported and never contacted — the server has no basis to judge). Separate from `status`: a unit can be healthy and incompatible simultaneously.',
+  })
+  get api_compatibility(): PicoApiCompatibility {
+    return getPicoApiCompatibility(this.api_version, this.last_seen != null);
+  }
+
+  // Never serialized: no pico-units path loads this relation (the latest
+  // reading is served via the computed `latest_reading`). Hidden from the
+  // contract so the swagger CLI plugin cannot infer it as a property no
+  // endpoint can satisfy.
+  @ApiHideProperty()
   @OneToMany(() => Readings, (r) => r.pico_unit)
   readings?: Readings[];
 

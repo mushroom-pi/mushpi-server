@@ -142,7 +142,9 @@ export class RecipesService {
         );
       }
 
-      const contentType = response.headers['content-type']?.toLowerCase() ?? '';
+      const rawContentType = response.headers['content-type'];
+      const contentType =
+        typeof rawContentType === 'string' ? rawContentType.toLowerCase() : '';
       const isImage = IMAGE_ALLOWED_MIME_TYPES.some((mime) =>
         contentType.includes(mime),
       );

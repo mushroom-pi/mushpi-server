@@ -1,9 +1,14 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 
-import { ApiBatch } from 'src/common/decorators/docs/api-batch.decorator';
 import { ApiPicoUnit } from 'src/common/decorators/docs/api-pico-unit.decorator';
 import { GetPicoUnit } from 'src/common/decorators/get-pico-unit.decorator';
+import { ErrorDto } from 'src/common/dto/error.dto';
 import { PicoUnit } from 'src/modules/pico-units/pico-unit.entity';
 
 import {
@@ -35,7 +40,14 @@ export class PicoUnitIdBatchesV1Controller {
   @Get('current')
   @ApiOperation({ summary: "Get the unit's active batch, if any" })
   @ApiOkResponse({ type: Batch })
-  @ApiBatch()
+  // The 404 documents the no-active-batch case (see currentForUnitOrThrow).
+  // Only the response part of ApiBatch() is used here: the route carries no
+  // `:batchId` path parameter, so the composite's ApiParam would emit a
+  // phantom path parameter that is invalid OAS3 (not in the path template).
+  @ApiNotFoundResponse({
+    description: 'Batch not found',
+    type: ErrorDto,
+  })
   getCurrent(@GetPicoUnit() unit: PicoUnit) {
     return this.svc.currentForUnitOrThrow(unit.id);
   }

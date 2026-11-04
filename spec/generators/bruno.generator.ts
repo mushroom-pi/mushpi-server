@@ -1,4 +1,4 @@
-// Load .env so PORT / APP_PORT / APP_HOST are available (matches NestJS ConfigService)
+// Load .env so APP_PORT / PORT are available (matches the server's own port fallback)
 import 'dotenv/config';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
@@ -63,10 +63,11 @@ function toBrunoUrl(path: string): string {
     const envDir = resolve(brunoDir, 'environments');
     mkdirSync(envDir, { recursive: true });
 
-    const host = process.env.APP_HOST || 'localhost';
+    // The app binds all interfaces, so the local collection always targets
+    // localhost. The port mirrors the server's own fallback chain: APP_PORT,
+    // then the legacy PORT, then 3000.
     const port = process.env.APP_PORT || process.env.PORT || '3000';
-    const protocol = host.includes('://') ? '' : 'http://';
-    const baseUrl = `${protocol}${host}:${port}`;
+    const baseUrl = `http://localhost:${port}`;
 
     writeFileSync(
       resolve(envDir, 'mushpi-server LOCAL.bru'),

@@ -146,6 +146,9 @@ export class DashboardService {
         handle: unit.handle,
         name: unit.name ?? null,
         status: unitStatus,
+        // Computed verdict (from the entity getter) — kept separate from the
+        // health status/counts/warnings above and below.
+        api_compatibility: unit.api_compatibility,
         lastSeenSecondsAgo,
         uptimeHours: lastReading?.board_uptime_s
           ? Math.round((lastReading.board_uptime_s / 3600) * 100) / 100

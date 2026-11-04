@@ -6,6 +6,7 @@ import request from 'supertest';
 import { Repository } from 'typeorm';
 
 import { PicoUnit } from '../src/modules/pico-units/pico-unit.entity';
+import { PICO_API_VERSION_MAX } from '../src/modules/pico-units/pico-units.constant';
 import { Readings } from '../src/modules/readings/readings.entity';
 import { clearPicoUnits, seedPicoUnit } from './fixtures/pico-units.fixtures';
 import {
@@ -713,6 +714,404 @@ describe('POST /pico-units/:picoUnitId/poll', () => {
 
       const updated = await picoRepo.findOneBy({ id: unit.id });
       expect(updated!.failed_readings).toBe(1);
+    });
+  });
+
+  describe('firmware_version / api_version poll refresh', () => {
+    it('refreshes stored versions when the poll response carries them', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-ver-refresh',
+        port: 5140,
+        firmware_version: '0.0.9',
+        api_version: 1,
+      });
+
+      mockedAxios.get.mockResolvedValueOnce({
+        data: {
+          ...structuredClone(sampleDeviceResponse),
+          firmware_version: '0.3.0',
+          api_version: 2,
+        },
+        status: 200,
+      });
+
+      await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      expect(updated!.firmware_version).toBe('0.3.0');
+      // Accept-and-flag on the POLL path too: a newer-contract generation is
+      // stored raw, never rejected.
+      expect(updated!.api_version).toBe(2);
+    });
+
+    it('flips api_compatibility compatible → incompatible when a later poll reports a newer contract generation', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-ver-flip',
+        port: 5144,
+        firmware_version: '0.2.0',
+        api_version: 1,
+      });
+
+      const before = await request(app.getHttpServer())
+        .get(`/v1/pico-units/${unit.id}`)
+        .expect(200);
+      expect(before.body.api_compatibility).toBe('compatible');
+
+      mockedAxios.get.mockResolvedValueOnce({
+        data: {
+          ...structuredClone(sampleDeviceResponse),
+          firmware_version: '0.4.0',
+          api_version: 2,
+        },
+        status: 200,
+      });
+
+      const polled = await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+      // The poll response carries the freshly computed verdict.
+      expect(polled.body.api_version).toBe(2);
+      expect(polled.body.api_compatibility).toBe('incompatible');
+      // Health is untouched by the verdict.
+      expect(polled.body.status).toBe('healthy');
+    });
+
+    it('flips api_compatibility incompatible → compatible when a contacted NULL-version unit first reports api_version 1', async () => {
+      // Legacy firmware predating the handshake: contacted but never reported.
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-ver-flip-up',
+        port: 5145,
+        firmware_version: '0.2.0',
+        api_version: null as unknown as number,
+        last_seen: new Date(),
+      });
+
+      const before = await request(app.getHttpServer())
+        .get(`/v1/pico-units/${unit.id}`)
+        .expect(200);
+      expect(before.body.api_compatibility).toBe('incompatible');
+
+      // Unit is reflashed: now reports a supported contract generation.
+      mockedAxios.get.mockResolvedValueOnce({
+        data: {
+          ...structuredClone(sampleDeviceResponse),
+          firmware_version: '0.3.0',
+          api_version: 1,
+        },
+        status: 200,
+      });
+
+      const polled = await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+      expect(polled.body.api_version).toBe(1);
+      expect(polled.body.api_compatibility).toBe('compatible');
+
+      const after = await request(app.getHttpServer())
+        .get(`/v1/pico-units/${unit.id}`)
+        .expect(200);
+      expect(after.body.api_compatibility).toBe('compatible');
+    });
+
+    it('preserves stored versions when the poll response omits them (older firmware)', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-ver-preserve',
+        port: 5141,
+        firmware_version: '0.2.0',
+        api_version: 2,
+      });
+
+      // sampleDeviceResponse has no firmware_version/api_version keys —
+      // exactly what a legacy unit predating the version handshake sends.
+      mockedAxios.get.mockResolvedValueOnce({
+        data: sampleDeviceResponse,
+        status: 200,
+      });
+
+      const polled = await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      expect(updated!.firmware_version).toBe('0.2.0');
+      expect(updated!.api_version).toBe(2);
+      // Omission preserved the stored out-of-range value ⇒ still flagged.
+      expect(polled.body.api_compatibility).toBe('incompatible');
+    });
+
+    it('ignores malformed version metadata (wrong types) without failing the poll — reading persists, stored values preserved, failed_calls untouched', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-ver-malformed',
+        port: 5142,
+        firmware_version: '0.2.0',
+        api_version: 1,
+      });
+
+      // A Pico sending garbage where the version fields belong: a NUMBER for
+      // firmware_version and a non-numeric STRING for api_version. The poll
+      // path is lenient by design — DeviceResponseDto has no type validators
+      // for these fields, so validation cannot 412, the reading is still
+      // persisted, and touchAndResetFailedCalls ignores both garbage values
+      // (predicate-gated), preserving the last accepted stored values.
+      mockedAxios.get.mockResolvedValueOnce({
+        data: {
+          ...structuredClone(sampleDeviceResponse),
+          firmware_version: 12345,
+          api_version: 'abc',
+        },
+        status: 200,
+      });
+
+      const polled = await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      // Reading persisted normally.
+      expect(polled.body.latest_reading).toBeDefined();
+      expect(await readingsRepo.count()).toBe(1);
+
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      // Malformed metadata ignored — last accepted values survive.
+      expect(updated!.firmware_version).toBe('0.2.0');
+      expect(updated!.api_version).toBe(1);
+      // No failed_calls increment (poll fully succeeded).
+      expect(updated!.failed_calls).toBe(0);
+      expect(updated!.last_seen).not.toBeNull();
+    });
+
+    it('ignores a garbage-string firmware_version and non-integer float api_version while accepting valid siblings of the same poll', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-ver-mixed',
+        port: 5146,
+        firmware_version: '0.2.0',
+        api_version: 1,
+      });
+
+      // firmware_version invalid (suffixes forbidden), api_version valid but
+      // ABOVE the supported range ⇒ stored raw (accept-and-flag).
+      mockedAxios.get.mockResolvedValueOnce({
+        data: {
+          ...structuredClone(sampleDeviceResponse),
+          firmware_version: '0.4.0-rc.1',
+          api_version: 7,
+        },
+        status: 200,
+      });
+
+      const polled = await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      // Invalid SemVer ignored; last accepted version preserved…
+      expect(updated!.firmware_version).toBe('0.2.0');
+      // …while the out-of-range (but well-formed) api_version is STORED.
+      expect(updated!.api_version).toBe(7);
+      expect(polled.body.api_compatibility).toBe('incompatible');
+      expect(await readingsRepo.count()).toBe(1);
+    });
+
+    it('accepts a strict-SemVer firmware_version and an api_version at the MAX bound (flips verdict compatible)', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-ver-good',
+        port: 5147,
+        firmware_version: '0.0.9',
+        api_version: null as unknown as number,
+        last_seen: new Date(),
+      });
+
+      mockedAxios.get.mockResolvedValueOnce({
+        data: {
+          ...structuredClone(sampleDeviceResponse),
+          firmware_version: '1.0.0',
+          api_version: PICO_API_VERSION_MAX,
+        },
+        status: 200,
+      });
+
+      const polled = await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      expect(polled.body.firmware_version).toBe('1.0.0');
+      expect(polled.body.api_compatibility).toBe('compatible');
+    });
+  });
+
+  describe('ip refresh on poll', () => {
+    // Manual create (POST /v1/pico-units) leaves ip NULL — only announce
+    // writes it. The poll ingestion must therefore BACKFILL ip from
+    // system.wifi.ip so the mDNS→IP fallback arms itself at the first
+    // successful poll (self-heal of pre-fix stranded units), then REFRESH it
+    // on every poll like firmware_version (DHCP changes), UNLIKE mac
+    // (set-once hardware identity).
+    it('backfills a NULL ip from the poll response (manual-create recovery)', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-ip-backfill',
+        port: 5148,
+        ip: undefined as unknown as string,
+      });
+      expect(unit.ip).toBeFalsy();
+
+      // sampleDeviceResponse reports system.wifi.ip = 192.168.1.127
+      mockedAxios.get.mockResolvedValueOnce({
+        data: sampleDeviceResponse,
+        status: 200,
+      });
+
+      await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      expect(updated!.ip).toBe('192.168.1.127');
+    });
+
+    it('overwrites the stored ip when a later poll reports a new address (DHCP change)', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-ip-refresh',
+        port: 5149,
+        ip: '10.0.0.5',
+      });
+
+      mockedAxios.get.mockResolvedValueOnce({
+        data: sampleDeviceResponse,
+        status: 200,
+      });
+
+      await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      // Present value OVERWRITES (contrast with mac, set-once below).
+      expect(updated!.ip).toBe('192.168.1.127');
+    });
+
+    it('preserves the stored ip when the poll reports an empty ip string (preserve-when-absent)', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-ip-empty',
+        port: 5150,
+        ip: '10.0.0.6',
+      });
+
+      const emptyIpResponse = structuredClone(sampleDeviceResponse);
+      emptyIpResponse.system.wifi.ip = '';
+
+      mockedAxios.get.mockResolvedValueOnce({
+        data: emptyIpResponse,
+        status: 200,
+      });
+
+      const polled = await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      // Empty string never clobbers — same preserve rule as the version
+      // fields, and the reading still persists (lenient ingestion).
+      expect(polled.body.latest_reading).toBeDefined();
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      expect(updated!.ip).toBe('10.0.0.6');
+    });
+
+    it('stored ip survives a null wifi.ip — rejected structurally (412), unlike the lenient version fields', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-ip-null',
+        port: 5151,
+        ip: '10.0.0.8',
+      });
+
+      const nullIpResponse = structuredClone(sampleDeviceResponse);
+      nullIpResponse.system.wifi.ip = null;
+
+      mockedAxios.get.mockResolvedValueOnce({
+        data: nullIpResponse,
+        status: 200,
+      });
+
+      // system.wifi.ip is a REQUIRED @IsString on SystemWifiDto (unlike the
+      // deliberately untyped top-level version fields), so a null ip fails
+      // validateDeviceResponse → 412. The poll aborts before any touch, so
+      // the stored ip is untouched — no clobber path exists.
+      await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(412);
+
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      expect(updated!.ip).toBe('10.0.0.8');
+      expect(await readingsRepo.count()).toBe(0);
+    });
+
+    it('mac stays set-once while ip refreshes on the same poll (semantics contrast)', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-ip-vs-mac',
+        port: 5152,
+        ip: '10.0.0.7',
+        mac: 'aa:bb:cc:dd:ee:ff',
+      });
+
+      // sampleDeviceResponse reports mac 2c:cf:67:be:95:30 + ip 192.168.1.127.
+      mockedAxios.get.mockResolvedValueOnce({
+        data: sampleDeviceResponse,
+        status: 200,
+      });
+
+      await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      const updated = await picoRepo.findOneBy({ id: unit.id });
+      // MAC: immutable hardware identity — the FIRST value is kept.
+      expect(updated!.mac).toBe('aa:bb:cc:dd:ee:ff');
+      // IP: address is lease-bound — the LATEST report wins.
+      expect(updated!.ip).toBe('192.168.1.127');
+    });
+
+    it('the backfilled ip arms the mDNS→IP fallback for the next cycle (recovery sequence)', async () => {
+      const unit = await seedPicoUnit(app, {
+        handle: 'poll-ip-recover',
+        port: 5153,
+        ip: undefined as unknown as string,
+      });
+
+      // Cycle 1: mDNS reachable — reading stored, ip backfilled.
+      mockedAxios.get.mockResolvedValueOnce({
+        data: sampleDeviceResponse,
+        status: 200,
+      });
+      await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+      expect((await picoRepo.findOneBy({ id: unit.id }))!.ip).toBe(
+        '192.168.1.127',
+      );
+      expect(await readingsRepo.count()).toBe(1);
+
+      // Cycle 2: mDNS responder dead (connection-level error), the unit kept
+      // its DHCP lease — the poll now succeeds through the IP fallback.
+      const networkError = Object.assign(new Error('no route'), {
+        isAxiosError: true,
+        code: 'EHOSTUNREACH',
+        request: {},
+      });
+      mockedAxios.get.mockReset();
+      mockedAxios.isAxiosError = jest.fn(
+        (err: any) => err?.isAxiosError === true,
+      ) as any;
+      mockedAxios.get
+        .mockRejectedValueOnce(networkError as AxiosError)
+        .mockResolvedValueOnce({ data: sampleDeviceResponse, status: 200 });
+
+      await request(app.getHttpServer())
+        .post(`/v1/pico-units/${unit.id}/poll`)
+        .expect(201);
+
+      const urls = mockedAxios.get.mock.calls.map((c) => c[0]);
+      expect(urls[0]).toBe('http://poll-ip-recover.local:5153/?force=1');
+      expect(urls[1]).toBe('http://192.168.1.127:5153/?force=1');
+      expect(await readingsRepo.count()).toBe(2);
     });
   });
 

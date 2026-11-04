@@ -30,23 +30,16 @@ jobs:
         run: yarn install
 
       - name: Prune
-        run: yarn knip --dependencies --exclude devDependencies
+        run: yarn knip:ci
 
       - name: Audit dependencies
-        run: |
-          yarn audit --level high --groups dependencies
-          exit_code=$?
-          if [[ $exit_code -ge 8 ]]; then
-            echo 'Serious vulnerabilities found!'
-            exit 1
-          fi
-        shell: bash {0} # disables `-e` by default
+        run: yarn audit:ci
 
       - name: Build
         run: yarn build
 
       - name: Lint
-        run: yarn lint
+        run: yarn lint:ci
 
       - name: Unit tests
         run: yarn test

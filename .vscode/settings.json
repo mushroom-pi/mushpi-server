@@ -1,5 +1,6 @@
 {
   "jest.jestCommandLine": "yarn test:e2e",
   "jest.monitorLongRun": "",
-  "jest.rootPath": "test"
+  "jest.rootPath": "test",
+  "jest.runMode": "on-save"
 }

@@ -6,8 +6,13 @@ import { closeTestApp, createTestApp } from './test-setup';
 /**
  * Regression guard: asserts that every entity / DTO consumed by the
  * auto-generated client carries the expected @ApiProperty / @ApiPropertyOptional
- * decorators. A missing decorator silently drops the field from the committed
- * spec/openapi.json, which breaks the client's tsc build.
+ * decorators — source-level shape-intent completeness. This document is built
+ * via ts-jest WITHOUT the @nestjs/swagger CLI plugin, so a property appears only
+ * if explicitly decorated here. The committed spec/openapi.json is generated from
+ * the compiled output, where the plugin infers a shape for every undecorated
+ * declared property — a missing decorator no longer silently drops the field, it
+ * commits with a plugin-guessed type/requiredness that may not be the intent.
+ * This suite therefore pins what the DECORATORS alone declare.
  *
  * Read-only — no DB writes.
  */
@@ -30,6 +35,12 @@ describe('OpenAPI schemas (e2e)', () => {
   });
 
   const schemas = () => doc.components.schemas;
+
+  describe('Path-level contract', () => {
+    it('does not expose /metrics (Prometheus endpoint removed)', () => {
+      expect(doc.paths).not.toHaveProperty('/metrics');
+    });
+  });
 
   describe('Recipe', () => {
     it('contains all expected properties', () => {
@@ -98,7 +109,9 @@ describe('OpenAPI schemas (e2e)', () => {
         'monitored',
         'last_seen',
         'micropython_version',
-        'software_version',
+        'firmware_version',
+        'api_version',
+        'api_compatibility',
         'board',
         'board_total_mem_byte',
         'board_total_fs_byte',
@@ -106,6 +119,33 @@ describe('OpenAPI schemas (e2e)', () => {
       ]) {
         expect(props).toHaveProperty(key);
       }
+    });
+
+    it('exposes api_compatibility as a REQUIRED enum with all three verdict values', () => {
+      const props = schemas().PicoUnit.properties;
+      expect(props.api_compatibility.enum).toEqual([
+        'compatible',
+        'incompatible',
+        'unknown',
+      ]);
+      // Required + non-nullable: every serialized PicoUnit carries the verdict.
+      expect(schemas().PicoUnit.required).toContain('api_compatibility');
+      expect(props.api_compatibility.nullable).toBeUndefined();
+    });
+  });
+
+  describe('DashboardUnitItemDto', () => {
+    it('exposes api_compatibility as a REQUIRED enum with all three verdict values', () => {
+      const props = schemas().DashboardUnitItemDto.properties;
+      expect(props).toHaveProperty('api_compatibility');
+      expect(props.api_compatibility.enum).toEqual([
+        'compatible',
+        'incompatible',
+        'unknown',
+      ]);
+      expect(schemas().DashboardUnitItemDto.required).toContain(
+        'api_compatibility',
+      );
     });
   });
 
@@ -145,6 +185,32 @@ describe('OpenAPI schemas (e2e)', () => {
       for (const key of ['dht', 'humidifier', 'fan', 'heater']) {
         expect(props).toHaveProperty(key);
       }
+    });
+  });
+
+  describe('MemoryUsageDto', () => {
+    it('names the heap fields heapTotal/heapUsed, not readonlyheapTotal/readonlyheapUsed', () => {
+      const props = schemas().MemoryUsageDto.properties;
+      expect(props).toHaveProperty('heapTotal');
+      expect(props).toHaveProperty('heapUsed');
+      // Exact key set — matches the process.memoryUsage() payload shape.
+      expect(Object.keys(props).sort()).toEqual([
+        'arrayBuffers',
+        'external',
+        'heapTotal',
+        'heapUsed',
+        'rss',
+      ]);
+      expect(props).not.toHaveProperty('readonlyheapTotal');
+      expect(props).not.toHaveProperty('readonlyheapUsed');
+    });
+
+    it('requires heapTotal and heapUsed (and never the typo names)', () => {
+      const required = schemas().MemoryUsageDto.required;
+      expect(required).toContain('heapTotal');
+      expect(required).toContain('heapUsed');
+      expect(required).not.toContain('readonlyheapTotal');
+      expect(required).not.toContain('readonlyheapUsed');
     });
   });
 });

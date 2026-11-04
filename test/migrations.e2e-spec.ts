@@ -48,7 +48,7 @@ describe('Migrations (e2e)', () => {
     }
   });
 
-  it('fresh DB: migrationsRun applies exactly 1 migration and creates all expected tables', async () => {
+  it('fresh DB: migrationsRun applies all migrations and creates all expected tables', async () => {
     const dbPath = tmpDbPath('fresh');
     cleanupPaths.push(dbPath);
 
@@ -57,9 +57,12 @@ describe('Migrations (e2e)', () => {
 
     try {
       // Check migrations table
-      const applied = await ds.query('SELECT * FROM migrations');
-      expect(applied).toHaveLength(1);
+      const applied = await ds.query('SELECT * FROM migrations ORDER BY id');
+      expect(applied).toHaveLength(2);
       expect(applied[0].name).toBe('InitSchema1788454880680');
+      expect(applied[1].name).toBe(
+        'PicoUnitFirmwareVersionApiVersion1789485932426',
+      );
 
       // Check all tables exist
       const tables = await ds.query(
@@ -94,8 +97,12 @@ describe('Migrations (e2e)', () => {
           'failed_readings',
           'consecutive_empty_readings',
           'enabled',
+          'firmware_version',
+          'api_version',
         ]),
       );
+      // The incremental migration renamed the baseline's software_version column.
+      expect(colNames).not.toContain('software_version');
     } finally {
       await ds.destroy();
     }
@@ -152,9 +159,14 @@ describe('Migrations (e2e)', () => {
 
     try {
       // Migration should be recorded as applied
-      const applied = await migratedDs.query('SELECT * FROM migrations');
-      expect(applied).toHaveLength(1);
+      const applied = await migratedDs.query(
+        'SELECT * FROM migrations ORDER BY id',
+      );
+      expect(applied).toHaveLength(2);
       expect(applied[0].name).toBe('InitSchema1788454880680');
+      expect(applied[1].name).toBe(
+        'PicoUnitFirmwareVersionApiVersion1789485932426',
+      );
 
       // sqlite_master should be unchanged (no schema diff, excluding migrations table)
       const masterAfter = await migratedDs.query(
@@ -186,6 +198,101 @@ describe('Migrations (e2e)', () => {
         .findOneBy({ handle: 'legacy-unit-01' });
       expect(unit).toBeDefined();
       expect(unit!.name).toBe('Legacy Unit');
+    } finally {
+      await migratedDs.destroy();
+    }
+  });
+
+  it('true legacy DB (software_version schema): rename preserves values, api_version added NULL, down() reverts', async () => {
+    const dbPath = tmpDbPath('firmware-rename');
+    cleanupPaths.push(dbPath);
+
+    // Phase 1: simulate a DB at the PRE-migration shape (baseline schema —
+    // software_version column, no api_version) using raw SQL.
+    const preDs = new DataSource({
+      type: 'better-sqlite3',
+      database: dbPath,
+      entities: [Health, PicoUnit, Batch, Readings, Recipe, Settings],
+      synchronize: false,
+    });
+    await preDs.initialize();
+    try {
+      await preDs.query(
+        `CREATE TABLE "pico_unit" (
+          "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+          "created_at" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+          "handle" text NOT NULL,
+          "name" text,
+          "description" text,
+          "face_color" text,
+          "ip" text,
+          "mac" text,
+          "port" integer NOT NULL DEFAULT (5000),
+          "enabled" boolean NOT NULL DEFAULT (1),
+          "last_seen" datetime,
+          "micropython_version" text,
+          "software_version" text,
+          "board" text,
+          "board_total_mem_byte" integer DEFAULT (0),
+          "board_total_fs_byte" integer DEFAULT (0),
+          "board_cpu_freq_mhz" integer DEFAULT (0),
+          "failed_calls" integer NOT NULL DEFAULT (0),
+          "failed_readings" integer NOT NULL DEFAULT (0),
+          "consecutive_empty_readings" integer NOT NULL DEFAULT (0),
+          CONSTRAINT "UQ_fe71723067ef220b65e6118aa3e" UNIQUE ("handle")
+        )`,
+      );
+      await preDs.query(
+        `INSERT INTO "pico_unit" ("handle", "port", "software_version") VALUES ('rename-unit', 5000, '0.1.0')`,
+      );
+    } finally {
+      await preDs.destroy();
+    }
+
+    // Phase 2: run all pending migrations. Against this pre-existing table the
+    // baseline no-ops (CREATE TABLE IF NOT EXISTS) and only the incremental
+    // migration mutates the schema — the real prod upgrade path.
+    const migratedDs = buildDataSource(dbPath, { migrationsRun: false });
+    await migratedDs.initialize();
+    try {
+      const run = await migratedDs.runMigrations();
+      expect(run.map((m) => m.name)).toEqual([
+        'InitSchema1788454880680',
+        'PicoUnitFirmwareVersionApiVersion1789485932426',
+      ]);
+
+      // Column renamed, old name gone.
+      const cols = (await migratedDs.query('PRAGMA table_info(pico_unit)')).map(
+        (r: any) => r.name,
+      );
+      expect(cols).toContain('firmware_version');
+      expect(cols).not.toContain('software_version');
+      expect(cols).toContain('api_version');
+
+      // Existing row value survived the rename; api_version is NULL (never reported).
+      const rows = await migratedDs.query(
+        `SELECT handle, firmware_version, api_version FROM pico_unit WHERE handle = 'rename-unit'`,
+      );
+      expect(rows).toEqual([
+        { handle: 'rename-unit', firmware_version: '0.1.0', api_version: null },
+      ]);
+
+      // down() reverts (undoLastMigration reverts the most recent applied
+      // migration — our incremental one): api_version dropped, column renamed
+      // back, value intact.
+      await migratedDs.undoLastMigration();
+      const colsAfter = (
+        await migratedDs.query('PRAGMA table_info(pico_unit)')
+      ).map((r: any) => r.name);
+      expect(colsAfter).toContain('software_version');
+      expect(colsAfter).not.toContain('firmware_version');
+      expect(colsAfter).not.toContain('api_version');
+      const reverted = await migratedDs.query(
+        `SELECT handle, software_version FROM pico_unit WHERE handle = 'rename-unit'`,
+      );
+      expect(reverted).toEqual([
+        { handle: 'rename-unit', software_version: '0.1.0' },
+      ]);
     } finally {
       await migratedDs.destroy();
     }

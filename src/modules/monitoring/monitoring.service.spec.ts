@@ -61,6 +61,7 @@ describe('MonitoringService', () => {
           useValue: {
             server: { nodeEnv: process.env.NODE_ENV },
             sqlite: { database: ':memory:' },
+            isDemo: false,
           },
         },
         {
@@ -274,8 +275,8 @@ describe('MonitoringService', () => {
   });
 
   describe('checkServiceStatus', () => {
-    it('should return a mocked service status', async () => {
-      const result = await service['checkServiceStatus']('mockService');
+    it('checkServiceStatus("serviceMock") returns the configured service status', async () => {
+      const result = await service['checkServiceStatus']('serviceMock');
       expect(result).toEqual({
         hasKey: true,
         available: true,
@@ -297,6 +298,11 @@ describe('MonitoringService', () => {
       expect(result).toHaveProperty('system');
       expect(result).toHaveProperty('databases');
       expect(result).toHaveProperty('services');
+      // Ties config.constants `services` to the checkServiceStatus case:
+      // fails if the constant drifts, the case drifts, or the case is misspelled.
+      expect(result.services).toEqual({
+        serviceMock: { hasKey: true, available: true },
+      });
     });
 
     it('should return an empty response if server, system, databases, and services are false or none', async () => {
@@ -347,6 +353,45 @@ describe('MonitoringService', () => {
       expect(result.system).toHaveProperty('memory');
       expect(result.system).toHaveProperty('upTime');
       expect(result.system).toHaveProperty('disk');
+    });
+
+    it('withholds host details on a demo boot (no os/cpu/disk keys, no database path)', async () => {
+      sqliteHealthMock.checkSQLiteDbStatus.mockResolvedValue({
+        read: true,
+        write: true,
+        size: { ...defaultSizeMock },
+      });
+
+      // The demo profile is instance-level (NODE_ENV=demo); flip the flag the
+      // same way the disk-fallback test overrides `sqlite.database`.
+      const config = (service as any).configService;
+      const origIsDemo = config.isDemo;
+      config.isDemo = true;
+      try {
+        const result: HealthCheckResponse = await service.health({
+          system: 'true',
+        });
+
+        // Operator-visible parts stay...
+        expect(result.system).toHaveProperty('memory');
+        expect(result.system).toHaveProperty('upTime');
+        expect(typeof result.system.memory.totalMb).toBe('number');
+
+        // ...while host identity keys are omitted entirely (not null).
+        expect(result.system).not.toHaveProperty('os');
+        expect(result.system).not.toHaveProperty('cpu');
+        expect(result.system).not.toHaveProperty('disk');
+
+        const sqlite = result.databases.sqlite;
+        expect(sqlite.read).toBe(true);
+        expect(sqlite.write).toBe(true);
+        expect(sqlite.size).not.toHaveProperty('path');
+        expect(sqlite.size.totalMb).toBeNull();
+        expect(sqlite.size.tables).toEqual([]);
+        expect(sqlite.size.inMemory).toBe(true);
+      } finally {
+        config.isDemo = origIsDemo;
+      }
     });
   });
 });

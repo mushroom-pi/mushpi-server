@@ -163,7 +163,9 @@ export class ExceptionsFilter implements ExceptionFilter {
         responseBody.path = request.url;
 
         if (!responseBody.emitter && exception instanceof Error)
-          responseBody.emitter = this.getEmitter(exception);
+          responseBody.emitter = this.configService?.isDemo
+            ? 'unknown'
+            : this.getEmitter(exception);
       } catch (error) {
         this.logger.debug(
           'Failed to enrich exception response with detail fields',

@@ -3,7 +3,7 @@ import * as path from 'path';
 
 import { isExternalImageUrl } from './image-url.util';
 
-export function resolveImageFilePath(
+function resolveImageFilePath(
   stored: string,
   pathPrefix: string,
   imageUploadDir: string,

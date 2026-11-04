@@ -1,21 +1,25 @@
 import {
   ClassSerializerInterceptor,
+  Logger as NestLogger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { HttpAdapterHost, NestFactory, Reflector } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 
 import basicAuth from 'express-basic-auth';
-import helmet from 'helmet';
 import hpp from 'hpp';
 import { Logger } from 'nestjs-pino';
 import toobusy from 'toobusy-js';
+import { DataSource } from 'typeorm';
 
 import { ExceptionsFilter } from './common/filters/exceptions.filter';
 import { AppSecretBearerMiddleware } from './common/middleware/app-secret-bearer.middleware';
+import { createHelmetMiddleware } from './common/middleware/helmet.middleware';
 import { ProtectEventLoopMiddleware } from './common/middleware/protect-event-loop.middleware';
 import { validationPipe } from './common/pipes/validation.pipe';
 import { applyApiVersioning } from './common/utils/api-version';
+import { cleanStart } from './common/utils/clean-start';
+import { applySingleHopTrustProxy } from './common/utils/trust-proxy';
 import { AppModule } from './modules/app.module';
 import { CustomConfigService } from './modules/config/config.service';
 import { SwaggerModule } from './modules/swagger/swagger.module';
@@ -28,7 +32,25 @@ async function bootstrap() {
 
   const configService: CustomConfigService = app.get(CustomConfigService);
 
+  /**
+   * Database connect window. `manualInitialization: true` (`sqlite.module.ts`)
+   * defers TypeORM's `DataSource.initialize()` past `NestFactory.create()` —
+   * create() only instantiates providers — so the clean-start decision below
+   * sees the TRUE on-disk state: nothing has created or opened the database
+   * file yet, and an unlink removes a file with no open handle. Then every
+   * profile connects explicitly here, before `listen()` runs the lifecycle
+   * hooks (image directories, cron startup sweep, demo seeding) that need a
+   * live connection. The demo profile alone performs the clean start.
+   */
+  const dataSource = app.get(DataSource);
+  if (configService.isDemo) cleanStart(configService);
+  await dataSource.initialize();
+
   applyApiVersioning(app);
+
+  // Demo-only single-hop proxy trust — must mirror `test/test-setup.ts`.
+  // Inert on every non-demo boot (self-hosted hubs keep Express's default).
+  applySingleHopTrustProxy(app, configService);
 
   // Security libraries
   /** CORS-settings */
@@ -40,16 +62,7 @@ async function bootstrap() {
   /** General safeguards */
   toobusy.maxLag(configService.security.maxEventLoopDelay);
   app.use(hpp());
-  app.use(
-    helmet({
-      contentSecurityPolicy: {
-        directives: {
-          ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-          'img-src': ["'self'", 'data:', 'blob:', 'https:'],
-        },
-      },
-    }),
-  );
+  app.use(createHelmetMiddleware(configService.security.httpsEnabled));
 
   /** Global Nest middleware — registered via app.use() to bypass route versioning */
   const protectEventLoop = new ProtectEventLoopMiddleware(configService);
@@ -59,6 +72,15 @@ async function bootstrap() {
 
   // Customized tools
   if (configService.docs.makeDocs) {
+    // Docs credentials are optional in every environment, so a production
+    // boot with the endpoint enabled and no credential pair is legal — warn
+    // loudly instead of failing. A partial pair never reaches here: the Joi
+    // schema rejects it at boot.
+    if (configService.isProd && !configService.docs.useAuth)
+      NestLogger.warn(
+        `Swagger docs are enabled at "/${configService.docs.endpoint}" (and its "/${configService.docs.endpoint}-json" OpenAPI document) WITHOUT authentication: the docs/OpenAPI surface — including the proxied control routes it documents — is served unauthenticated. Set both DOCS_USERNAME and DOCS_PASSWORD to enable HTTP basic auth on it.`,
+        'Bootstrap',
+      );
     /**
      * Adding the basic authentication for the documentation endpoint BEFORE the swaggerModule is created is pretty important. If you add the authentication after you create the endpoint, it won't work.
      */

@@ -1,6 +1,6 @@
 import { INestApplication, VersioningType } from '@nestjs/common';
 
-export const API_VERSION = '1' as const;
+const API_VERSION = '1' as const;
 
 export function applyApiVersioning(app: INestApplication): void {
   app.enableVersioning({

@@ -15,7 +15,7 @@ export interface UpTime {
   days: number;
 }
 
-export interface OsInfo {
+interface OsInfo {
   platform: string;
   type: string;
   release: string;
@@ -23,28 +23,28 @@ export interface OsInfo {
   arch: string;
 }
 
-export interface CpuInfo {
+interface CpuInfo {
   model: string;
   cores: number;
 }
 
-export interface SystemMemory {
+interface SystemMemory {
   totalMb: number;
   freeMb: number;
 }
 
-export interface DiskInfo {
+interface DiskInfo {
   path: string;
   totalMb: number | null;
   freeMb: number | null;
 }
 
 export interface SystemInfo {
-  os: OsInfo;
-  cpu: CpuInfo;
+  os?: OsInfo;
+  cpu?: CpuInfo;
   memory: SystemMemory;
   upTime: UpTime;
-  disk: DiskInfo;
+  disk?: DiskInfo;
 }
 
 export interface ServerStatus {
@@ -66,7 +66,7 @@ export interface TableSize {
 export interface DatabaseSizeStatus {
   totalMb: number | null;
   inMemory: boolean;
-  path: string;
+  path?: string;
   tables: TableSize[];
   overheadMb: number | null;
 }

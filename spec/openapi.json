@@ -8,13 +8,11 @@
         "responses": {
           "200": {
             "description": "Server is up and running",
-            "schema": {
-              "example": "pong"
-            },
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "string"
+                  "type": "string",
+                  "example": "pong"
                 }
               }
             }
@@ -313,115 +311,6 @@
         ]
       }
     },
-    "/metrics": {
-      "get": {
-        "operationId": "MonitoringController_metrics",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Grafana-ready metrics without any extra formatting from the server side",
-            "schema": {
-              "example": "# HELP process_cpu_user_seconds_total Total user CPU time spent in seconds.\n        # TYPE process_cpu_user_seconds_total counter\n        process_cpu_user_seconds_total 0.122049\n\n        # HELP process_cpu_system_seconds_total Total system CPU time spent in seconds.\n        # TYPE process_cpu_system_seconds_total counter\n        process_cpu_system_seconds_total 0.014626..."
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Generic unknown error produced by an unidentified exception",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "statusCode": {
-                      "type": "number",
-                      "example": 500
-                    },
-                    "error": {
-                      "type": "string",
-                      "example": "Internal Server Error"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Internal server error",
-                      "description": "The sort of error message you can expect"
-                    },
-                    "emitter": {
-                      "type": "string",
-                      "example": "ErrorProducerModule",
-                      "description": "If the error was produced within the codebase, the name of the module where it was created"
-                    },
-                    "timestamp": {
-                      "type": "string",
-                      "example": "2024-09-14T22:00:00.000Z"
-                    },
-                    "path": {
-                      "type": "string",
-                      "example": "/path/of/the/failing/route",
-                      "description": "Endpoint responsible for the production of the error"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "The event loop is lagging and no more requests can be attended right now",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "statusCode": {
-                      "type": "number",
-                      "example": 503
-                    },
-                    "error": {
-                      "type": "string",
-                      "example": "Service Unavailable"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Server is too busy",
-                      "description": "The sort of error message you can expect"
-                    },
-                    "emitter": {
-                      "type": "string",
-                      "example": "ErrorProducerModule",
-                      "description": "If the error was produced within the codebase, the name of the module where it was created"
-                    },
-                    "timestamp": {
-                      "type": "string",
-                      "example": "2024-09-14T22:00:00.000Z"
-                    },
-                    "path": {
-                      "type": "string",
-                      "example": "/path/of/the/failing/route",
-                      "description": "Endpoint responsible for the production of the error"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "secret": []
-          }
-        ],
-        "summary": "Use a Prometheus client to gather default metrics for Grafana monitoring",
-        "tags": [
-          "monitoring",
-          "no-validation"
-        ]
-      }
-    },
     "/v1/pico-units": {
       "post": {
         "description": "Register a Pico unit by handle after verifying it is reachable via mDNS.",
@@ -444,6 +333,45 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PicoUnit"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
                 }
               }
             }
@@ -995,7 +923,8 @@
         "summary": "Announce a Pico Unit (hardware)",
         "tags": [
           "pico-units"
-        ]
+        ],
+        "x-demo-readonly": "exempt"
       }
     },
     "/v1/pico-units/{picoUnitId}": {
@@ -1208,6 +1137,45 @@
               }
             }
           },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "PicoUnit not found",
             "content": {
@@ -1376,6 +1344,45 @@
         "responses": {
           "204": {
             "description": "Deleted"
+          },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
           },
           "404": {
             "description": "PicoUnit not found",
@@ -1548,6 +1555,45 @@
             "content": {
               "application/json": {
                 "example": "pong"
+              }
+            }
+          },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
               }
             }
           },
@@ -1727,7 +1773,8 @@
         "tags": [
           "pico-units",
           "proxy"
-        ]
+        ],
+        "x-demo-readonly": "refused"
       }
     },
     "/v1/pico-units/{picoUnitId}/poll": {
@@ -1753,6 +1800,45 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PollPicoUnitResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
                 }
               }
             }
@@ -1990,6 +2076,45 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RebootResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
                 }
               }
             }
@@ -3059,6 +3184,45 @@
               }
             }
           },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "The provided pico_unit_id doesn't correspond to any existing and monitored Pico Unit",
             "content": {
@@ -3639,6 +3803,45 @@
               }
             }
           },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "Batch not found",
             "content": {
@@ -3821,6 +4024,45 @@
         "responses": {
           "204": {
             "description": "Deleted"
+          },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
           },
           "404": {
             "description": "Batch not found",
@@ -4032,6 +4274,45 @@
               }
             }
           },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "Batch or image not found",
             "content": {
@@ -4239,6 +4520,45 @@
               }
             }
           },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "Batch or image not found",
             "content": {
@@ -4442,6 +4762,45 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Recipe"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
                 }
               }
             }
@@ -4810,17 +5169,6 @@
         "operationId": "PicoUnitIdBatchesController_getCurrent_v1",
         "parameters": [
           {
-            "name": "batchId",
-            "required": true,
-            "in": "path",
-            "description": "Batch ID",
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "example": 42
-            }
-          },
-          {
             "name": "picoUnitId",
             "required": true,
             "in": "path",
@@ -5014,6 +5362,45 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Recipe"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
                 }
               }
             }
@@ -5559,6 +5946,45 @@
               }
             }
           },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "Recipe not found",
             "content": {
@@ -5724,6 +6150,45 @@
         "responses": {
           "204": {
             "description": "Deleted"
+          },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
           },
           "404": {
             "description": "Recipe not found",
@@ -6159,6 +6624,45 @@
               }
             }
           },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "Recipe or image not found",
             "content": {
@@ -6342,6 +6846,45 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
                 }
               }
             }
@@ -6539,6 +7082,45 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SetpointsDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
                 }
               }
             }
@@ -6770,6 +7352,45 @@
               }
             }
           },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "PicoUnit not found",
             "content": {
@@ -6993,6 +7614,45 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OutputsDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
                 }
               }
             }
@@ -7230,6 +7890,45 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ControlLoopDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
                 }
               }
             }
@@ -7651,6 +8350,45 @@
               }
             }
           },
+          "403": {
+            "description": "Returned only on demo deployments (NODE_ENV=demo), which are read-only: this data-changing operation is refused and nothing changes. Self-hosted hubs never return it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 403
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Forbidden"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Sorry: this demo version of Mushroom Pi is read-only",
+                      "description": "The sort of error message you can expect"
+                    },
+                    "emitter": {
+                      "type": "string",
+                      "example": "ErrorProducerModule",
+                      "description": "If the error was produced within the codebase, the name of the module where it was created"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2024-09-14T22:00:00.000Z"
+                    },
+                    "path": {
+                      "type": "string",
+                      "example": "/path/of/the/failing/route",
+                      "description": "Endpoint responsible for the production of the error"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation error",
             "content": {
@@ -7783,7 +8521,7 @@
   "info": {
     "title": "mushpi-server",
     "description": "A backend for the Mushroom Pi project",
-    "version": "0.8.0",
+    "version": "0.9.0",
     "contact": {}
   },
   "tags": [
@@ -7797,9 +8535,7 @@
     "securitySchemes": {
       "secret": {
         "type": "http",
-        "scheme": "bearer",
-        "in": "header",
-        "name": "authorization"
+        "scheme": "bearer"
       }
     },
     "schemas": {
@@ -7810,11 +8546,11 @@
             "type": "number",
             "example": 74.57
           },
-          "readonlyheapTotal": {
+          "heapTotal": {
             "type": "number",
             "example": 54.23
           },
-          "readonlyheapUsed": {
+          "heapUsed": {
             "type": "number",
             "example": 35.67
           },
@@ -7829,8 +8565,8 @@
         },
         "required": [
           "rss",
-          "readonlyheapTotal",
-          "readonlyheapUsed",
+          "heapTotal",
+          "heapUsed",
           "external",
           "arrayBuffers"
         ]
@@ -7869,14 +8605,15 @@
             "type": "boolean"
           },
           "environment": {
-            "type": "string",
             "enum": [
+              "demo",
               "dev",
               "local",
               "prod",
               "staging",
               "test"
             ],
+            "type": "string",
             "description": "The environment in which this instance of the service is being executed"
           },
           "loadAverage": {
@@ -8010,10 +8747,20 @@
         "type": "object",
         "properties": {
           "os": {
-            "$ref": "#/components/schemas/OsInfoDto"
+            "description": "Omitted on a public-demo instance (NODE_ENV=demo)",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OsInfoDto"
+              }
+            ]
           },
           "cpu": {
-            "$ref": "#/components/schemas/CpuInfoDto"
+            "description": "Omitted on a public-demo instance (NODE_ENV=demo)",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CpuInfoDto"
+              }
+            ]
           },
           "memory": {
             "$ref": "#/components/schemas/SystemMemoryDto"
@@ -8022,15 +8769,17 @@
             "$ref": "#/components/schemas/UpTime"
           },
           "disk": {
-            "$ref": "#/components/schemas/DiskInfoDto"
+            "description": "Omitted on a public-demo instance (NODE_ENV=demo)",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DiskInfoDto"
+              }
+            ]
           }
         },
         "required": [
-          "os",
-          "cpu",
           "memory",
-          "upTime",
-          "disk"
+          "upTime"
         ]
       },
       "TableSizeDto": {
@@ -8069,7 +8818,8 @@
           },
           "path": {
             "type": "string",
-            "example": "./data/app.sqlite"
+            "example": "./data/app.sqlite",
+            "description": "Path to the database file. Omitted on a public-demo instance (NODE_ENV=demo)"
           },
           "tables": {
             "type": "array",
@@ -8086,7 +8836,6 @@
         "required": [
           "totalMb",
           "inMemory",
-          "path",
           "tables",
           "overheadMb"
         ]
@@ -8117,10 +8866,7 @@
           "sqlite": {
             "$ref": "#/components/schemas/DatabaseMockDto"
           }
-        },
-        "required": [
-          "sqlite"
-        ]
+        }
       },
       "ServiceMockDto": {
         "type": "object",
@@ -8171,15 +8917,69 @@
           "services": {
             "$ref": "#/components/schemas/ServicesDto"
           }
-        },
-        "required": [
-          "databases"
-        ]
+        }
       },
       "ErrorDto": {
         "type": "object",
         "properties": {
           "statusCode": {
+            "enum": [
+              100,
+              101,
+              102,
+              103,
+              200,
+              201,
+              202,
+              203,
+              204,
+              205,
+              206,
+              207,
+              208,
+              210,
+              300,
+              301,
+              302,
+              303,
+              304,
+              307,
+              308,
+              400,
+              401,
+              402,
+              403,
+              404,
+              405,
+              406,
+              407,
+              408,
+              409,
+              410,
+              411,
+              412,
+              413,
+              414,
+              415,
+              416,
+              417,
+              418,
+              421,
+              422,
+              423,
+              424,
+              428,
+              429,
+              456,
+              500,
+              501,
+              502,
+              503,
+              504,
+              505,
+              507,
+              508
+            ],
             "type": "number",
             "example": 404
           },
@@ -8218,10 +9018,10 @@
         "properties": {
           "handle": {
             "type": "string",
-            "example": "unit-01",
-            "description": "Handle (mDNS name) of the Pico unit to add manually",
             "minLength": 1,
-            "maxLength": 64
+            "maxLength": 64,
+            "example": "unit-01",
+            "description": "Handle (mDNS name) of the Pico unit to add manually"
           }
         },
         "required": [
@@ -8299,6 +9099,19 @@
             "type": "integer",
             "description": "Round-trip poll response time in ms",
             "example": 180
+          },
+          "id": {
+            "type": "number"
+          },
+          "ts": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "last_sensor_err": {
+            "type": "string"
+          },
+          "pico_unit_id": {
+            "type": "number"
           }
         },
         "required": [
@@ -8310,7 +9123,10 @@
           "board_temp",
           "board_used_mem",
           "board_used_fs",
-          "time_to_response_ms"
+          "time_to_response_ms",
+          "id",
+          "ts",
+          "pico_unit_id"
         ]
       },
       "PicoUnit": {
@@ -8389,11 +9205,18 @@
             "description": "MicroPython runtime version",
             "example": "v1.24.0"
           },
-          "software_version": {
+          "firmware_version": {
             "type": "string",
             "nullable": true,
             "description": "Firmware version (_SOFTWARE_VERSION in app/state.py)",
             "example": "1.2.0"
+          },
+          "api_version": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 1,
+            "example": 1,
+            "description": "Pico REST API contract generation implemented by the firmware. Null/absent means the unit has never reported it — it predates the field and needs a firmware update."
           },
           "board": {
             "type": "string",
@@ -8455,9 +9278,19 @@
             ],
             "description": "Computed health status: unmonitored (not being polled), healthy (reachable, no faults), degraded (sensor issues), offline (unreachable for >= 3 polls)"
           },
+          "api_compatibility": {
+            "type": "string",
+            "enum": [
+              "compatible",
+              "incompatible",
+              "unknown"
+            ],
+            "description": "Computed (not stored) verdict on the Pico↔Server `api_version` contract generation ONLY: compatible (reported version within the supported range), incompatible (reported version outside the range, or the unit has contact evidence but never reported a version — firmware predates the handshake and needs an update), unknown (never reported and never contacted — the server has no basis to judge). Separate from `status`: a unit can be healthy and incompatible simultaneously."
+          },
           "latest_reading": {
             "nullable": true,
             "description": "Latest reading row for this unit (computed, not stored)",
+            "type": "object",
             "allOf": [
               {
                 "$ref": "#/components/schemas/Readings"
@@ -8478,7 +9311,7 @@
           "address",
           "ipAddress",
           "status",
-          "latest_reading"
+          "api_compatibility"
         ]
       },
       "AnnouncePicoUnitDto": {
@@ -8486,10 +9319,10 @@
         "properties": {
           "handle": {
             "type": "string",
-            "example": "unit-01",
-            "description": "Name for the unit as it is stated in its own software. Should not be changed.",
             "minLength": 1,
-            "maxLength": 64
+            "maxLength": 64,
+            "example": "unit-01",
+            "description": "Name for the unit as it is stated in its own software. Should not be changed."
           },
           "ip": {
             "type": "string",
@@ -8498,10 +9331,10 @@
           },
           "port": {
             "type": "number",
-            "example": 5000,
+            "default": 5000,
             "minimum": 1,
             "maximum": 65535,
-            "default": 5000,
+            "example": 5000,
             "description": "Pico API port"
           },
           "micropython_version": {
@@ -8509,28 +9342,29 @@
             "minLength": 1,
             "maxLength": 255,
             "description": "Version tag for the Micropython executed by the unit",
-            "examples": [
-              "v1.26.0 on 2025-08-09 (GNU 14.2.0 MinSizeRel)",
-              "1.26.0."
-            ]
+            "example": "v1.26.0 on 2025-08-09 (GNU 14.2.0 MinSizeRel)"
           },
-          "software_version": {
+          "firmware_version": {
             "type": "string",
             "minLength": 1,
             "maxLength": 255,
-            "description": "Version tag for the custom software executed by the unit",
-            "examples": [
-              "0.1.0"
-            ]
+            "pattern": "^\\d+\\.\\d+\\.\\d+$",
+            "description": "Version tag for the custom firmware executed by the unit (_SOFTWARE_VERSION in app/state.py). Strict SemVer `MAJOR.MINOR.PATCH` — pre-release/build suffixes are rejected (mushpi-docs/versioning.md §3.4). Optional: legacy firmware that omits it still announces successfully.",
+            "example": "0.1.0"
+          },
+          "api_version": {
+            "type": "number",
+            "minimum": 1,
+            "nullable": true,
+            "description": "Pico REST API version the firmware implements. Absent/null when the unit predates the field (needs firmware update). Values ABOVE the server-supported generation are accepted and stored — the `api_compatibility` verdict flags them (accept-and-flag; no @Max bound).",
+            "example": 1
           },
           "board": {
             "type": "string",
             "minLength": 1,
             "maxLength": 255,
             "description": "Name of the unit's board",
-            "examples": [
-              "Raspberry Pi Pico 2 W with RP2350"
-            ]
+            "example": "Raspberry Pi Pico 2 W with RP2350"
           },
           "board_total_mem_byte": {
             "type": "number",
@@ -8547,14 +9381,11 @@
           "mac": {
             "type": "string",
             "description": "Physical MAC address of the unit",
-            "examples": [
-              "2c:cf:67:be:95:30"
-            ]
+            "example": "2c:cf:67:be:95:30"
           }
         },
         "required": [
-          "handle",
-          "port"
+          "handle"
         ]
       },
       "PicoUnitListResponseDto": {
@@ -8604,14 +9435,13 @@
             "minLength": 0,
             "maxLength": 128,
             "description": "Friendly name of the unit.",
-            "examples": [
-              "Grow Tent A"
-            ]
+            "example": "Grow Tent A"
           },
           "description": {
             "type": "string",
-            "description": "Optional notes about this particular unit.",
-            "maxLength": 512
+            "minLength": 0,
+            "maxLength": 512,
+            "description": "Optional notes about this particular unit."
           },
           "monitored": {
             "type": "boolean",
@@ -8620,9 +9450,10 @@
           },
           "face_color": {
             "type": "string",
+            "nullable": true,
+            "pattern": "^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$",
             "description": "Cosmetic hex color assigned to the unit (e.g. #4CAF50).",
-            "example": "#4CAF50",
-            "pattern": "^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$"
+            "example": "#4CAF50"
           }
         }
       },
@@ -8755,11 +9586,18 @@
             "description": "MicroPython runtime version",
             "example": "v1.24.0"
           },
-          "software_version": {
+          "firmware_version": {
             "type": "string",
             "nullable": true,
             "description": "Firmware version (_SOFTWARE_VERSION in app/state.py)",
             "example": "1.2.0"
+          },
+          "api_version": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 1,
+            "example": 1,
+            "description": "Pico REST API contract generation implemented by the firmware. Null/absent means the unit has never reported it — it predates the field and needs a firmware update."
           },
           "board": {
             "type": "string",
@@ -8821,9 +9659,19 @@
             ],
             "description": "Computed health status: unmonitored (not being polled), healthy (reachable, no faults), degraded (sensor issues), offline (unreachable for >= 3 polls)"
           },
+          "api_compatibility": {
+            "type": "string",
+            "enum": [
+              "compatible",
+              "incompatible",
+              "unknown"
+            ],
+            "description": "Computed (not stored) verdict on the Pico↔Server `api_version` contract generation ONLY: compatible (reported version within the supported range), incompatible (reported version outside the range, or the unit has contact evidence but never reported a version — firmware predates the handshake and needs an update), unknown (never reported and never contacted — the server has no basis to judge). Separate from `status`: a unit can be healthy and incompatible simultaneously."
+          },
           "latest_reading": {
             "nullable": true,
             "description": "Latest reading row for this unit (computed, not stored)",
+            "type": "object",
             "allOf": [
               {
                 "$ref": "#/components/schemas/Readings"
@@ -8833,6 +9681,7 @@
           "devices": {
             "nullable": true,
             "description": "Live devices block from the latest Pico poll response — not persisted",
+            "type": "object",
             "allOf": [
               {
                 "$ref": "#/components/schemas/DevicesDto"
@@ -8853,18 +9702,18 @@
           "address",
           "ipAddress",
           "status",
-          "latest_reading"
+          "api_compatibility"
         ]
       },
       "RebootDto": {
         "type": "object",
         "properties": {
           "type": {
-            "type": "string",
             "enum": [
               "hard",
               "soft"
             ],
+            "type": "string",
             "example": "soft",
             "description": "soft = machine.soft_reset() (preserves cumulative uptime); hard = machine.reset() (full power-cycle, uptime resets)"
           }
@@ -8881,11 +9730,11 @@
             "example": "Reboot initiated"
           },
           "type": {
-            "type": "string",
             "enum": [
               "hard",
               "soft"
             ],
+            "type": "string",
             "example": "soft"
           }
         },
@@ -8904,38 +9753,38 @@
           },
           "temperature": {
             "type": "number",
-            "description": "Average temperature in the bucket (rounded to 1 decimal)",
             "nullable": true,
+            "description": "Average temperature in the bucket (rounded to 1 decimal)",
             "example": 22.5
           },
           "humidity": {
             "type": "number",
-            "description": "Average humidity in the bucket (rounded to 1 decimal)",
             "nullable": true,
+            "description": "Average humidity in the bucket (rounded to 1 decimal)",
             "example": 55.3
           },
           "tempMin": {
             "type": "number",
-            "description": "Minimum temperature in the bucket (raw value)",
             "nullable": true,
+            "description": "Minimum temperature in the bucket (raw value)",
             "example": 20.1
           },
           "tempMax": {
             "type": "number",
-            "description": "Maximum temperature in the bucket (raw value)",
             "nullable": true,
+            "description": "Maximum temperature in the bucket (raw value)",
             "example": 24.8
           },
           "humidityMin": {
             "type": "number",
-            "description": "Minimum humidity in the bucket (raw value)",
             "nullable": true,
+            "description": "Minimum humidity in the bucket (raw value)",
             "example": 50
           },
           "humidityMax": {
             "type": "number",
-            "description": "Maximum humidity in the bucket (raw value)",
             "nullable": true,
+            "description": "Maximum humidity in the bucket (raw value)",
             "example": 60
           },
           "readingCount": {
@@ -8965,14 +9814,14 @@
           },
           "temperatureSet": {
             "type": "number",
-            "description": "Temperature setpoint during this bucket (MAX — constant within bucket)",
             "nullable": true,
+            "description": "Temperature setpoint during this bucket (MAX — constant within bucket)",
             "example": 25
           },
           "humiditySet": {
             "type": "number",
-            "description": "Humidity setpoint during this bucket (MAX — constant within bucket)",
             "nullable": true,
+            "description": "Humidity setpoint during this bucket (MAX — constant within bucket)",
             "example": 60
           }
         },
@@ -9029,7 +9878,8 @@
             "type": "string"
           },
           "finish_at": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "species": {
             "type": "string"
@@ -9046,10 +9896,13 @@
           },
           "notes": {
             "type": "string",
+            "minLength": 0,
             "maxLength": 2000
           },
           "description": {
             "type": "string",
+            "nullable": true,
+            "minLength": 0,
             "maxLength": 120
           },
           "recipe_id": {
@@ -9068,11 +9921,15 @@
           },
           "name": {
             "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
             "description": "Recipe name (unique)",
             "example": "Oyster Mushroom Kit"
           },
           "species": {
             "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
             "description": "Species/cultivar this recipe targets",
             "example": "Pleurotus ostreatus"
           },
@@ -9099,11 +9956,14 @@
           "notes": {
             "type": "string",
             "nullable": true,
+            "minLength": 0,
+            "maxLength": 2000,
             "description": "Free-form cultivator notes",
             "example": "Mist twice daily during pinning"
           },
           "image": {
             "type": "string",
+            "nullable": true,
             "description": "Filename of the uploaded image or external URL",
             "example": "1.jpg"
           },
@@ -9133,7 +9993,6 @@
           "temperature_target",
           "humidity_target",
           "duration_days",
-          "image_url",
           "created_at",
           "updated_at"
         ]
@@ -9182,16 +10041,21 @@
           },
           "notes": {
             "type": "string",
+            "minLength": 0,
+            "maxLength": 2000,
             "description": "Batch cultivation notes",
             "example": "Second flush — heavier misting"
           },
           "description": {
             "type": "string",
             "nullable": true,
+            "minLength": 0,
+            "maxLength": 120,
             "description": "Short batch description",
             "example": "Shelf A run #3"
           },
           "images": {
+            "nullable": true,
             "description": "Filenames of attached images",
             "type": "array",
             "items": {
@@ -9224,6 +10088,7 @@
           "recipe": {
             "nullable": true,
             "description": "Expanded recipe (loaded by list/detail endpoints; null when no recipe is linked)",
+            "type": "object",
             "allOf": [
               {
                 "$ref": "#/components/schemas/Recipe"
@@ -9246,6 +10111,10 @@
             "example": 3,
             "minimum": 0,
             "maximum": 5
+          },
+          "recipe_id": {
+            "type": "number",
+            "nullable": true
           }
         },
         "required": [
@@ -9303,7 +10172,8 @@
             "type": "string"
           },
           "finish_at": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "species": {
             "type": "string"
@@ -9320,10 +10190,13 @@
           },
           "notes": {
             "type": "string",
+            "minLength": 0,
             "maxLength": 2000
           },
           "description": {
             "type": "string",
+            "nullable": true,
+            "minLength": 0,
             "maxLength": 120
           }
         }
@@ -9338,6 +10211,7 @@
           },
           "notes": {
             "type": "string",
+            "minLength": 0,
             "maxLength": 2000
           }
         },
@@ -9374,6 +10248,7 @@
           },
           "notes": {
             "type": "string",
+            "minLength": 0,
             "maxLength": 2000
           }
         },
@@ -9453,6 +10328,7 @@
           },
           "notes": {
             "type": "string",
+            "minLength": 0,
             "maxLength": 2000
           }
         }
@@ -9462,31 +10338,40 @@
         "properties": {
           "temperature": {
             "type": "number",
-            "description": "The temperature in Celsius degrees that we want the Pico Unit to maintain",
-            "example": 27,
             "minimum": 0,
-            "maximum": 50
+            "maximum": 50,
+            "description": "The temperature in Celsius degrees that we want the Pico Unit to maintain",
+            "example": 27
           },
           "humidity": {
             "type": "number",
-            "description": "The percentage of humidity that we want the Pico Unit to maintain",
-            "example": 60,
             "minimum": 10,
-            "maximum": 90
+            "maximum": 90,
+            "description": "The percentage of humidity that we want the Pico Unit to maintain",
+            "example": 60
           }
         }
       },
       "SetpointsDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "humidity": {
+            "type": "number"
+          },
+          "temperature": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "humidity",
+          "temperature"
+        ]
       },
       "ChangeDevicePinsDto": {
         "type": "object",
         "properties": {
           "dht": {
             "type": "number",
-            "description": "Change the GPIO pin assigned to the DHT11 sensor. Must be a valid user I/O pin (excludes GP23-25, GP29 which are WiFi-reserved on Pico 2W).",
-            "example": 4,
             "enum": [
               0,
               1,
@@ -9514,12 +10399,12 @@
               26,
               27,
               28
-            ]
+            ],
+            "description": "Change the GPIO pin assigned to the DHT11 sensor. Must be a valid user I/O pin (excludes GP23-25, GP29 which are WiFi-reserved on Pico 2W).",
+            "example": 4
           },
           "humidifier": {
             "type": "number",
-            "description": "Change the GPIO pin assigned to the humidifier. Must be a valid user I/O pin (excludes GP23-25, GP29 which are WiFi-reserved on Pico 2W).",
-            "example": 6,
             "enum": [
               0,
               1,
@@ -9547,12 +10432,12 @@
               26,
               27,
               28
-            ]
+            ],
+            "description": "Change the GPIO pin assigned to the humidifier. Must be a valid user I/O pin (excludes GP23-25, GP29 which are WiFi-reserved on Pico 2W).",
+            "example": 6
           },
           "fan": {
             "type": "number",
-            "description": "Change the GPIO pin assigned to the fan. Must be a valid user I/O pin (excludes GP23-25, GP29 which are WiFi-reserved on Pico 2W).",
-            "example": 7,
             "enum": [
               0,
               1,
@@ -9580,12 +10465,12 @@
               26,
               27,
               28
-            ]
+            ],
+            "description": "Change the GPIO pin assigned to the fan. Must be a valid user I/O pin (excludes GP23-25, GP29 which are WiFi-reserved on Pico 2W).",
+            "example": 7
           },
           "heater": {
             "type": "number",
-            "description": "Change the GPIO pin assigned to the heater. Must be a valid user I/O pin (excludes GP23-25, GP29 which are WiFi-reserved on Pico 2W).",
-            "example": 8,
             "enum": [
               0,
               1,
@@ -9613,7 +10498,9 @@
               26,
               27,
               28
-            ]
+            ],
+            "description": "Change the GPIO pin assigned to the heater. Must be a valid user I/O pin (excludes GP23-25, GP29 which are WiFi-reserved on Pico 2W).",
+            "example": 8
           }
         }
       },
@@ -9653,7 +10540,22 @@
       },
       "OutputsDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "humidifier": {
+            "type": "boolean"
+          },
+          "heater": {
+            "type": "boolean"
+          },
+          "fan": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "humidifier",
+          "heater",
+          "fan"
+        ]
       },
       "ControlLoopDto": {
         "type": "object",
@@ -9727,13 +10629,22 @@
             "nullable": true
           },
           "status": {
-            "type": "string",
             "enum": [
               "unmonitored",
               "healthy",
               "degraded",
               "offline"
-            ]
+            ],
+            "type": "string"
+          },
+          "api_compatibility": {
+            "enum": [
+              "compatible",
+              "incompatible",
+              "unknown"
+            ],
+            "type": "string",
+            "description": "Computed api_version contract-generation verdict (same as PicoUnit.api_compatibility) — independent from `status`; deliberately NOT folded into health counts or warnings."
           },
           "lastSeenSecondsAgo": {
             "type": "integer",
@@ -9756,6 +10667,7 @@
           },
           "lastReading": {
             "nullable": true,
+            "type": "object",
             "allOf": [
               {
                 "$ref": "#/components/schemas/DashboardLastReadingDto"
@@ -9764,6 +10676,7 @@
           },
           "activeBatch": {
             "nullable": true,
+            "type": "object",
             "allOf": [
               {
                 "$ref": "#/components/schemas/DashboardActiveBatchDto"
@@ -9775,6 +10688,7 @@
           "id",
           "handle",
           "status",
+          "api_compatibility",
           "uptimeHours",
           "failedCalls",
           "failedReadings",
@@ -10006,11 +10920,11 @@
             ]
           },
           "severity": {
-            "type": "string",
             "enum": [
               "warning",
               "error"
-            ]
+            ],
+            "type": "string"
           },
           "unitId": {
             "type": "integer"

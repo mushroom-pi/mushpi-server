@@ -14,9 +14,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { DataSource } from 'typeorm';
 
+import { DemoReadOnlyGuard } from 'src/common/guards/demo-readonly.guard';
 import { TooManyRequestsGuard } from 'src/common/guards/too-many-requests.guard';
 import { TimezoneInterceptor } from 'src/common/interceptors/timezone.interceptor';
 import { PicoUnitByIdMiddleware } from 'src/common/middleware/pico-unit-by-id.middleware';
+import { buildThrottlerDefinitions } from 'src/common/utils/build-throttler-definitions';
 
 import { BatchesModule } from './batches/batches.module';
 import { CustomConfigModule } from './config/config.module';
@@ -29,6 +31,7 @@ import { PicoUnitsModule } from './pico-units/pico-units.module';
 import { PinoLoggerModule } from './pino-logger.module';
 import { ReadingsModule } from './readings/readings.module';
 import { RecipesModule } from './recipes/recipes.module';
+import { SeedModule } from './seed/seed.module';
 import { SettingsModule } from './settings/settings.module';
 import { SQLiteModule } from './sqlite/sqlite.module';
 import { SwaggerModule } from './swagger/swagger.module';
@@ -115,12 +118,20 @@ import { SwaggerModule } from './swagger/swagger.module';
     ThrottlerModule.forRootAsync({
       imports: [CustomConfigModule],
       inject: [CustomConfigService],
-      useFactory: ({ security }: CustomConfigService) => [
-        {
-          ttl: security.maxRequestsTime,
-          limit: security.maxRequests,
-        },
-      ],
+      /**
+       * Definitions come from `buildThrottlerDefinitions`: three always-on
+       * env-supplied throttlers on a demo boot (browse pace, refused-change
+       * pace, whole-instance backstop), and on every other boot the
+       * historical opt-in `MAX_REQUESTS`/`MAX_REQUESTS_TIME` pair verbatim
+       * — or an EMPTY definitions array when unset (zero definitions means
+       * the guard's per-throttler loop never runs: no 429, and no
+       * X-RateLimit-* headers at all; a definition with undefined ttl/limit
+       * would emit literally `undefined`/`NaN` headers instead). The demo
+       * branch fails loudly on a malformed value rather than serving an
+       * unprotected demo. Details: REFERENCE.md §Guards.
+       */
+      useFactory: (config: CustomConfigService) =>
+        buildThrottlerDefinitions(config),
     }),
     SQLiteModule,
     PicoUnitsModule,
@@ -133,11 +144,23 @@ import { SwaggerModule } from './swagger/swagger.module';
     RecipesModule,
     DashboardModule,
     SettingsModule,
+    // Server-owned demo seeding — inert unless SEED_ENABLED (on by default
+    // in demo only); runs at bootstrap and never touches the request path.
+    SeedModule,
   ],
   providers: [
     {
       provide: APP_GUARD,
       useClass: TooManyRequestsGuard,
+    },
+    // Registered AFTER TooManyRequestsGuard: Nest runs global guards in
+    // provider registration order, so a request is counted against the pace
+    // budget before the demo read-only guard refuses it — the 403 response
+    // still carries X-RateLimit-* headers when throttling is configured.
+    // Inert on every non-demo boot (`NODE_ENV=demo` is the only armed state).
+    {
+      provide: APP_GUARD,
+      useClass: DemoReadOnlyGuard,
     },
     {
       provide: APP_INTERCEPTOR,

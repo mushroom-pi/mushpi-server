@@ -138,7 +138,17 @@ export class ReadingsService {
         '/?force=1',
       );
       const mac = response?.system?.wifi?.mac;
-      await this.picoUnitsService.touchAndResetFailedCalls(unit, mac);
+      // `ip` is captured here too (alongside `mac`) so the mDNS→IP fallback
+      // is armed for every unit — including manually created ones, whose ip
+      // is NULL until a poll backfills it from this field. Refresh semantics
+      // (overwrite-when-present, preserve-when-absent) live in
+      // PicoUnitsService.touchAndResetFailedCalls().
+      const ip = response?.system?.wifi?.ip;
+      await this.picoUnitsService.touchAndResetFailedCalls(unit, mac, {
+        firmware_version: response?.firmware_version,
+        api_version: response?.api_version,
+        ip,
+      });
 
       // Skip zero-value sensor readings (sensor glitch / warmup noise)
       const rawTemp = response?.sensors?.dht?.temperature;
@@ -439,7 +449,7 @@ export class ReadingsService {
       .createQueryBuilder()
       .delete()
       .from(Readings)
-      .where('ts < :cutoff', { cutoff: cutoff.toISOString() })
+      .where('ts < :cutoff', { cutoff: this.toSqliteDatetime(cutoff) })
       .execute();
 
     return res.affected ?? 0;

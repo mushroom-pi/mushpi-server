@@ -1,4 +1,10 @@
-export type NodeEnvironments = 'local' | 'dev' | 'prod' | 'test' | 'staging';
+export type NodeEnvironments =
+  | 'demo'
+  | 'local'
+  | 'dev'
+  | 'prod'
+  | 'test'
+  | 'staging';
 
 export type LogLevels =
   | 'info'

@@ -3,7 +3,7 @@
 ## How logs work
 
 - **Local / test** — pretty-printed, colourised output directly to the terminal. No files written.
-- **All other environments** (`dev`, `staging`, `prod`) — two simultaneous outputs:
+- **All other environments** (`demo`, `dev`, `staging`, `prod`) — two simultaneous outputs:
   - **stdout** (raw NDJSON) — available via `docker logs`
   - **Rolling daily file** — `$LOGS_PATH/app.YYYY-MM-DD.log` (default: `./data/logs/`)
 

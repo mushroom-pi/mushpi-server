@@ -4,7 +4,6 @@ import * as fs from 'fs';
 import * as os from 'os';
 import { version } from 'package.json';
 import * as path from 'path';
-import client from 'prom-client';
 
 import {
   databases as configDb,
@@ -26,14 +25,10 @@ import {
 @Injectable()
 export class MonitoringService {
   private readonly logger = new Logger(MonitoringService.name);
-  private readonly promRegister = new client.Registry();
-  private readonly promMetrics = client.collectDefaultMetrics;
   constructor(
     private readonly configService: CustomConfigService,
     private readonly sqliteHealthService: SQLiteHealthService,
-  ) {
-    this.promMetrics({ register: this.promRegister });
-  }
+  ) {}
 
   private toMB(n: number): number {
     return parseFloat((n / 1024 / 1024).toFixed(2));
@@ -68,6 +63,20 @@ export class MonitoringService {
   }
 
   private checkSystemStatus(): SystemInfo {
+    const memory: SystemInfo['memory'] = {
+      totalMb: this.toMB(os.totalmem()),
+      freeMb: this.toMB(os.freemem()),
+    };
+    const upTime = this.buildUpTime(os.uptime());
+
+    // A public-demo instance never materializes host identity: hostname, OS
+    // release/arch, CPU model/cores and the disk path/usage are withheld from
+    // every response rather than redacted after collection. Memory and uptime
+    // stay visible — the operator's health check still works.
+    if (this.configService.isDemo) {
+      return { memory, upTime };
+    }
+
     const cpus = os.cpus();
     const dbPath = this.configService.sqlite.database;
 
@@ -100,11 +109,8 @@ export class MonitoringService {
         model: cpus[0]?.model ?? 'unknown',
         cores: cpus.length,
       },
-      memory: {
-        totalMb: this.toMB(os.totalmem()),
-        freeMb: this.toMB(os.freemem()),
-      },
-      upTime: this.buildUpTime(os.uptime()),
+      memory,
+      upTime,
       disk,
     };
   }
@@ -131,7 +137,7 @@ export class MonitoringService {
     this.logger.log(`Checking ${name} Service status`);
 
     switch (name) {
-      case 'mockService':
+      case 'serviceMock':
         return {
           hasKey: true,
           available: true,
@@ -140,6 +146,16 @@ export class MonitoringService {
       default:
         break;
     }
+  }
+
+  /**
+   * Drop the database file path from a demo response. Only the `path` key is
+   * removed; the size figures stay, so the operator can still read health.
+   */
+  private redactDatabaseStatus(status: DatabaseStatus): DatabaseStatus {
+    if (!status.size) return status;
+    const { path: _path, ...size } = status.size;
+    return { ...status, size };
   }
 
   private makeList(names: string, originalList: string[]): string[] {
@@ -173,7 +189,10 @@ export class MonitoringService {
     const dbList = this.makeList(databases, configDb);
     for (const dbName of dbList) {
       if (!healthCheck.databases) healthCheck.databases = {};
-      healthCheck.databases[dbName] = await this.checkDatabaseStatus(dbName);
+      const status = await this.checkDatabaseStatus(dbName);
+      healthCheck.databases[dbName] = this.configService.isDemo
+        ? this.redactDatabaseStatus(status)
+        : status;
     }
 
     const serviceList = this.makeList(services, configServices);
@@ -184,9 +203,5 @@ export class MonitoringService {
     }
 
     return healthCheck;
-  }
-
-  async metrics() {
-    return await this.promRegister.metrics();
   }
 }

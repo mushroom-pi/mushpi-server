@@ -6,6 +6,7 @@ import {
 } from './config.types';
 
 export const nodeEnvironments: NodeEnvironments[] = [
+  'demo',
   'dev',
   'local',
   'prod',

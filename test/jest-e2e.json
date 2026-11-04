@@ -26,5 +26,12 @@
     "/src/modules/swagger/",
     "/src/modules/sqlite/",
     "main\\.ts$"
+  ],
+  "watchPathIgnorePatterns": [
+    "/node_modules/",
+    "/dist/",
+    "/coverage/",
+    "/test/coverage/",
+    "/test/data-test/"
   ]
 }

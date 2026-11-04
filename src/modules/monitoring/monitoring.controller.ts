@@ -5,6 +5,12 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
+
+import {
+  RATE_LIMIT_ABUSE_THROTTLER_NAME,
+  RATE_LIMIT_GLOBAL_THROTTLER_NAME,
+} from 'src/common/constants/rate-limit.constants';
 
 import { HealthCheckQueryDto, HealthCheckResponseDto } from './monitoring.dto';
 import { MonitoringService } from './monitoring.service';
@@ -20,14 +26,31 @@ export class MonitoringController {
   @ApiOperation({ summary: 'The simplest server status check' })
   @ApiOkResponse({
     description: 'Server is up and running',
-    schema: { example: 'pong' },
-    type: String,
+    // Media-type-scoped schema (OAS3); a response-level `schema` is Swagger 2.0
+    // and makes the generated spec fail validation.
+    content: {
+      'application/json': {
+        schema: { type: 'string', example: 'pong' },
+      },
+    },
   })
   ping(): string {
     return this.monitoringService.ping();
   }
 
   @Get('health')
+  // Docker HEALTHCHECK target: must stay reachable and header-free regardless
+  // of how much traffic the rest of the API is taking (the throttler emits its
+  // X-RateLimit-* headers from inside the guard, so skipping is what removes
+  // them — see REFERENCE.md §Guards). Skips ALL THREE demo definitions by
+  // name: the named skip keys are inert on non-demo boots (those throttler
+  // names only exist on a demo boot), and `default: true` preserves the
+  // historical exemption of the opt-in limiter.
+  @SkipThrottle({
+    default: true,
+    [RATE_LIMIT_GLOBAL_THROTTLER_NAME]: true,
+    [RATE_LIMIT_ABUSE_THROTTLER_NAME]: true,
+  })
   @ApiOperation({
     summary:
       'Check server and dependencies status. All the information will be returned if no query is included. Use query parameters to filter the checks that you want implemented',
@@ -38,29 +61,5 @@ export class MonitoringController {
   })
   health(@Query() query: HealthCheckQueryDto) {
     return this.monitoringService.health(query);
-  }
-
-  @ApiTags('no-validation')
-  @Get('metrics')
-  @ApiOperation({
-    summary:
-      'Use a Prometheus client to gather default metrics for Grafana monitoring',
-  })
-  @ApiOkResponse({
-    description:
-      'Grafana-ready metrics without any extra formatting from the server side',
-    schema: {
-      example: `# HELP process_cpu_user_seconds_total Total user CPU time spent in seconds.
-        # TYPE process_cpu_user_seconds_total counter
-        process_cpu_user_seconds_total 0.122049
-
-        # HELP process_cpu_system_seconds_total Total system CPU time spent in seconds.
-        # TYPE process_cpu_system_seconds_total counter
-        process_cpu_system_seconds_total 0.014626...`,
-    },
-    type: String,
-  })
-  metrics() {
-    return this.monitoringService.metrics();
   }
 }

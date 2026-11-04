@@ -12,7 +12,7 @@ const SUPPORTED_TIMEZONES: Set<string> = new Set([
 ]);
 
 @ValidatorConstraint({ name: 'isValidTimezone' })
-export class IsValidTimezoneValidator implements ValidatorConstraintInterface {
+class IsValidTimezoneValidator implements ValidatorConstraintInterface {
   validate(value: unknown): boolean {
     if (typeof value !== 'string') return false;
     return SUPPORTED_TIMEZONES.has(value);

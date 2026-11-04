@@ -4,11 +4,15 @@ import { SchedulerRegistry } from '@nestjs/schedule';
 import { AbstractLoader, ExpressLoader } from '@nestjs/serve-static';
 import { Test, TestingModule, TestingModuleBuilder } from '@nestjs/testing';
 
+import { DataSource } from 'typeorm';
+
 import { ExceptionsFilter } from '../src/common/filters/exceptions.filter';
 import { AppSecretBearerMiddleware } from '../src/common/middleware/app-secret-bearer.middleware';
+import { createHelmetMiddleware } from '../src/common/middleware/helmet.middleware';
 import { ProtectEventLoopMiddleware } from '../src/common/middleware/protect-event-loop.middleware';
 import { validationPipe } from '../src/common/pipes/validation.pipe';
 import { applyApiVersioning } from '../src/common/utils/api-version';
+import { applySingleHopTrustProxy } from '../src/common/utils/trust-proxy';
 import { AppModule } from '../src/modules/app.module';
 import { CustomConfigService } from '../src/modules/config/config.service';
 import { CronService } from '../src/modules/cron/cron.service';
@@ -28,7 +32,7 @@ import { CronService } from '../src/modules/cron/cron.service';
  * file serving opt in via `withServeStatic: true`, which overrides
  * `AbstractLoader` with the real `ExpressLoader`.
  */
-export interface CreateModuleOptions {
+interface CreateModuleOptions {
   withCron?: boolean;
   withServeStatic?: boolean;
 }
@@ -39,13 +43,14 @@ export interface CreateModuleOptions {
  * bootstrap, and batch/pico-unit event handlers from firing real HTTP during
  * e2e tests that do not explicitly opt in.
  */
-export class NoopCronService {
+class NoopCronService {
   async onApplicationBootstrap(): Promise<void> {}
   async handleReadings(): Promise<void> {}
   async handleBatchSync(): Promise<void> {}
   async handleBatchStarted(): Promise<void> {}
   async handleBatchFinished(): Promise<void> {}
   async handlePicoUnitRegistered(): Promise<void> {}
+  async handlePicoUnitCreated(): Promise<void> {}
   async handlePicoUnitMonitoringStopped(): Promise<void> {}
   async handlePicoUnitMonitoringStarted(): Promise<void> {}
   async cleanReadings(): Promise<void> {}
@@ -81,15 +86,28 @@ export async function createTestApp(
   const httpAdapterHost = app.get(HttpAdapterHost);
   const configService = app.get(CustomConfigService);
 
+  // Mirror of the `main.ts` bootstrap — including the demo-only single-hop
+  // proxy trust (per-visitor throttler identity). Inert on non-demo boots.
+  applySingleHopTrustProxy(app, configService);
+
   /** Global nest middleware — registered via app.use() to bypass route versioning */
   const protectEventLoop = new ProtectEventLoopMiddleware(configService);
   const appSecretBearer = new AppSecretBearerMiddleware(configService);
+  app.use(createHelmetMiddleware(configService.security.httpsEnabled));
   app.use(protectEventLoop.use.bind(protectEventLoop));
   app.use(appSecretBearer.use.bind(appSecretBearer));
 
   app.useGlobalFilters(new ExceptionsFilter(httpAdapterHost, configService));
   app.useGlobalPipes(validationPipe);
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+
+  // Mirror of the `main.ts` connect window: `manualInitialization: true`
+  // (sqlite.module.ts) defers TypeORM's connect past provider instantiation,
+  // so `app.init()` — which runs the `onApplicationBootstrap` hooks (cron
+  // startup sweep, demo seeding) — needs this explicit connect for a live
+  // connection. Tests never call `cleanStart` here: it is destructive and
+  // these databases are not demo-owned.
+  await app.get(DataSource).initialize();
 
   return app;
 }

@@ -6,6 +6,13 @@ import {
   OpenAPIObject,
 } from '@nestjs/swagger';
 
+import {
+  READONLY_FORBIDDEN_DESCRIPTION,
+  READONLY_FORBIDDEN_MESSAGE,
+  READONLY_SAFE_METHODS,
+  READONLY_SPEC_EXTENSION,
+} from 'src/common/constants/readonly.constants';
+
 import { description, name, version } from '../../../package.json';
 import { CustomConfigService } from '../config/config.service';
 import { globalErrors } from './swagger-global-errors';
@@ -95,6 +102,92 @@ export class SwaggerModule {
     };
   }
 
+  /**
+   * Demo read-only 403 injection — the OpenAPI projection of the same
+   * declaration the runtime `DemoReadOnlyGuard` reads (see the mark
+   * decorators under `src/common/decorators/docs/`).
+   *
+   * An operation gains the `403` response iff
+   * `(method key is not safe OR it carries the refused mark)
+   *  AND it does not carry the exempt mark`.
+   *
+   * Unlike the 429 global error (documented only when the *generating*
+   * deployment has rate limiting configured), this injection is
+   * **unconditional**: the committed spec is generated on pre-commit in a
+   * dev/local boot and must document demo-mode behaviour regardless of the
+   * generating environment. Runtime behaviour stays per-deployment — the
+   * guard is inert unless `NODE_ENV=demo`.
+   *
+   * Pure addition: never mutates or removes existing entries.
+   */
+  private addReadOnlyResponses(document: OpenAPIObject) {
+    const safeMethodKeys = new Set(
+      READONLY_SAFE_METHODS.map((method) => method.toLowerCase()),
+    );
+    const methodKeys = [
+      'get',
+      'put',
+      'post',
+      'patch',
+      'delete',
+      'head',
+      'options',
+    ];
+
+    for (const pathKey in document.paths) {
+      const pathItem = document.paths[pathKey];
+
+      for (const methodKey of methodKeys) {
+        const operation = pathItem[methodKey];
+        if (!operation) continue;
+
+        const mark = (operation as Record<string, unknown>)[
+          READONLY_SPEC_EXTENSION
+        ];
+        if (mark === 'exempt') continue;
+
+        const refused = !safeMethodKeys.has(methodKey) || mark === 'refused';
+        if (!refused) continue;
+
+        if (!operation.responses) {
+          operation.responses = {};
+        }
+        if (operation.responses['403']) continue;
+
+        operation.responses['403'] = {
+          description: READONLY_FORBIDDEN_DESCRIPTION,
+          content: this.generateContent({
+            statusCode: HttpStatus.FORBIDDEN,
+            error: 'Forbidden',
+            messageExample: READONLY_FORBIDDEN_MESSAGE,
+          }),
+        };
+      }
+    }
+  }
+
+  /**
+   * Whether the `429 Too many requests` global error is documented on this
+   * boot. Two armed states: the historical opt-in pair (both
+   * `MAX_REQUESTS` and `MAX_REQUESTS_TIME` set), OR a demo boot — whose
+   * three throttler definitions are ALWAYS on, so the served docs of a demo
+   * instance must truthfully advertise 429s.
+   *
+   * The demo arm only affects the SERVED document of a demo instance: the
+   * committed `spec/openapi.{json,yaml}` is generated on a local boot, where
+   * `isDemo` is false and the pair is unset, so the committed spec stays
+   * byte-for-byte unchanged (same reasoning as the unconditional demo 403
+   * injection above).
+   */
+  private documentsTooManyRequests(): boolean {
+    if (this.configService.isDemo) return true;
+
+    return (
+      !!this.configService.security.maxRequests &&
+      !!this.configService.security.maxRequestsTime
+    );
+  }
+
   public buildOpenApiDocument(
     app: INestApplication,
     documentDescriptor?: DocumentDescriptor,
@@ -107,10 +200,10 @@ export class SwaggerModule {
 
     const swaggerConfig = new DocumentBuilder()
       .addSecurity('secret', {
+        // OAS3 http-bearer scheme: the Authorization header is implicit;
+        // `in`/`name` are Swagger 2.0 keys the 3.0 schema rejects.
         type: 'http',
         scheme: 'bearer',
-        in: 'header',
-        name: 'authorization',
       })
       .setTitle(title)
       .setDescription(documentDescriptor?.description || description)
@@ -142,13 +235,12 @@ export class SwaggerModule {
     globalErrors
       .filter((errorResponse) => {
         /**
-         * Display the documentation for the Too many requests response only if rate limiting is active in the platform
+         * Display the documentation for the Too many requests response only
+         * if rate limiting is active in the platform (see
+         * `documentsTooManyRequests()` below).
          */
-        if (
-          !this.configService.security.maxRequests ||
-          !this.configService.security.maxRequestsTime
-        )
-          return errorResponse.statusCode !== HttpStatus.TOO_MANY_REQUESTS;
+        if (errorResponse.statusCode === HttpStatus.TOO_MANY_REQUESTS)
+          return this.documentsTooManyRequests();
 
         return true;
       })
@@ -164,6 +256,8 @@ export class SwaggerModule {
       .forEach((errorResponse) =>
         this.errorResponseFactory(errorResponse)(document),
       );
+
+    this.addReadOnlyResponses(document);
 
     return document;
   }

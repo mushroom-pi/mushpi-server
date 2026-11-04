@@ -12,6 +12,7 @@ import {
   ReadingsConfig,
   SQLiteConfig,
   SecurityConfig,
+  SeedConfig,
   ServerConfig,
   ServiceConfig,
   UploadConfig,
@@ -57,7 +58,6 @@ export class CustomConfigService {
   get server(): ServerConfig {
     return {
       nodeEnv: this.configService.get('NODE_ENV'),
-      host: this.configService.get('APP_HOST'),
       port:
         this.configService.get('APP_PORT') || this.configService.get('PORT'),
       errorsDetail:
@@ -79,9 +79,24 @@ export class CustomConfigService {
   get security(): SecurityConfig {
     return {
       secret: this.configService.get('APP_SECRET'),
+      httpsEnabled: this.configService.get('APP_HTTPS_ENABLED'),
       maxEventLoopDelay: this.configService.get('MAX_EVENT_LOOP_DELAY'),
       maxRequests: this.configService.get('MAX_REQUESTS'),
       maxRequestsTime: this.configService.get('MAX_REQUESTS_TIME'),
+      demo: {
+        visitor: {
+          maxRequests: this.configService.get('VISITOR_MAX_REQUESTS'),
+          maxRequestsTime: this.configService.get('VISITOR_MAX_REQUESTS_TIME'),
+        },
+        abuse: {
+          maxRequests: this.configService.get('ABUSE_MAX_REQUESTS'),
+          maxRequestsTime: this.configService.get('ABUSE_MAX_REQUESTS_TIME'),
+        },
+        global: {
+          maxRequests: this.configService.get('GLOBAL_MAX_REQUESTS'),
+          maxRequestsTime: this.configService.get('GLOBAL_MAX_REQUESTS_TIME'),
+        },
+      },
     };
   }
 
@@ -123,6 +138,13 @@ export class CustomConfigService {
     };
   }
 
+  get seed(): SeedConfig {
+    return {
+      enabled: this.configService.get('SEED_ENABLED'),
+      readingsDays: this.configService.get('SEED_READINGS_DAYS'),
+    };
+  }
+
   get client(): ClientConfig {
     return {
       clientUrl: this.configService.get('CLIENT_URL'),
@@ -136,6 +158,15 @@ export class CustomConfigService {
 
   get isProd(): boolean {
     return this.configService.get('NODE_ENV') === 'prod';
+  }
+
+  /**
+   * The demo environment is the only state that arms the rate limiters and
+   * the single-hop proxy trust — every `isDemo`-first branch guarantees a
+   * self-hosted hub behaves byte-for-byte as before.
+   */
+  get isDemo(): boolean {
+    return this.configService.get('NODE_ENV') === 'demo';
   }
 
   get errorsDetail(): boolean {
