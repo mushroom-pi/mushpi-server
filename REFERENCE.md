@@ -263,7 +263,7 @@ Scripts that import TypeScript source using `src/*` path aliases require `tsconf
 Policy detail (core keeps a one-line pointer here):
 
 - Commit messages follow **Conventional Commits**, enforced by commitlint (`commitlint.config.mjs`, `@commitlint/config-conventional`) via the Husky `commit-msg` hook (see [Spec Tooling Internals → Git hooks](#git-hooks-husky)).
-- The `package.json` `version` is bumped **only when releasing, on the `main` branch** — never during day-to-day `dev` work.
+- The `package.json` `version` is bumped on `dev` as the **final commit of a release cycle** — never mid-cycle, and never on `main` after the merge, so the reviewed release PR *is* the shipped tree. Release model: root `AGENTS.md` §Release & Branching Model.
 - After any version bump, run `yarn spec:all` so the committed OpenAPI spec carries the same `info.version` as `package.json`.
 - Never edit `mushpi-hub/release.json` or git tags.
 
