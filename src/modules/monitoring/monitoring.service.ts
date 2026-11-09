@@ -51,7 +51,7 @@ export class MonitoringService {
     );
     const upTimeSeconds = parseFloat(process.uptime().toFixed(2));
 
-    return {
+    const serverStatus: ServerStatus = {
       healthy: true,
       environment: this.configService.server.nodeEnv,
       appVersion: version,
@@ -60,6 +60,20 @@ export class MonitoringService {
       memoryUsageInMB: memoryUsage,
       upTime: this.buildUpTime(upTimeSeconds),
     };
+
+    // Disclose the interactive contract's location only when docs are enabled.
+    // A non-empty `endpoint` IS the enabled state (the getter's `makeDocs` is
+    // exactly `!!endpoint`, and an empty configured path disables docs), so
+    // this doubles as the enabled check. Disabled docs keep the key absent —
+    // not null, not empty — leaving the payload of a hub that passed no docs
+    // path byte-for-byte unchanged. Consumers learn the path at runtime
+    // instead of a build-time constant.
+    const endpoint = this.configService.docs.endpoint;
+    if (endpoint) {
+      serverStatus.docsPath = endpoint;
+    }
+
+    return serverStatus;
   }
 
   private checkSystemStatus(): SystemInfo {

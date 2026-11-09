@@ -5972,7 +5972,7 @@ paths:
 info:
   title: mushpi-server
   description: A backend for the Mushroom Pi project
-  version: 0.9.0
+  version: 0.9.1
   contact: {}
 tags:
   - name: monitoring
@@ -6062,6 +6062,13 @@ components:
         appVersion:
           type: string
           example: 1.0.0
+        docsPath:
+          type: string
+          example: api-docs
+          description: >-
+            Path segment where this instance serves the interactive API contract (`/<docsPath>` for the UI,
+            `/<docsPath>-json` for the document). Present only when the docs endpoint is enabled (the instance was
+            configured with a docs path); omitted when docs are disabled
       required:
         - healthy
         - environment

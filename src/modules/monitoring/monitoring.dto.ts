@@ -129,6 +129,18 @@ class ServerDto {
 
   @ApiProperty({ type: String, example: '1.0.0' })
   readonly appVersion: string;
+
+  @ApiProperty({
+    type: String,
+    example: 'api-docs',
+    required: false,
+    description:
+      'Path segment where this instance serves the interactive API contract ' +
+      '(`/<docsPath>` for the UI, `/<docsPath>-json` for the document). ' +
+      'Present only when the docs endpoint is enabled (the instance was ' +
+      'configured with a docs path); omitted when docs are disabled',
+  })
+  readonly docsPath?: string;
 }
 
 class ServiceMockDto {
