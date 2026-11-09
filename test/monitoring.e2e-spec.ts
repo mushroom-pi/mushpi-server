@@ -82,6 +82,38 @@ describe('AppController (e2e)', () => {
       });
     });
 
+    describe('server health', () => {
+      it('serves the unchanged server section when docs are disabled — no docsPath key', async () => {
+        // The test boot carries no docs path (`.env.test` sets none), so the
+        // `server` section must hold exactly the keys it held before the
+        // docs-path disclosure existed: `docsPath` is absent, not null/empty.
+        // The enabled state is covered by `health-docs-path.e2e-spec.ts`.
+        const res = await request(app.getHttpServer())
+          .get('/health')
+          .query({
+            server: 'true',
+            system: 'false',
+            databases: 'none',
+            services: 'none',
+          })
+          .expect(200);
+
+        expect(res.body).toHaveProperty('server');
+        expect(Object.keys(res.body.server).sort()).toEqual(
+          [
+            'healthy',
+            'environment',
+            'loadAverage',
+            'memoryUsageInMB',
+            'upTime',
+            'nodeVersion',
+            'appVersion',
+          ].sort(),
+        );
+        expect(res.body.server).not.toHaveProperty('docsPath');
+      });
+    });
+
     describe('system health', () => {
       it('should include system when system=true and exclude databases/services', async () => {
         const res = await request(app.getHttpServer())

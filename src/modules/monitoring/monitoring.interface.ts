@@ -55,6 +55,13 @@ export interface ServerStatus {
   upTime: UpTime;
   nodeVersion: string;
   appVersion: string;
+  /**
+   * Path segment where this instance serves the interactive API contract
+   * (`/<docsPath>` for the UI, `/<docsPath>-json` for the document). Present
+   * only when the docs endpoint is enabled (`DOCS_ENDPOINT` set); disabled
+   * docs leave the key absent — never `null`, never empty.
+   */
+  docsPath?: string;
 }
 
 export interface TableSize {

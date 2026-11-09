@@ -62,6 +62,10 @@ describe('MonitoringService', () => {
             server: { nodeEnv: process.env.NODE_ENV },
             sqlite: { database: ':memory:' },
             isDemo: false,
+            // Docs disabled by default: no endpoint configured, so the
+            // `server` section carries no `docsPath` (see the docs-state
+            // cases in `checkServerStatus` below).
+            docs: { endpoint: undefined, makeDocs: false, useAuth: false },
           },
         },
         {
@@ -145,6 +149,32 @@ describe('MonitoringService', () => {
         nodeVersion: process.version,
         appVersion: version,
       });
+    });
+
+    it('carries docsPath when the docs endpoint is configured', () => {
+      // The docs state is instance config; flip it the same way the
+      // disk-fallback test overrides `sqlite.database`.
+      const config = (service as any).configService;
+      const origDocs = config.docs;
+      config.docs = { endpoint: 'api-docs', makeDocs: true, useAuth: false };
+      try {
+        const result = service['checkServerStatus']();
+        expect(result).toHaveProperty('docsPath', 'api-docs');
+      } finally {
+        config.docs = origDocs;
+      }
+    });
+
+    it('omits docsPath when no docs endpoint is configured (key absent, not null)', () => {
+      const config = (service as any).configService;
+      const origDocs = config.docs;
+      config.docs = { endpoint: undefined, makeDocs: false, useAuth: false };
+      try {
+        const result = service['checkServerStatus']();
+        expect(result).not.toHaveProperty('docsPath');
+      } finally {
+        config.docs = origDocs;
+      }
     });
   });
 
